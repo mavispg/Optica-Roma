@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPTICA ROMA - Gestión de Stock</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <!-- Login Container -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-bg-overlay"></div>
+        <div class="login-box">
+            <div class="login-header">
+                <div class="logo-circle">
+                    <i class='bx bxs-glasses'></i>
+                </div>
+                <h2>OPTICA ROMA</h2>
+                <p>Bienvenido al Sistema</p>
+            </div>
+            <form id="loginForm">
+                <div class="input-group">
+                    <i class='bx bx-user'></i>
+                    <input type="text" id="username" placeholder="Usuario" required>
+                </div>
+                <div class="input-group">
+                    <i class='bx bx-lock-alt'></i>
+                    <input type="password" id="password" placeholder="Contraseña" required>
+                </div>
+                <button type="submit" class="login-btn">INGRESAR</button>
+                <div id="loginError" class="error-msg"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Container (Hidden by default) -->
+    <div id="mainApp" style="display: none;">
+        <div class="menu-overlay"></div>
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-details">
+                <i class='bx bxs-glasses icon'></i> 
+                <div class="logo_name">OPTICA ROMA</div>
+                <i class='bx bx-x' id="mobileCloseBtn"></i>
+            </div>
+            <ul class="nav-list">
+                <li>
+                    <a href="#" class="nav-link active" data-target="home">
+                        <i class='bx bx-home-alt'></i>
+                        <span class="links_name">INICIO</span>
+                    </a>
+                </li>
+                
+                <!-- Products Group -->
+                <li class="">
+                     <div class="iocn-link">
+                        <a href="#">
+                            <i class='bx bx-layer'></i>
+                            <span class="links_name">PRODUCTOS</span>
+                        </a>
+                        <i class='bx bxs-chevron-down arrow'></i>
+                    </div>
+                    <ul class="sub-menu">
+                        <li><a class="nav-link" href="#" data-target="lunas">Lunas</a></li>
+                        <li><a class="nav-link" href="#" data-target="monturas">Monturas</a></li>
+                    </ul>
+                </li>
+    
+                <li>
+                    <a href="#" class="nav-link" data-target="providers">
+                        <i class='bx bxs-truck'></i>
+                        <span class="links_name">LABORATORIO</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link" data-target="clients">
+                        <i class='bx bx-id-card'></i>
+                        <span class="links_name">CLIENTES</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link" data-target="users">
+                        <i class='bx bx-user'></i>
+                        <span class="links_name">USUARIOS</span>
+                    </a>
+                </li>
+                 <li>
+                    <a href="#" class="nav-link" data-target="help">
+                        <i class='bx bx-help-circle'></i>
+                        <span class="links_name">AYUDA</span>
+                    </a>
+                </li>
+                
+                <li class="logout-mode">
+                    <a href="#" class="nav-link" id="logoutBtn">
+                        <i class='bx bx-log-out'></i>
+                        <span class="links_name">SALIR</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+    
+        <!-- Main Content -->
+        <section class="home-section">
+        <!-- Top Nav -->
+        <div class="top-nav">
+             <div class="sidebar-button">
+                <i class='bx bx-menu sidebarBtn'></i>
+            </div>
+            <div class="profile-details-top">
+                 <div class="user-icon">
+                    <i class='bx bxs-user'></i>
+                 </div>
+                <span class="admin_name">Administrador</span>
+            </div>
+        </div>
+
+        <!-- SECTIONS -->
+        
+        <!-- HOME -->
+        <div id="home" class="content-section active">
+            <div class="home-content">
+                <h2>Panel de Control</h2>
+                <p>Resumen del estado actual del inventario.</p>
+
+                <!-- KPI Cards -->
+                <div class="dashboard-cards">
+                    <div class="card card-blue">
+                        <div class="card-details">
+                            <div class="card-number" id="kpi-lunas">0</div>
+                            <div class="card-name">Total Lunas</div>
+                        </div>
+                        <div class="card-icon">
+                            <i class='bx bx-glasses'></i>
+                        </div>
+                    </div>
+                    <div class="card card-green">
+                        <div class="card-details">
+                            <div class="card-number" id="kpi-monturas">0</div>
+                            <div class="card-name">Total Monturas</div>
+                        </div>
+                        <div class="card-icon">
+                            <i class='bx bx-show'></i>
+                        </div>
+                    </div>
+                    <div class="card card-orange">
+                        <div class="card-details">
+                            <div class="card-number" id="kpi-providers">0</div>
+                            <div class="card-name">Laboratorios</div>
+                        </div>
+                        <div class="card-icon">
+                            <i class='bx bxs-truck'></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Grid: Alerts & Quick Actions -->
+                <div class="dashboard-grid">
+                    <!-- Low Stock Alerts -->
+                    <div class="dashboard-panel">
+                        <h3><i class='bx bx-error-circle'></i> Alertas de Stock Bajo (< 5)</h3>
+                        <ul class="stock-alert-list" id="stockAlerts">
+                            <!-- Populated by JS -->
+                            <li class="empty-alert">Todo el stock está en niveles óptimos.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="dashboard-panel">
+                        <h3>Acceso Rápido</h3>
+                        <div class="quick-actions">
+                            <button class="action-btn" onclick="document.querySelector('[data-target=\'lunas\']').click(); setTimeout(() => document.getElementById('btnAddLunal').click(), 100);">
+                                <i class='bx bx-plus-circle'></i> Nueva Luna
+                            </button>
+                            <button class="action-btn" onclick="document.querySelector('[data-target=\'monturas\']').click(); setTimeout(() => document.getElementById('btnAddMontura').click(), 100);">
+                                <i class='bx bx-plus-circle'></i> Nueva Montura
+                            </button>
+                            <button class="action-btn" onclick="document.querySelector('[data-target=\'providers\']').click(); setTimeout(() => document.getElementById('btnAddProvider').click(), 100);">
+                                <i class='bx bxs-truck'></i> Nuevo Laboratorio
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LUNAS -->
+        <div id="lunas" class="content-section">
+            <div class="page-container">
+                <h2 class="page-title">PRODUCTOS</h2>
+                <h3 class="page-subtitle">LUNAS</h3>
+
+                <div class="controls-bar">
+                    <div class="search-input-wrapper">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="searchInput" placeholder="search">
+                    </div>
+                    <button class="btn-green" id="btnAddLunal">
+                        <i class='bx bx-plus'></i> Agregar
+                    </button>
+                </div>
+
+                <div class="white-box">
+                    <table class="custom-table" id="lunasTable">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Laboratorio</th>
+                                <th>Medida</th>
+                                <th>Material</th>
+                                <th>Stock</th>
+                                <th>Precio Compra</th>
+                                <th>Precio Venta</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rows will be populated by JS or static initial data -->
+                            <tr>
+                                <td>001</td>
+                                <td>Monofocales</td>
+                                <td>SHINGWA</td>
+                                <td>2.5</td>
+                                <td>Resina</td>
+                                <td>15</td>
+                                <td>S/.90.00</td>
+                                <td>S/.150.00</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>002</td>
+                                <td>Bifocales</td>
+                                <td>CRISOL</td>
+                                <td>4.0</td>
+                                <td>Policarbonato</td>
+                                <td>10</td>
+                                <td>S/.120.00</td>
+                                <td>S/.210.00</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>003</td>
+                                <td>Multifocal</td>
+                                <td>EYES</td>
+                                <td>3.0</td>
+                                <td>Resina</td>
+                                <td>18</td>
+                                <td>S/.210.00</td>
+                                <td>S/.420.00</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- MONTURAS -->
+        <div id="monturas" class="content-section">
+             <div class="page-container">
+                <h2 class="page-title">PRODUCTOS</h2>
+                <h3 class="page-subtitle">MONTURAS</h3>
+                <div class="controls-bar">
+                    <div class="search-input-wrapper">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="searchMonturasInput" placeholder="search">
+                    </div>
+                    <button class="btn-green" id="btnAddMontura">
+                        <i class='bx bx-plus'></i> Agregar
+                    </button>
+                </div>
+
+                 <div class="white-box">
+                    <table class="custom-table" id="monturasTable">
+                        <thead>
+                             <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Material</th>
+                                <th>Tipo</th>
+                                <th>Diseño</th>
+                                <th>Stock</th>
+                                <th>Precio Compra</th>
+                                <th>Precio Venta</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                             <tr>
+                                <td>001</td>
+                                <td>Montura completa</td>
+                                <td>lorem impsu</td>
+                                <td>Jovial</td>
+                                <td>Semiredonda</td>
+                                <td>15</td>
+                                <td>S/.90.00</td>
+                                <td>S/.150.00</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>002</td>
+                                <td>Montura combinada</td>
+                                <td>lorem impsu</td>
+                                <td>Niño</td>
+                                <td>rectangular</td>
+                                <td>10</td>
+                                <td>S/.120.00</td>
+                                <td>S/.210.00</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                             <tr>
+                                <td>003</td>
+                                <td>Aviador</td>
+                                <td>lorem impsu</td>
+                                <td>Ad</td>
+                                <td>ovaladas</td>
+                                <td>18</td>
+                                <td>S/.210.00</td>
+                                <td>S/.420.00</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                 </div>
+            </div>
+        </div>
+
+        <!-- Other sections placeholders -->
+        <div id="providers" class="content-section">
+            <div class="page-container">
+                <h2 class="page-title">PROVEEDOR</h2>
+                <h3 class="page-subtitle">LABORATORIOS</h3>
+
+                <div class="controls-bar">
+                    <div class="search-input-wrapper">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="searchProviderInput" placeholder="search">
+                    </div>
+                    <button class="btn-green" id="btnAddProvider">
+                        <i class='bx bx-plus'></i> Agregar
+                    </button>
+                </div>
+
+                <div class="white-box">
+                    <table class="custom-table" id="providersTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Encargado</th>
+                                <th>Direccion</th>
+                                <th>N° Celular</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dummy Data -->
+                            <tr>
+                                <td>001</td>
+                                <td>SHINGWA</td>
+                                <td>Pedro Gutarra</td>
+                                <td>Calle San Pedro con Av. San Luis 879</td>
+                                <td>933479366</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>002</td>
+                                <td>CRISOL</td>
+                                <td>Jose Alberto</td>
+                                <td>Jr. Santa Rosa con Av. Olaya 125</td>
+                                <td>987654321</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>003</td>
+                                <td>EYES</td>
+                                <td>Jean Castro</td>
+                                <td>Av. Canada 789</td>
+                                <td>963852741</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="clients" class="content-section"><h2 class="page-title">CLIENTES</h2></div>
+        <div id="users" class="content-section">
+            <div class="page-container">
+                <h2 class="page-title">USUARIOS</h2>
+                <h3 class="page-subtitle">GESTIÓN DE ACCESO</h3>
+
+                <div class="controls-bar">
+                    <div class="search-input-wrapper">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="searchUserInput" placeholder="Buscar usuario...">
+                    </div>
+                    <button class="btn-green" id="btnAddUser">
+                        <i class='bx bx-plus'></i> Nuevo Usuario
+                    </button>
+                </div>
+
+                <div class="white-box">
+                    <table class="custom-table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Último Acceso</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Users will be populated here -->
+                            <tr>
+                                <td>admin</td>
+                                <td>Administrador</td>
+                                <td><span style="color: green; font-weight: bold;">Activo</span></td>
+                                <td>Ahora</td>
+                                <td class="actions-cell">
+                                    <!-- Admin cannot be deleted in prototype -->
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="help" class="content-section"><h2 class="page-title">AYUDA</h2></div>
+
+    </section>
+    </div> <!-- End Main App Container -->
+
+    <!-- Modal for Adding Product -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Agregar Nueva Luna</h2>
+            <form id="addForm">
+                <div class="form-group">
+                    <label>Código</label>
+                    <input type="text" id="code" required>
+                </div>
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Laboratorio</label>
+                    <select id="laboratorySelect" required>
+                        <!-- Options populated by JS -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Medida</label>
+                    <input type="number" step="0.1" id="measure" required>
+                </div>
+                <div class="form-group">
+                    <label>Material</label>
+                    <input type="text" id="material" required>
+                </div>
+                <div class="form-group">
+                    <label>Stock</label>
+                    <input type="number" id="stock" required>
+                </div>
+                <div class="form-group">
+                    <label>Precio Compra</label>
+                    <input type="text" id="buyPrice" placeholder="S/.0.00">
+                </div>
+                <div class="form-group">
+                    <label>Precio Venta</label>
+                    <input type="text" id="sellPrice" placeholder="S/.0.00">
+                </div>
+                <button type="submit" class="submit-btn">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Adding Montura -->
+    <div id="addMonturaModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn montura-close">&times;</span>
+            <h2>Agregar Nueva Montura</h2>
+            <form id="addMonturaForm">
+                <div class="form-group">
+                    <label>Código</label>
+                    <input type="text" id="m_code" required>
+                </div>
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="m_name" required>
+                </div>
+                 <div class="form-group">
+                    <label>Material</label>
+                    <input type="text" id="m_material" value="lorem impsu">
+                </div>
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <input type="text" id="m_type" required>
+                </div>
+                <div class="form-group">
+                    <label>Diseño</label>
+                    <input type="text" id="m_design" required>
+                </div>
+                <div class="form-group">
+                    <label>Stock</label>
+                    <input type="number" id="m_stock" required>
+                </div>
+                <div class="form-group">
+                    <label>Precio Compra</label>
+                    <input type="text" id="m_buyPrice" placeholder="S/.0.00">
+                </div>
+                <div class="form-group">
+                    <label>Precio Venta</label>
+                    <input type="text" id="m_sellPrice" placeholder="S/.0.00">
+                </div>
+                <button type="submit" class="submit-btn">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Adding Provider -->
+    <div id="addProviderModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn provider-close">&times;</span>
+            <h2>Agregar Nuevo Laboratorio</h2>
+            <form id="addProviderForm">
+                <div class="form-group">
+                    <label>ID</label>
+                    <input type="text" id="p_id" required>
+                </div>
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="p_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Encargado</label>
+                    <input type="text" id="p_manager" required>
+                </div>
+                <div class="form-group">
+                    <label>Dirección</label>
+                    <input type="text" id="p_address" required>
+                </div>
+                <div class="form-group">
+                    <label>N° Celular</label>
+                    <input type="text" id="p_phone" required>
+                </div>
+                <button type="submit" class="submit-btn">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
