@@ -10,6 +10,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF and AutoTable for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <!-- Icons -->
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     
@@ -218,10 +222,9 @@
                                 <th>Nombre</th>
                                 <th>Laboratorio</th>
                                 <th>Medida</th>
-                                <th>Material</th>
-                                <th>Stock</th>
                                 <th>Precio Compra</th>
                                 <th>Precio Venta</th>
+
                                 <th></th>
                             </tr>
                         </thead>
@@ -231,43 +234,40 @@
                                 <td>001</td>
                                 <td>Monofocales</td>
                                 <td>SHINGWA</td>
-                                <td>2.5</td>
-                                <td>Resina</td>
-                                <td>15</td>
+                                <td>-2.00 -0.50 x 10</td>
                                 <td>S/.90.00</td>
                                 <td>S/.150.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
                                 </td>
+
                             </tr>
                             <tr>
                                 <td>002</td>
                                 <td>Bifocales</td>
                                 <td>CRISOL</td>
                                 <td>4.0</td>
-                                <td>Policarbonato</td>
-                                <td>10</td>
                                 <td>S/.120.00</td>
                                 <td>S/.210.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
                                 </td>
+
                             </tr>
                             <tr>
                                 <td>003</td>
                                 <td>Multifocal</td>
                                 <td>EYES</td>
                                 <td>3.0</td>
-                                <td>Resina</td>
-                                <td>18</td>
                                 <td>S/.210.00</td>
                                 <td>S/.420.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
                                 </td>
+
                             </tr>
                         </tbody>
                     </table>
@@ -296,9 +296,6 @@
                              <tr>
                                 <th>Código</th>
                                 <th>Nombre</th>
-                                <th>Material</th>
-                                <th>Tipo</th>
-                                <th>Diseño</th>
                                 <th>Stock</th>
                                 <th>Precio Compra</th>
                                 <th>Precio Venta</th>
@@ -309,9 +306,6 @@
                              <tr>
                                 <td>001</td>
                                 <td>Montura completa</td>
-                                <td>lorem impsu</td>
-                                <td>Jovial</td>
-                                <td>Semiredonda</td>
                                 <td>15</td>
                                 <td>S/.90.00</td>
                                 <td>S/.150.00</td>
@@ -323,9 +317,6 @@
                             <tr>
                                 <td>002</td>
                                 <td>Montura combinada</td>
-                                <td>lorem impsu</td>
-                                <td>Niño</td>
-                                <td>rectangular</td>
                                 <td>10</td>
                                 <td>S/.120.00</td>
                                 <td>S/.210.00</td>
@@ -337,9 +328,6 @@
                              <tr>
                                 <td>003</td>
                                 <td>Aviador</td>
-                                <td>lorem impsu</td>
-                                <td>Ad</td>
-                                <td>ovaladas</td>
                                 <td>18</td>
                                 <td>S/.210.00</td>
                                 <td>S/.420.00</td>
@@ -422,7 +410,79 @@
                 </div>
             </div>
         </div>
-        <div id="clients" class="content-section"><h2 class="page-title">CLIENTES</h2></div>
+        <div id="clients" class="content-section">
+            <div class="page-container">
+                <h2 class="page-title">CLIENTES</h2>
+                <h3 class="page-subtitle">HISTORIAL DE COMPRAS</h3>
+
+                <div class="controls-bar">
+                    <div class="search-input-wrapper">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="searchClientInput" placeholder="Buscar cliente...">
+                    </div>
+                    <div class="actions-group" style="display: flex; gap: 10px;">
+                        <button class="btn-green" id="btnAddClient">
+                            <i class='bx bx-plus'></i> Nuevo Cliente
+                        </button>
+                        <button class="btn-red" id="btnOpenExportModal" style="background-color: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                            <i class='bx bxs-file-pdf'></i> Exportar PDF
+                        </button>
+                    </div>
+                </div>
+
+                <div class="white-box">
+                    <table class="custom-table" id="clientsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>DNI</th>
+                                <th>Datos de Compra</th>
+                                <th>Celular</th>
+                                <th>Fecha</th>
+                                <th>Estado</th>
+                                <th>Saldo</th>
+                                <th>Monto Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Clients will be populated here -->
+                            <tr>
+                                <td>001</td>
+                                <td>Jose David</td>
+                                <td>98765432</td>
+                                <td>Montura, Lunas</td>
+                                <td>933479366</td>
+                                <td>12/02/2026</td>
+                                <td><span class="status-badge status-paid">CANCELADO</span></td>
+                                <td>S/. 0.00</td>
+                                <td>S/. 150.00</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                             <tr>
+                                <td>002</td>
+                                <td>Efrain Rojas</td>
+                                <td>36251487</td>
+                                <td>Montura, Lunas</td>
+                                <td>987654321</td>
+                                <td>10/02/2026</td>
+                                <td><span class="status-badge status-advance">ADELANTO</span></td>
+                                <td>S/. 50.00</td>
+                                <td>S/. 150.00</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
         <div id="users" class="content-section">
             <div class="page-container">
                 <h2 class="page-title">USUARIOS</h2>
@@ -492,16 +552,9 @@
                 </div>
                 <div class="form-group">
                     <label>Medida</label>
-                    <input type="number" step="0.1" id="measure" required>
+                    <input type="text" id="measure" required>
                 </div>
-                <div class="form-group">
-                    <label>Material</label>
-                    <input type="text" id="material" required>
-                </div>
-                <div class="form-group">
-                    <label>Stock</label>
-                    <input type="number" id="stock" required>
-                </div>
+
                 <div class="form-group">
                     <label>Precio Compra</label>
                     <input type="text" id="buyPrice" placeholder="S/.0.00">
@@ -529,18 +582,7 @@
                     <label>Nombre</label>
                     <input type="text" id="m_name" required>
                 </div>
-                 <div class="form-group">
-                    <label>Material</label>
-                    <input type="text" id="m_material" value="lorem impsu">
-                </div>
-                <div class="form-group">
-                    <label>Tipo</label>
-                    <input type="text" id="m_type" required>
-                </div>
-                <div class="form-group">
-                    <label>Diseño</label>
-                    <input type="text" id="m_design" required>
-                </div>
+
                 <div class="form-group">
                     <label>Stock</label>
                     <input type="number" id="m_stock" required>
@@ -586,6 +628,104 @@
                 </div>
                 <button type="submit" class="submit-btn">Guardar</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal for Adding Client -->
+    <div id="addClientModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn client-close">&times;</span>
+            <h2>Agregar Nuevo Cliente</h2>
+            <form id="addClientForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ID</label>
+                        <input type="text" id="c_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>DNI</label>
+                        <input type="text" id="c_dni" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Nombre Completo</label>
+                    <input type="text" id="c_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Selección de Productos</label>
+                    <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="chk_consulta" style="width: auto;">
+                        <label for="chk_consulta" style="margin: 0; font-weight: normal; cursor: pointer;">Solo Consulta</label>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <select id="sel_luna_name" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">Tipo de Luna</option>
+                        </select>
+                        <select id="sel_luna_measure" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" disabled>
+                            <option value="">Medida</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <select id="sel_montura" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">Modelo de Montura</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Datos de Compra (Automático)</label>
+                    <input type="text" id="c_data" readonly style="background-color: #f9f9f9;">
+                </div>
+                <div class="form-row">
+                     <div class="form-group">
+                        <label>Celular</label>
+                        <input type="text" id="c_phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="c_date" required>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Monto Total</label>
+                        <input type="number" step="0.01" id="c_total" required>
+                    </div>
+                    <div class="form-group">
+                        <label>A Cuenta (Adelanto)</label>
+                        <input type="number" step="0.01" id="c_advance" value="0" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Saldo Restante</label>
+                    <input type="text" id="c_balance" readonly style="background-color: #f0f0f0; color: #333; font-weight: bold;">
+                </div>
+
+                <button type="submit" class="submit-btn">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Export PDF -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn export-close">&times;</span>
+            <h2>Exportar Reporte de Clientes</h2>
+            <p style="margin-bottom: 15px; color: #666;">Selecciona el rango de fechas para el reporte:</p>
+            <div class="form-group">
+                <label>Desde:</label>
+                <input type="date" id="exportStartDate">
+            </div>
+            <div class="form-group">
+                <label>Hasta:</label>
+                <input type="date" id="exportEndDate">
+            </div>
+            <button id="btnGeneratePDF" class="submit-btn" style="background-color: #e74c3c; margin-top: 10px;">
+                <i class='bx bxs-download'></i> Descargar PDF
+            </button>
         </div>
     </div>
 

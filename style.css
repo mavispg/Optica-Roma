@@ -799,6 +799,39 @@ body {
     gap: 20px;
 }
 
+/* Status Badges */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-paid {
+    background-color: #d1fae5;
+    color: #047857;
+}
+
+.status-advance {
+    background-color: #fef3c7;
+    color: #b45309;
+}
+
+.status-pending {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
 .dashboard-panel {
     background: #fff;
     padding: 20px;
