@@ -635,6 +635,15 @@ body {
     .custom-table {
         min-width: 600px; /* Force scroll on small screens */
     }
+
+    /* Stack form rows on mobile */
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    .form-row .form-group {
+        width: 100%;
+    }
 }
 
 @media (max-width: 480px) {
