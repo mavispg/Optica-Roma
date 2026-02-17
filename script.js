@@ -43,6 +43,71 @@ function formatCurrency(value) {
     return "S/. " + numberVal.toFixed(2);
 }
 
+// HELPER: Get local YYYY-MM-DD string
+function getLocalDateString(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// ==========================================
+// HELPER: Format Purchase Data for Display
+// ==========================================
+
+function formatPurchaseDataForDisplay(dataString) {
+    if (!dataString || dataString === 'Consulta') {
+        return '<span class="purchase-data-item">Consulta</span>';
+    }
+    
+    // Split the data string by ' , '
+    const parts = dataString.split(' , ').map(p => p.trim());
+    
+    let html = '<div class="purchase-data">';
+    
+    // Identify which parts are what based on position and content
+    // Format: Luna, Medida, Montura (in that order typically)
+    
+    if (parts.length === 1) {
+        // Only one item (could be Luna or Montura)
+        html += `<span class="purchase-data-item">${parts[0]}</span>`;
+    } else if (parts.length === 2) {
+        // Two items (could be Luna+Medida or Luna+Montura)
+        html += `<span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>${parts[0]}</span>`;
+        html += `<span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>${parts[1]}</span>`;
+    } else if (parts.length >= 3) {
+        // All three items
+        html += `<span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>${parts[0]}</span>`;
+        html += `<span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>${parts[1]}</span>`;
+        html += `<span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>${parts[2]}</span>`;
+    }
+    
+    html += '</div>';
+    return html;
+}
+
+// ==========================================
+// HELPER: Format Payment Method Badge
+// ==========================================
+
+function formatPaymentMethodBadge(method) {
+    if (!method) return '';
+    
+    const methodLower = method.toLowerCase();
+    let badgeClass = 'payment-badge';
+    
+    if (methodLower === 'efectivo') {
+        badgeClass += ' payment-efectivo';
+    } else if (methodLower === 'yape') {
+        badgeClass += ' payment-yape';
+    } else if (methodLower === 'visa') {
+        badgeClass += ' payment-visa';
+    }
+    
+    return `<span class="${badgeClass}">${method}</span>`;
+}
+
+
 // SPA Navigation
 const navLinks = document.querySelectorAll('.nav-link'); // Select all nav-links (including nested ones)
 const sections = document.querySelectorAll('.content-section');
@@ -610,23 +675,12 @@ function updateDashboard() {
         return total;
     }
 
-    const lunasCount = lunasTableBody ? lunasTableBody.querySelectorAll('tr').length : 0;
     const monturasStockTotal = calculateTotalStock(monturasTableBody);
-    const providersCount = providersTableBody ? providersTableBody.querySelectorAll('tr').length : 0;
 
-    const kpiLunas = document.getElementById('kpi-lunas');
     const kpiMonturas = document.getElementById('kpi-monturas');
-    const kpiProviders = document.getElementById('kpi-providers');
-
-    if(kpiLunas) { 
-        kpiLunas.style.animation = 'none'; 
-        kpiLunas.offsetHeight; /* trigger reflow */ 
-        kpiLunas.style.animation = null; 
-        kpiLunas.innerText = lunasCount; 
-    }
 
     if(kpiMonturas) kpiMonturas.innerText = monturasStockTotal;
-    if(kpiProviders) kpiProviders.innerText = providersCount;
+
 
     // 2. Update Low Stock Alerts
     const alertList = document.getElementById('stockAlerts');
@@ -778,6 +832,73 @@ if(btnAddUser) {
 }
 
 // ==========================================
+// HELPER: Decrement Montura Stock
+// ==========================================
+
+function decrementMonturaStock(monturaName) {
+    if (!monturaName) return true; // No montura selected, proceed normally
+    
+    const monturasRows = document.querySelectorAll('#monturasTable tbody tr');
+    
+    for (let row of monturasRows) {
+        const cells = row.getElementsByTagName('td');
+        if (cells.length > 2) {
+            const name = cells[1].innerText; // Column 1 is Name
+            
+            if (name === monturaName) {
+                const stockCell = cells[2]; // Column 2 is Stock
+                const currentStock = parseInt(stockCell.innerText);
+                
+                if (isNaN(currentStock) || currentStock <= 0) {
+                    alert(`No hay stock disponible para la montura "${monturaName}". Stock actual: ${currentStock || 0}`);
+                    return false;
+                }
+                
+                // Decrement stock
+                const newStock = currentStock - 1;
+                stockCell.innerText = newStock;
+                
+                return true;
+            }
+        }
+    }
+    
+    // Montura not found in table
+    alert(`No se encontró la montura "${monturaName}" en el inventario.`);
+    return false;
+}
+
+// ==========================================
+// HELPER: Increment Montura Stock
+// ==========================================
+
+function incrementMonturaStock(monturaName) {
+    if (!monturaName) return; // No montura to increment
+    
+    const monturasRows = document.querySelectorAll('#monturasTable tbody tr');
+    
+    for (let row of monturasRows) {
+        const cells = row.getElementsByTagName('td');
+        if (cells.length > 2) {
+            const name = cells[1].innerText; // Column 1 is Name
+            
+            if (name === monturaName) {
+                const stockCell = cells[2]; // Column 2 is Stock
+                const currentStock = parseInt(stockCell.innerText);
+                
+                if (!isNaN(currentStock)) {
+                    // Increment stock
+                    const newStock = currentStock + 1;
+                    stockCell.innerText = newStock;
+                }
+                
+                return;
+            }
+        }
+    }
+}
+
+// ==========================================
 // CLIENTS LOGIC
 // ==========================================
 
@@ -788,6 +909,7 @@ const addFormClient = document.getElementById('addClientForm');
 const tableBodyClients = document.querySelector('#clientsTable tbody');
 let isEditingClient = false;
 let currentEditRowClient = null;
+let originalMonturaName = null; // Track original montura when editing
 
 // Helper: Calculate Balance
 function calculateBalance() {
@@ -811,7 +933,7 @@ if(btnAddClient) {
         addFormClient.reset();
         document.querySelector('#addClientModal h2').innerText = 'Agregar Nuevo Cliente';
         // Set default date to today
-        document.getElementById('c_date').valueAsDate = new Date();
+        document.getElementById('c_date').value = getLocalDateString();
         document.getElementById('c_balance').value = 'S/. 0.00';
         
         // Reset and Populate Dropdowns
@@ -1027,19 +1149,69 @@ if(addFormClient) {
         const advance = parseFloat(document.getElementById('c_advance').value) || 0;
         const balance = total - advance;
         const statusBadge = getStatusBadge(total, advance);
+        const paymentMethod = document.getElementById('c_payment_method').value;
+
+        // ==========================================
+        // STOCK MANAGEMENT LOGIC
+        // ==========================================
+        if (!isEditingClient) {
+            // NEW CLIENT: Just decrement stock of selected montura
+            const selectedMontura = selMontura ? selMontura.value : '';
+            
+            // Only decrement if a montura was selected (not empty, not "Solo Consulta")
+            if (selectedMontura && !chkConsulta.checked) {
+                // Try to decrement stock
+                const stockDecremented = decrementMonturaStock(selectedMontura);
+                
+                if (!stockDecremented) {
+                    // Stock validation failed, abort the form submission
+                    return;
+                }
+            }
+        } else {
+            // EDITING CLIENT: Handle montura change
+            const selectedMontura = selMontura ? selMontura.value : '';
+            
+            // Check if montura changed
+            if (originalMonturaName !== selectedMontura) {
+                // Return stock to original montura (if there was one)
+                if (originalMonturaName && originalMonturaName !== '') {
+                    incrementMonturaStock(originalMonturaName);
+                }
+                
+                // Decrement stock from new montura (if one is selected and not "Solo Consulta")
+                if (selectedMontura && selectedMontura !== '' && !chkConsulta.checked) {
+                    const stockDecremented = decrementMonturaStock(selectedMontura);
+                    
+                    if (!stockDecremented) {
+                        // Stock validation failed, restore original montura stock and abort
+                        if (originalMonturaName && originalMonturaName !== '') {
+                            decrementMonturaStock(originalMonturaName);
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+        // ==========================================
+
 
         if (isEditingClient && currentEditRowClient) {
             // Update existing row
+            const formattedData = formatPurchaseDataForDisplay(data);
+            const formattedPayment = formatPaymentMethodBadge(paymentMethod);
+            
             currentEditRowClient.innerHTML = `
                 <td>${id}</td>
                 <td>${name}</td>
                 <td>${dni}</td>
-                <td>${data}</td>
+                <td class="compact-cell">${formattedData}</td>
                 <td>${phone}</td>
                 <td>${dateDisplay}</td>
                 <td>${statusBadge}</td>
                 <td>${formatCurrency(balance.toString())}</td>
                 <td>${formatCurrency(total.toString())}</td>
+                <td>${formattedPayment}</td>
                 <td class="actions-cell">
                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
@@ -1047,23 +1219,30 @@ if(addFormClient) {
                     <input type="hidden" class="raw-date" value="${dateRaw}">
                     <input type="hidden" class="raw-total" value="${total}">
                     <input type="hidden" class="raw-advance" value="${advance}">
+                    <input type="hidden" class="raw-montura" value="${selMontura ? selMontura.value : ''}">
+                    <input type="hidden" class="raw-payment-method" value="${paymentMethod}">
+                    <input type="hidden" class="raw-data" value="${data}">
                 </td>
             `;
             isEditingClient = false;
             currentEditRowClient = null;
         } else {
             // Create Row
+            const formattedData = formatPurchaseDataForDisplay(data);
+            const formattedPayment = formatPaymentMethodBadge(paymentMethod);
+            
             const newRow = document.createElement('tr');
             newRow.innerHTML = `
                 <td>${id}</td>
                 <td>${name}</td>
                 <td>${dni}</td>
-                <td>${data}</td>
+                <td class="compact-cell">${formattedData}</td>
                 <td>${phone}</td>
                 <td>${dateDisplay}</td>
                 <td>${statusBadge}</td>
                 <td>${formatCurrency(balance.toString())}</td>
                 <td>${formatCurrency(total.toString())}</td>
+                <td>${formattedPayment}</td>
                 <td class="actions-cell">
                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
@@ -1071,6 +1250,8 @@ if(addFormClient) {
                     <input type="hidden" class="raw-date" value="${dateRaw}">
                     <input type="hidden" class="raw-total" value="${total}">
                     <input type="hidden" class="raw-advance" value="${advance}">
+                    <input type="hidden" class="raw-payment-method" value="${paymentMethod}">
+                    <input type="hidden" class="raw-data" value="${data}">
                 </td>
             `;
             if(tableBodyClients) tableBodyClients.appendChild(newRow);
@@ -1102,7 +1283,12 @@ if(tableBodyClients) {
             document.getElementById('c_id').value = cells[0].innerText;
             document.getElementById('c_name').value = cells[1].innerText;
             document.getElementById('c_dni').value = cells[2].innerText;
-            document.getElementById('c_data').value = cells[3].innerText;
+            
+            // Get raw data from hidden field (not from the formatted cell)
+            const rawDataField = row.querySelector('.raw-data');
+            const rawDataValue = rawDataField ? rawDataField.value : cells[3].innerText;
+            document.getElementById('c_data').value = rawDataValue;
+            
             document.getElementById('c_phone').value = cells[4].innerText;
             
             // Retrieve hidden values if available, otherwise parse
@@ -1125,7 +1311,7 @@ if(tableBodyClients) {
                 // If I modify index.html static rows, I should add hidden inputs there too OR parse currency.
                 
                 // Let's parse currency for now as fallback
-                const totalText = cells[8].innerText.replace('S/. ', '');
+                const totalText = cells[9].innerText.replace('S/. ', ''); // Changed from 8 to 9
                 const balanceText = cells[7].innerText.replace('S/. ', '');
                 const totalVal = parseFloat(totalText);
                 const balanceVal = parseFloat(balanceText);
@@ -1142,6 +1328,42 @@ if(tableBodyClients) {
             }
             
             calculateBalance(); // Update readonly field
+            
+            // ==========================================
+            // Extract original montura from hidden field or "Datos de Compra"
+            // ==========================================
+            originalMonturaName = null; // Reset
+            
+            // Try to get from hidden field first (for newly created rows)
+            const rawMontura = row.querySelector('.raw-montura') ? row.querySelector('.raw-montura').value : '';
+            
+            if (rawMontura && rawMontura !== '') {
+                originalMonturaName = rawMontura;
+            } else {
+                // Fallback: Parse from "Datos de Compra" column (for old/static rows)
+                const datosCompra = cells[3].innerText;
+                
+                if (datosCompra && datosCompra !== 'Consulta') {
+                    // Parse the data string to extract montura
+                    // Format could be: "Luna , Measure , Montura" or just "Montura" or "Luna , Measure"
+                    const parts = datosCompra.split(' , ').map(p => p.trim());
+                    
+                    // Check if any part matches a montura name from the monturas list
+                    for (let i = parts.length - 1; i >= 0; i--) {
+                        if (monturasList.includes(parts[i])) {
+                            originalMonturaName = parts[i];
+                            break;
+                        }
+                    }
+                }
+            }
+            // ==========================================
+            
+            // Load payment method
+            const rawPaymentMethod = row.querySelector('.raw-payment-method') ? row.querySelector('.raw-payment-method').value : '';
+            if(rawPaymentMethod) {
+                document.getElementById('c_payment_method').value = rawPaymentMethod;
+            }
             
             // Set Edit Mode
             isEditingClient = true;
@@ -1162,10 +1384,12 @@ if(searchClientInput && tableBodyClients) {
         for (let i = 0; i < rows.length; i++) {
             const cells = rows[i].getElementsByTagName('td');
             let match = false;
-            // Check ID (0), Name (1), DNI (2)
+            // Check ID (0), Name (1), DNI (2), Date (5), Status (6)
             if (cells[0] && cells[0].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             if (cells[1] && cells[1].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             if (cells[2] && cells[2].innerText.toLowerCase().indexOf(filter) > -1) match = true;
+            if (cells[5] && cells[5].innerText.toLowerCase().indexOf(filter) > -1) match = true;
+            if (cells[6] && cells[6].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             
             if (match) {
                 rows[i].style.display = "";
@@ -1191,9 +1415,11 @@ if(btnOpenExport) {
         // Set default dates (First day of month to Today)
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const todayStr = getLocalDateString(today);
+        const firstDayStr = getLocalDateString(firstDay);
         
-        document.getElementById('exportStartDate').valueAsDate = firstDay;
-        document.getElementById('exportEndDate').valueAsDate = today;
+        document.getElementById('exportStartDate').value = firstDayStr;
+        document.getElementById('exportEndDate').value = todayStr;
         
         modalExport.style.display = 'block';
     });
@@ -1317,3 +1543,474 @@ if(btnGeneratePDF) {
         modalExport.style.display = 'none';
     });
 }
+
+// ==========================================
+// Expenses (Egresos) Logic
+// ==========================================
+const modalExpense = document.getElementById('addExpenseModal');
+const btnAddExpense = document.getElementById('btnAddExpense');
+const closeBtnExpense = document.querySelector('.expense-close');
+const addFormExpense = document.getElementById('addExpenseForm');
+const tableBodyExpenses = document.querySelector('#expensesTable tbody');
+const searchExpenseInput = document.getElementById('searchExpenseInput');
+let isEditingExpense = false;
+let currentEditRowExpense = null;
+
+// Open Modal Expense
+if(btnAddExpense) {
+    btnAddExpense.addEventListener('click', () => {
+        isEditingExpense = false;
+        currentEditRowExpense = null;
+        addFormExpense.reset();
+        document.getElementById('expenseModalTitle').innerText = 'Agregar Nuevo Egreso';
+        
+        // Auto-set today's date
+        document.getElementById('e_date').value = getLocalDateString();
+        
+        modalExpense.style.display = 'block';
+        
+        // Reset description requirement
+        const descInput = document.getElementById('e_description');
+        if(descInput) {
+            descInput.required = false;
+            descInput.placeholder = '';
+        }
+    });
+}
+
+// category change listener
+const eCategory = document.getElementById('e_category');
+const eDescription = document.getElementById('e_description');
+if(eCategory && eDescription) {
+    eCategory.addEventListener('change', () => {
+        if(eCategory.value === 'Otros') {
+            eDescription.required = true;
+            eDescription.placeholder = 'Por favor especifique...';
+        } else {
+            eDescription.required = false;
+            eDescription.placeholder = '';
+        }
+    });
+}
+
+// Close Modal Expense
+if(closeBtnExpense) {
+    closeBtnExpense.addEventListener('click', () => {
+        modalExpense.style.display = 'none';
+    });
+}
+
+// Close outside click
+window.addEventListener('click', (e) => {
+    if (e.target == modalExpense) {
+        modalExpense.style.display = 'none';
+    }
+});
+
+// Add/Edit Expense
+if(addFormExpense) {
+    addFormExpense.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        // Get values
+        const id = document.getElementById('e_id').value;
+        const dateRaw = document.getElementById('e_date').value;
+        const category = document.getElementById('e_category').value;
+        let description = document.getElementById('e_description').value;
+        
+        // Use category as description if empty (and not "Otros")
+        if(!description && category !== 'Otros') {
+            description = category;
+        }
+        
+        const amount = parseFloat(document.getElementById('e_amount').value) || 0;
+
+        // Format date to dd/mm/yyyy
+        const dateParts = dateRaw.split('-');
+        const dateDisplay = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+
+        // Format amount
+        const amountFormatted = formatCurrency(amount.toString());
+
+        if (isEditingExpense && currentEditRowExpense) {
+            // Update existing row
+            currentEditRowExpense.innerHTML = `
+                <td>${id}</td>
+                <td>${dateDisplay}</td>
+                <td>${category}</td>
+                <td>${description}</td>
+                <td>${amountFormatted}</td>
+                <td class="actions-cell">
+                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                    <!-- Hidden data -->
+                    <input type="hidden" class="raw-date" value="${dateRaw}">
+                    <input type="hidden" class="raw-amount" value="${amount}">
+                </td>
+            `;
+            isEditingExpense = false;
+            currentEditRowExpense = null;
+        } else {
+            // Create Row
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td>${id}</td>
+                <td>${dateDisplay}</td>
+                <td>${category}</td>
+                <td>${description}</td>
+                <td>${amountFormatted}</td>
+                <td class="actions-cell">
+                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                    <!-- Hidden data -->
+                    <input type="hidden" class="raw-date" value="${dateRaw}">
+                    <input type="hidden" class="raw-amount" value="${amount}">
+                </td>
+            `;
+            if(tableBodyExpenses) tableBodyExpenses.appendChild(newRow);
+        }
+
+        modalExpense.style.display = 'none';
+        addFormExpense.reset();
+    });
+}
+
+// Table actions (Edit / Delete)
+if(tableBodyExpenses) {
+    tableBodyExpenses.addEventListener('click', (e) => {
+        // Delete
+        if(e.target.closest('.delete-btn')) {
+            if(confirm('¿Estás seguro de eliminar este egreso?')) {
+                const row = e.target.closest('tr');
+                row.remove();
+            }
+        }
+
+        // Edit
+        if(e.target.closest('.edit-btn')) {
+            const row = e.target.closest('tr');
+            const cells = row.getElementsByTagName('td');
+
+            // Populate Form
+            document.getElementById('e_id').value = cells[0].innerText;
+            
+            const rawDateField = row.querySelector('.raw-date');
+            if(rawDateField) document.getElementById('e_date').value = rawDateField.value;
+            
+            document.getElementById('e_category').value = cells[2].innerText;
+            document.getElementById('e_category').dispatchEvent(new Event('change'));
+            document.getElementById('e_description').value = cells[3].innerText;
+            
+            const rawAmountField = row.querySelector('.raw-amount');
+            if(rawAmountField) document.getElementById('e_amount').value = rawAmountField.value;
+
+            // Set state
+            isEditingExpense = true;
+            currentEditRowExpense = row;
+            document.getElementById('expenseModalTitle').innerText = 'Editar Egreso';
+            modalExpense.style.display = 'block';
+        }
+    });
+}
+
+// Search Logic
+if(searchExpenseInput && tableBodyExpenses) {
+    searchExpenseInput.addEventListener('keyup', function() {
+        const filter = this.value.toLowerCase();
+        const rows = tableBodyExpenses.getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName('td');
+            let match = false;
+            
+            // Search in ID, Date, Category, Description
+            if (cells[0] && cells[0].innerText.toLowerCase().indexOf(filter) > -1) match = true;
+            if (cells[1] && cells[1].innerText.toLowerCase().indexOf(filter) > -1) match = true;
+            if (cells[2] && cells[2].innerText.toLowerCase().indexOf(filter) > -1) match = true;
+            if (cells[3] && cells[3].innerText.toLowerCase().indexOf(filter) > -1) match = true;
+
+            rows[i].style.display = match ? "" : "none";
+        }
+    });
+}
+
+// ==========================================
+// Tax Tracking (SUNAT) Logic
+// ==========================================
+let sunatGoal = 500;
+
+function updateTaxSummary() {
+    if (!tableBodyExpenses) return;
+    
+    let totalPaidSunat = 0;
+    const rows = tableBodyExpenses.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        const cells = row.getElementsByTagName('td');
+        // Column Index 2 is Category. Ensure it matches "SUNAT"
+        if (cells.length > 2 && cells[2].innerText.trim().toUpperCase() === 'SUNAT') {
+            // Get raw amount from hidden field
+            const rawAmountField = row.querySelector('.raw-amount');
+            if (rawAmountField) {
+                totalPaidSunat += parseFloat(rawAmountField.value) || 0;
+            }
+        }
+    });
+    
+    const totalPendingSunat = Math.max(0, sunatGoal - totalPaidSunat);
+    
+    // Update UI
+    const goalEl = document.getElementById('tax-goal');
+    const paidEl = document.getElementById('tax-paid');
+    const pendingEl = document.getElementById('tax-pending');
+    
+    if (goalEl) goalEl.innerText = formatCurrency(sunatGoal.toString());
+    if (paidEl) paidEl.innerText = formatCurrency(totalPaidSunat.toString());
+    if (pendingEl) pendingEl.innerText = formatCurrency(totalPendingSunat.toString());
+}
+
+// Edit Tax Goal
+const btnEditTaxGoal = document.getElementById('btnEditTaxGoal');
+if (btnEditTaxGoal) {
+    btnEditTaxGoal.addEventListener('click', () => {
+        const newGoal = prompt('Ingrese el monto de la meta/deuda mensual de SUNAT:', sunatGoal);
+        if (newGoal !== null) {
+            const parsedGoal = parseFloat(newGoal);
+            if (!isNaN(parsedGoal) && parsedGoal >= 0) {
+                sunatGoal = parsedGoal;
+                updateTaxSummary();
+            } else {
+                alert('Por favor, ingrese un monto válido.');
+            }
+        }
+    });
+}
+
+// Observe tableBodyExpenses for changes to auto-update summary
+if (tableBodyExpenses) {
+    const expenseObserver = new MutationObserver(() => {
+        updateTaxSummary();
+    });
+    expenseObserver.observe(tableBodyExpenses, { childList: true, subtree: true });
+}
+
+// Initial call
+document.addEventListener('DOMContentLoaded', () => {
+    updateTaxSummary();
+});
+
+// ==========================================
+// Export Expenses to PDF Logic
+// ==========================================
+const btnOpenExportExpenses = document.getElementById('btnOpenExportExpenses');
+const modalExportExpenses = document.getElementById('exportExpensesModal');
+const closeBtnExpExport = document.querySelector('.export-expenses-close');
+const btnGenerateExpPDF = document.getElementById('btnGenerateExpPDF');
+
+if (btnOpenExportExpenses) {
+    btnOpenExportExpenses.addEventListener('click', () => {
+        // Clear inputs and open
+        document.getElementById('exportExpStartDate').value = '';
+        document.getElementById('exportExpEndDate').value = '';
+        modalExportExpenses.style.display = 'block';
+    });
+}
+
+if (closeBtnExpExport) {
+    closeBtnExpExport.addEventListener('click', () => {
+        modalExportExpenses.style.display = 'none';
+    });
+}
+
+if (btnGenerateExpPDF) {
+    btnGenerateExpPDF.addEventListener('click', () => {
+        const startDateVal = document.getElementById('exportExpStartDate').value;
+        const endDateVal = document.getElementById('exportExpEndDate').value;
+
+        if (!startDateVal || !endDateVal) {
+            alert('Por favor, selecciona un rango de fechas completo.');
+            return;
+        }
+
+        const startDate = new Date(startDateVal);
+        const endDate = new Date(endDateVal);
+        endDate.setHours(23, 59, 59, 999);
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Title and Header
+        doc.setFontSize(18);
+        doc.text('REPORTE DE EGRESOS - ÓPTICA ROMA', 14, 20);
+        doc.setFontSize(11);
+        doc.text(`Periodo: ${startDateVal} al ${endDateVal}`, 14, 30);
+        doc.text(`Fecha de Emisión: ${new Date().toLocaleDateString()}`, 14, 35);
+
+        const rowsData = [];
+        let totalExpenses = 0;
+
+        const rows = tableBodyExpenses.querySelectorAll('tr');
+        rows.forEach(row => {
+            const cells = row.getElementsByTagName('td');
+            if (cells.length > 4) {
+                const dateText = cells[1].innerText; // dd/mm/yyyy
+                const [day, month, year] = dateText.split('/');
+                const rowDate = new Date(`${year}-${month}-${day}`);
+
+                if (rowDate >= startDate && rowDate <= endDate) {
+                    const id = cells[0].innerText;
+                    const category = cells[2].innerText;
+                    const description = cells[3].innerText;
+                    const amount = cells[4].innerText;
+                    
+                    rowsData.push([id, dateText, category, description, amount]);
+                    totalExpenses += parseFloat(amount.replace('S/. ', '').replace(',', '')) || 0;
+                }
+            }
+        });
+
+        if (rowsData.length === 0) {
+            alert('No se encontraron registros en el rango de fechas seleccionado.');
+            return;
+        }
+
+        // Generate Table
+        doc.autoTable({
+            startY: 40,
+            head: [['ID', 'Fecha', 'Categoría', 'Descripción', 'Monto']],
+            body: rowsData,
+            theme: 'grid',
+            headStyles: { fillColor: [231, 76, 60] }, // Red for Expenses
+            styles: { fontSize: 9 }
+        });
+
+        // Add Footer with Total
+        const finalY = doc.lastAutoTable.finalY || 40;
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.text(`TOTAL EGRESOS: ${formatCurrency(totalExpenses.toString())}`, 14, finalY + 10);
+
+        // Save
+        doc.save(`Reporte_Egresos_${startDateVal}_${endDateVal}.pdf`);
+        modalExportExpenses.style.display = 'none';
+    });
+
+// ==========================================
+// FINANCIAL DASHBOARD & SUMMARIES LOGIC
+// ==========================================
+const NEGOCI_GOAL = 50;
+
+function updateFinancialDashboards() {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    // For weekly sales (last 7 days including today)
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 6);
+    sevenDaysAgo.setHours(0,0,0,0);
+
+    let salesToday = 0;
+    let salesWeek = 0;
+
+    // 1. Calculate Sales from Clients Table
+    if (tableBodyClients) {
+        const rows = tableBodyClients.querySelectorAll('tr');
+        rows.forEach(row => {
+            const dateRawInput = row.querySelector('.raw-date');
+            const totalInput = row.querySelector('.raw-total');
+            const advanceInput = row.querySelector('.raw-advance');
+            
+            if (dateRawInput && (totalInput || advanceInput)) {
+                const advance = parseFloat(advanceInput?.value) || 0;
+                
+                // dateRaw is yyyy-mm-dd
+                const parts = dateRawInput.value.split('-');
+                const rowYear = parseInt(parts[0]);
+                const rowMonth = parseInt(parts[1]) - 1;
+                const rowDay = parseInt(parts[2]);
+                const rowDate = new Date(rowYear, rowMonth, rowDay);
+                rowDate.setHours(0,0,0,0);
+
+                // Check if today (strictly comparing year, month, day to avoid TZ issues)
+                const isToday = rowYear === today.getFullYear() && 
+                                rowMonth === today.getMonth() && 
+                                rowDay === today.getDate();
+
+                if (isToday) {
+                    salesToday += advance;
+                }
+
+                // Check if within week
+                if (rowDate >= sevenDaysAgo && rowDate <= today) {
+                    salesWeek += advance;
+                }
+            }
+        });
+    }
+
+    // 2. Calculate Pending Expenses (SUNAT + NEGOCI)
+    let sunatPaid = 0;
+    let negociPaid = 0;
+
+    if (tableBodyExpenses) {
+        const rows = tableBodyExpenses.querySelectorAll('tr');
+        rows.forEach(row => {
+            const cells = row.getElementsByTagName('td');
+            if (cells.length > 2) {
+                const category = cells[2].innerText;
+                const amountInput = row.querySelector('.raw-amount');
+                const amount = amountInput ? parseFloat(amountInput.value) : 0;
+                
+                if (category === 'SUNAT') sunatPaid += amount;
+                else if (category === 'NEGOCI') negociPaid += amount;
+            }
+        });
+    }
+
+    const sunatPending = Math.max(0, sunatGoal - sunatPaid);
+    const negociPending = Math.max(0, NEGOCI_GOAL - negociPaid);
+    const totalPending = sunatPending + negociPending;
+
+    // 3. Update UI Elements
+    // Dashboard Cards
+    const dashVentasHoy = document.getElementById('dash-ventas-hoy');
+    const dashVentasSemana = document.getElementById('dash-ventas-semana');
+    const dashGastosPend = document.getElementById('dash-gastos-pend');
+    const dashPendSunat = document.getElementById('dash-pend-sunat');
+    const dashPendNegoci = document.getElementById('dash-pend-negoci');
+
+    if (dashVentasHoy) dashVentasHoy.innerText = formatCurrency(salesToday.toString());
+    if (dashVentasSemana) dashVentasSemana.innerText = formatCurrency(salesWeek.toString());
+    if (dashGastosPend) dashGastosPend.innerText = formatCurrency(totalPending.toString());
+    if (dashPendSunat) dashPendSunat.innerText = formatCurrency(sunatPending.toString());
+    if (dashPendNegoci) dashPendNegoci.innerText = formatCurrency(negociPending.toString());
+
+    // Clientes Summary
+    const clientSalesVal = document.getElementById('client-sales-today');
+
+    if (clientSalesVal) clientSalesVal.innerText = formatCurrency(salesToday.toString());
+    
+    // Trigger existing SUNAT summary update if we are in that section
+    if (typeof updateTaxSummary === 'function') {
+        updateTaxSummary();
+    }
+}
+
+// Observers for real-time updates
+if (tableBodyClients) {
+    const clientObserver = new MutationObserver(updateFinancialDashboards);
+    clientObserver.observe(tableBodyClients, { childList: true, subtree: true });
+}
+
+if (tableBodyExpenses) {
+    const expensesObserver = new MutationObserver(updateFinancialDashboards);
+    expensesObserver.observe(tableBodyExpenses, { childList: true, subtree: true });
+}
+
+// Initial update on load
+document.addEventListener('DOMContentLoaded', updateFinancialDashboards);
+
+}
+
+
+

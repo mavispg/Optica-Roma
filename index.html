@@ -92,6 +92,21 @@
                         <span class="links_name">CLIENTES</span>
                     </a>
                 </li>
+                
+                <!-- Finanzas Group -->
+                <li class="">
+                     <div class="iocn-link">
+                        <a href="#">
+                            <i class='bx bx-dollar-circle'></i>
+                            <span class="links_name">FINANZAS</span>
+                        </a>
+                        <i class='bx bxs-chevron-down arrow'></i>
+                    </div>
+                    <ul class="sub-menu">
+                        <li><a class="nav-link" href="#" data-target="expenses">Egresos</a></li>
+                    </ul>
+                </li>
+                
                 <li>
                     <a href="#" class="nav-link" data-target="users">
                         <i class='bx bx-user'></i>
@@ -139,15 +154,6 @@
 
                 <!-- KPI Cards -->
                 <div class="dashboard-cards">
-                    <div class="card card-blue">
-                        <div class="card-details">
-                            <div class="card-number" id="kpi-lunas">0</div>
-                            <div class="card-name">Total Lunas</div>
-                        </div>
-                        <div class="card-icon">
-                            <i class='bx bx-glasses'></i>
-                        </div>
-                    </div>
                     <div class="card card-green">
                         <div class="card-details">
                             <div class="card-number" id="kpi-monturas">0</div>
@@ -157,13 +163,36 @@
                             <i class='bx bx-show'></i>
                         </div>
                     </div>
+                    <!-- Financial KPIs -->
                     <div class="card card-orange">
                         <div class="card-details">
-                            <div class="card-number" id="kpi-providers">0</div>
-                            <div class="card-name">Laboratorios</div>
+                            <div class="card-number" id="dash-ventas-hoy">S/. 0.00</div>
+                            <div class="card-name">Ventas Hoy</div>
                         </div>
                         <div class="card-icon">
-                            <i class='bx bxs-truck'></i>
+                            <i class='bx bx-trending-up'></i>
+                        </div>
+                    </div>
+                    <div class="card card-purple">
+                        <div class="card-details">
+                            <div class="card-number" id="dash-ventas-semana">S/. 0.00</div>
+                            <div class="card-name">Ventas Semana</div>
+                        </div>
+                        <div class="card-icon">
+                            <i class='bx bx-calendar'></i>
+                        </div>
+                    </div>
+                    <div class="card card-red">
+                        <div class="card-details">
+                            <div class="card-number" id="dash-gastos-pend">S/. 0.00</div>
+                            <div class="card-name">Gastos Pendientes</div>
+                            <div class="card-breakdown">
+                                <span>SUNAT: <b id="dash-pend-sunat">S/. 0.00</b></span>
+                                <span>NEGOCI: <b id="dash-pend-negoci">S/. 0.00</b></span>
+                            </div>
+                        </div>
+                        <div class="card-icon">
+                            <i class='bx bx-error-alt'></i>
                         </div>
                     </div>
                 </div>
@@ -413,18 +442,27 @@
         <div id="clients" class="content-section">
             <div class="page-container">
                 <h2 class="page-title">CLIENTES</h2>
-                <h3 class="page-subtitle">HISTORIAL DE COMPRAS</h3>
+                <h3 class="page-subtitle">HISTORIAL DE VENTAS</h3>
+
+                <!-- Daily Summary Clientes -->
+                <div class="daily-summary-bar">
+                    <div class="summary-item">
+                        <i class='bx bx-wallet'></i>
+                        <span class="label">Ventas Hoy:</span>
+                        <span class="value" id="client-sales-today">S/. 0.00</span>
+                    </div>
+                </div>
 
                 <div class="controls-bar">
                     <div class="search-input-wrapper">
                         <i class='bx bx-search'></i>
                         <input type="text" id="searchClientInput" placeholder="Buscar cliente...">
                     </div>
-                    <div class="actions-group" style="display: flex; gap: 10px;">
+                    <div class="actions-group">
                         <button class="btn-green" id="btnAddClient">
                             <i class='bx bx-plus'></i> Nuevo Cliente
                         </button>
-                        <button class="btn-red" id="btnOpenExportModal" style="background-color: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                        <button class="btn-red" id="btnOpenExportModal">
                             <i class='bx bxs-file-pdf'></i> Exportar PDF
                         </button>
                     </div>
@@ -443,6 +481,7 @@
                                 <th>Estado</th>
                                 <th>Saldo</th>
                                 <th>Monto Total</th>
+                                <th>Modalidad</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -452,27 +491,133 @@
                                 <td>001</td>
                                 <td>Jose David</td>
                                 <td>98765432</td>
-                                <td>Montura, Lunas</td>
+                                <td class="compact-cell">
+                                    <div class="purchase-data">
+                                        <span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>Montura</span>
+                                        <span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>Lunas</span>
+                                    </div>
+                                </td>
                                 <td>933479366</td>
                                 <td>12/02/2026</td>
                                 <td><span class="status-badge status-paid">CANCELADO</span></td>
                                 <td>S/. 0.00</td>
                                 <td>S/. 150.00</td>
+                                <td><span class="payment-badge payment-efectivo">Efectivo</span></td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                    <input type="hidden" class="raw-payment-method" value="Efectivo">
+                                    <input type="hidden" class="raw-data" value="Montura , Lunas">
                                 </td>
                             </tr>
                              <tr>
                                 <td>002</td>
                                 <td>Efrain Rojas</td>
                                 <td>36251487</td>
-                                <td>Montura, Lunas</td>
+                                <td class="compact-cell">
+                                    <div class="purchase-data">
+                                        <span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>Montura</span>
+                                        <span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>Lunas</span>
+                                    </div>
+                                </td>
                                 <td>987654321</td>
                                 <td>10/02/2026</td>
                                 <td><span class="status-badge status-advance">ADELANTO</span></td>
                                 <td>S/. 50.00</td>
                                 <td>S/. 150.00</td>
+                                <td><span class="payment-badge payment-yape">Yape</span></td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                    <input type="hidden" class="raw-payment-method" value="Yape">
+                                    <input type="hidden" class="raw-data" value="Montura , Lunas">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- EXPENSES (EGRESOS) -->
+        <div id="expenses" class="content-section">
+            <div class="page-container">
+                <h2 class="page-title">FINANZAS</h2>
+                <h3 class="page-subtitle">EGRESOS</h3>
+
+                <div class="controls-bar">
+                    <div class="search-input-wrapper">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="searchExpenseInput" placeholder="Buscar egreso...">
+                    </div>
+                    <div class="actions-group">
+                        <button class="btn-green" id="btnAddExpense">
+                            <i class='bx bx-plus'></i> Nuevo Egreso
+                        </button>
+                        <button class="btn-red" id="btnOpenExportExpenses">
+                            <i class='bx bxs-file-pdf'></i> Exportar PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SUNAT Tracking Summary -->
+                <div class="tax-summary">
+                    <div class="tax-card">
+                        <div class="tax-card-info">
+                            <span class="tax-card-title">Meta Mensual SUNAT</span>
+                            <span class="tax-card-value" id="tax-goal">S/. 500.00</span>
+                        </div>
+                        <button class="icon-btn edit-goal-btn" id="btnEditTaxGoal">
+                            <i class='bx bxs-edit-alt'></i>
+                        </button>
+                    </div>
+                    <div class="tax-card paid">
+                        <div class="tax-card-info">
+                            <span class="tax-card-title">Pagado SUNAT</span>
+                            <span class="tax-card-value" id="tax-paid">S/. 0.00</span>
+                        </div>
+                        <i class='bx bx-check-double tax-icon'></i>
+                    </div>
+                    <div class="tax-card pending">
+                        <div class="tax-card-info">
+                            <span class="tax-card-title">Pendiente SUNAT</span>
+                            <span class="tax-card-value" id="tax-pending">S/. 500.00</span>
+                        </div>
+                        <i class='bx bx-time-five tax-icon'></i>
+                    </div>
+                </div>
+
+                <div class="white-box">
+                    <table class="custom-table" id="expensesTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Fecha</th>
+                                <th>Categoría</th>
+                                <th>Descripción</th>
+                                <th>Monto</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Expenses will be populated here -->
+                            <tr>
+                                <td>001</td>
+                                <td>15/02/2026</td>
+                                <td>Alquiler</td>
+                                <td>Alquiler del local - Febrero 2026</td>
+                                <td>S/. 1,200.00</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>002</td>
+                                <td>14/02/2026</td>
+                                <td>Servicios</td>
+                                <td>Luz y agua del mes</td>
+                                <td>S/. 250.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
@@ -483,6 +628,7 @@
                 </div>
             </div>
         </div>
+        
         <div id="users" class="content-section">
             <div class="page-container">
                 <h2 class="page-title">USUARIOS</h2>
@@ -703,8 +849,62 @@
                     <label>Saldo Restante</label>
                     <input type="text" id="c_balance" readonly style="background-color: #f0f0f0; color: #333; font-weight: bold;">
                 </div>
+                
+                <div class="form-group">
+                    <label>Modalidad de Pago</label>
+                    <select id="c_payment_method" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%;">
+                        <option value="">Seleccionar...</option>
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Yape">Yape</option>
+                        <option value="Visa">Visa</option>
+                    </select>
+                </div>
 
                 <button type="submit" class="submit-btn">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Adding Expense -->
+    <div id="addExpenseModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn expense-close">&times;</span>
+            <h2 id="expenseModalTitle">Agregar Nuevo Egreso</h2>
+            <form id="addExpenseForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ID</label>
+                        <input type="text" id="e_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="e_date" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <select id="e_category" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="">Seleccionar Categoría...</option>
+                        <option value="Alquiler">Alquiler</option>
+                        <option value="Servicios">Servicios (Luz, Agua, Internet)</option>
+                        <option value="Suministros">Suministros</option>
+                        <option value="Salarios">Salarios</option>
+                        <option value="SUNAT">SUNAT</option>
+                        <option value="NEGOCI">NEGOCI</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <input type="text" id="e_description">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Monto</label>
+                        <input type="number" step="0.01" id="e_amount" required>
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn" style="background-color: #007bff; margin-top: 15px;">Guardar</button>
             </form>
         </div>
     </div>
@@ -725,6 +925,26 @@
             </div>
             <button id="btnGeneratePDF" class="submit-btn" style="background-color: #e74c3c; margin-top: 10px;">
                 <i class='bx bxs-download'></i> Descargar PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for Export Expenses PDF -->
+    <div id="exportExpensesModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn export-expenses-close">&times;</span>
+            <h2>Exportar Reporte de Egresos</h2>
+            <p style="margin-bottom: 15px; color: #666;">Selecciona el rango de fechas:</p>
+            <div class="form-group">
+                <label>Desde:</label>
+                <input type="date" id="exportExpStartDate">
+            </div>
+            <div class="form-group">
+                <label>Hasta:</label>
+                <input type="date" id="exportExpEndDate">
+            </div>
+            <button id="btnGenerateExpPDF" class="submit-btn" style="background-color: #e74c3c; margin-top: 10px;">
+                <i class='bx bxs-download'></i> Generar PDF
             </button>
         </div>
     </div>
