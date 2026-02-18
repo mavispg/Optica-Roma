@@ -1155,3 +1155,20 @@ body {
     }
 }
 
+/* Specific Adjustments for Laboratory Section */
+#providers .page-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+#providers .white-box {
+    padding: 15px;
+}
+
+@media (max-width: 850px) {
+    #providers .page-container {
+        max-width: 100%;
+        margin: 0;
+    }
+}
+

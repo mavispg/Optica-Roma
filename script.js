@@ -165,25 +165,24 @@ if(btnAdd) {
 
 }
 
-// Function to populate Laboratory Dropdown
+// LABORATORIES DATA MANAGEMENT
+let laboratories = JSON.parse(localStorage.getItem('optica_laboratories')) || ['SHINGWA', 'CRISOL', 'EYES'];
+
+function saveLaboratories() {
+    localStorage.setItem('optica_laboratories', JSON.stringify(laboratories));
+}
+
+// Function to populate Laboratory Dropdown (datalist)
 function updateProviderDropdown() {
-    const select = document.getElementById('laboratorySelect');
-    if(!select) return;
+    const datalist = document.getElementById('laboratoryOptions');
+    if(!datalist) return;
     
-    // Clear existing options
-    select.innerHTML = '';
+    datalist.innerHTML = '';
     
-    // Get Providers from Table
-    const providerRows = document.querySelectorAll('#providersTable tbody tr');
-    providerRows.forEach(row => {
-        const cells = row.getElementsByTagName('td');
-        if(cells.length > 1) {
-            const providerName = cells[1].innerText; // 2nd column is Name
-            const option = document.createElement('option');
-            option.value = providerName;
-            option.text = providerName;
-            select.appendChild(option);
-        }
+    laboratories.forEach(lab => {
+        const option = document.createElement('option');
+        option.value = lab;
+        datalist.appendChild(option);
     });
 }
 
@@ -209,10 +208,17 @@ if(addForm) {
         // Get values
         const code = document.getElementById('code').value;
         const name = document.getElementById('name').value;
-        const laboratory = document.getElementById('laboratorySelect').value;
+        const laboratory = document.getElementById('laboratoryInput').value;
         const measure = document.getElementById('measure').value;
         const buyPrice = document.getElementById('buyPrice').value;
         const sellPrice = document.getElementById('sellPrice').value;
+
+        // Auto-save laboratory if new
+        if (laboratory && !laboratories.includes(laboratory)) {
+            laboratories.push(laboratory);
+            saveLaboratories();
+            updateProviderDropdown();
+        }
 
         
         if (isEditing && currentEditRow) {
@@ -277,7 +283,7 @@ if(tableBody) {
             document.getElementById('name').value = cells[1].innerText;
             
             updateProviderDropdown(); // Ensure options are there before setting value
-            document.getElementById('laboratorySelect').value = cells[2].innerText;
+            document.getElementById('laboratoryInput').value = cells[2].innerText;
             
             document.getElementById('measure').value = cells[3].innerText;
             
@@ -481,160 +487,12 @@ if(searchMonturasInput && tableBodyMonturas) {
     });
 }
 
-// Logic for PROVEEDOR (Laboratorios) Section
-
-const modalProvider = document.getElementById('addProviderModal');
-const btnAddProvider = document.getElementById('btnAddProvider');
-const closeBtnProvider = document.querySelector('.provider-close');
-const addFormProvider = document.getElementById('addProviderForm');
-const tableBodyProviders = document.querySelector('#providersTable tbody');
-let isEditingProvider = false;
-let currentEditRowProvider = null;
-
-
-// Open Modal Provider
-if(btnAddProvider) {
-    btnAddProvider.addEventListener('click', () => {
-        isEditingProvider = false;
-        currentEditRowProvider = null;
-        addFormProvider.reset();
-        document.querySelector('#addProviderModal h2').innerText = 'Agregar Nuevo Laboratorio';
-        modalProvider.style.display = 'block';
-    });
-
-}
-
-// Close Modal Provider
-if(closeBtnProvider) {
-    closeBtnProvider.addEventListener('click', () => {
-        modalProvider.style.display = 'none';
-    });
-}
-
-// Close outside click (Specific check)
-window.addEventListener('click', (e) => {
-    if (e.target == modalProvider) {
-        modalProvider.style.display = 'none';
-    }
-});
-
-// Add New Provider
-if(addFormProvider) {
-    addFormProvider.addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        // Get values
-        const id = document.getElementById('p_id').value;
-        const name = document.getElementById('p_name').value;
-        const manager = document.getElementById('p_manager').value;
-        const address = document.getElementById('p_address').value;
-        const phone = document.getElementById('p_phone').value;
-        
-        if (isEditingProvider && currentEditRowProvider) {
-            // Update existing row
-            currentEditRowProvider.innerHTML = `
-                <td>${id}</td>
-                <td>${name}</td>
-                <td>${manager}</td>
-                <td>${address}</td>
-                <td>${phone}</td>
-                <td class="actions-cell">
-                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                </td>
-            `;
-            isEditingProvider = false;
-            currentEditRowProvider = null;
-        } else {
-            // Create Row
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = `
-                <td>${id}</td>
-                <td>${name}</td>
-                <td>${manager}</td>
-                <td>${address}</td>
-                <td>${phone}</td>
-                <td class="actions-cell">
-                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                </td>
-            `;
-            if(tableBodyProviders) tableBodyProviders.appendChild(newRow);
-        }
-        
-        // Clear & Close
-        addFormProvider.reset();
-        modalProvider.style.display = 'none';
-        
-        // Update helper dropdown if needed
-        updateProviderDropdown();
-
-    });
-}
-
-// Delete Logic for Providers
-if(tableBodyProviders) {
-    tableBodyProviders.addEventListener('click', (e) => {
-        if(e.target.closest('.delete-btn')) {
-            if(confirm('¿Estás seguro de eliminar este laboratorio?')) {
-                const row = e.target.closest('tr');
-                row.remove();
-            }
-        }
-        if(e.target.closest('.edit-btn')) {
-            const row = e.target.closest('tr');
-            const cells = row.getElementsByTagName('td');
-            
-            // Populate Form
-            document.getElementById('p_id').value = cells[0].innerText;
-            document.getElementById('p_name').value = cells[1].innerText;
-            document.getElementById('p_manager').value = cells[2].innerText;
-            document.getElementById('p_address').value = cells[3].innerText;
-            document.getElementById('p_phone').value = cells[4].innerText;
-            
-            // Set Edit Mode
-            isEditingProvider = true;
-            currentEditRowProvider = row;
-            document.querySelector('#addProviderModal h2').innerText = 'Editar Laboratorio';
-            modalProvider.style.display = 'block';
-        }
-
-    });
-}
-
-// Search Logic for Providers
-const searchProviderInput = document.getElementById('searchProviderInput');
-if(searchProviderInput && tableBodyProviders) {
-    searchProviderInput.addEventListener('keyup', function() {
-        const filter = this.value.toLowerCase();
-        const rows = tableBodyProviders.getElementsByTagName('tr');
-        
-        for (let i = 0; i < rows.length; i++) {
-            const cells = rows[i].getElementsByTagName('td');
-            let match = false;
-            for (let j = 0; j < cells.length - 1; j++) {
-                if (cells[j]) {
-                    if (cells[j].innerText.toLowerCase().indexOf(filter) > -1) {
-                        match = true;
-                        break;
-                    }
-                }
-            }
-            if (match) {
-                rows[i].style.display = "";
-            } else {
-                rows[i].style.display = "none";
-            }
-        }
-    });
-}
 
 // Logic for Dashboard (Home)
 function updateDashboard() {
     // 1. Update KPI Cards
     const lunasTableBody = document.querySelector('#lunasTable tbody');
     const monturasTableBody = document.querySelector('#monturasTable tbody');
-    const providersTableBody = document.querySelector('#providersTable tbody');
 
     // Helper to sum stock column (Index 5)
     function calculateTotalStock(tbody) {
@@ -737,11 +595,9 @@ const callbackObserver = function(mutationsList, observer) {
 const dashboardObserver = new MutationObserver(callbackObserver);
 const lunasTbody = document.querySelector('#lunasTable tbody');
 const monturasTbody = document.querySelector('#monturasTable tbody');
-const providersTbody = document.querySelector('#providersTable tbody');
 
 if(lunasTbody) dashboardObserver.observe(lunasTbody, configObserver);
 if(monturasTbody) dashboardObserver.observe(monturasTbody, configObserver);
-if(providersTbody) dashboardObserver.observe(providersTbody, configObserver);
 
 // Login Logic
 const loginContainer = document.getElementById('loginContainer');
@@ -1134,7 +990,6 @@ if(addFormClient) {
         
         // Get values
         const id = document.getElementById('c_id').value;
-        const dni = document.getElementById('c_dni').value;
         const name = document.getElementById('c_name').value;
         const data = document.getElementById('c_data').value;
         const phone = document.getElementById('c_phone').value;
@@ -1204,7 +1059,6 @@ if(addFormClient) {
             currentEditRowClient.innerHTML = `
                 <td>${id}</td>
                 <td>${name}</td>
-                <td>${dni}</td>
                 <td class="compact-cell">${formattedData}</td>
                 <td>${phone}</td>
                 <td>${dateDisplay}</td>
@@ -1235,7 +1089,6 @@ if(addFormClient) {
             newRow.innerHTML = `
                 <td>${id}</td>
                 <td>${name}</td>
-                <td>${dni}</td>
                 <td class="compact-cell">${formattedData}</td>
                 <td>${phone}</td>
                 <td>${dateDisplay}</td>
@@ -1282,14 +1135,13 @@ if(tableBodyClients) {
             // Populate Form
             document.getElementById('c_id').value = cells[0].innerText;
             document.getElementById('c_name').value = cells[1].innerText;
-            document.getElementById('c_dni').value = cells[2].innerText;
             
             // Get raw data from hidden field (not from the formatted cell)
             const rawDataField = row.querySelector('.raw-data');
-            const rawDataValue = rawDataField ? rawDataField.value : cells[3].innerText;
+            const rawDataValue = rawDataField ? rawDataField.value : cells[2].innerText;
             document.getElementById('c_data').value = rawDataValue;
             
-            document.getElementById('c_phone').value = cells[4].innerText;
+            document.getElementById('c_phone').value = cells[3].innerText;
             
             // Retrieve hidden values if available, otherwise parse
             const rawDate = row.querySelector('.raw-date') ? row.querySelector('.raw-date').value : '';
@@ -1311,8 +1163,8 @@ if(tableBodyClients) {
                 // If I modify index.html static rows, I should add hidden inputs there too OR parse currency.
                 
                 // Let's parse currency for now as fallback
-                const totalText = cells[9].innerText.replace('S/. ', ''); // Changed from 8 to 9
-                const balanceText = cells[7].innerText.replace('S/. ', '');
+                 const totalText = cells[8].innerText.replace('S/. ', ''); 
+                const balanceText = cells[6].innerText.replace('S/. ', '');
                 const totalVal = parseFloat(totalText);
                 const balanceVal = parseFloat(balanceText);
                 const advanceVal = totalVal - balanceVal;
@@ -1321,7 +1173,7 @@ if(tableBodyClients) {
                 document.getElementById('c_advance').value = advanceVal;
                 
                 // Date parsing (dd/mm/yyyy -> yyyy-mm-dd)
-                const dateParts = cells[5].innerText.split('/');
+                const dateParts = cells[4].innerText.split('/');
                 if(dateParts.length === 3) {
                      document.getElementById('c_date').value = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
                 }
@@ -1341,7 +1193,7 @@ if(tableBodyClients) {
                 originalMonturaName = rawMontura;
             } else {
                 // Fallback: Parse from "Datos de Compra" column (for old/static rows)
-                const datosCompra = cells[3].innerText;
+                 const datosCompra = cells[2].innerText;
                 
                 if (datosCompra && datosCompra !== 'Consulta') {
                     // Parse the data string to extract montura
@@ -1384,12 +1236,11 @@ if(searchClientInput && tableBodyClients) {
         for (let i = 0; i < rows.length; i++) {
             const cells = rows[i].getElementsByTagName('td');
             let match = false;
-            // Check ID (0), Name (1), DNI (2), Date (5), Status (6)
+             // Check ID (0), Name (1), Date (4), Status (5)
             if (cells[0] && cells[0].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             if (cells[1] && cells[1].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-            if (cells[2] && cells[2].innerText.toLowerCase().indexOf(filter) > -1) match = true;
+            if (cells[4] && cells[4].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             if (cells[5] && cells[5].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-            if (cells[6] && cells[6].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             
             if (match) {
                 rows[i].style.display = "";
@@ -1401,7 +1252,7 @@ if(searchClientInput && tableBodyClients) {
 }
 
 // ==========================================
-// PDF EXPORT LOGIC
+// DASHBOARD NAVIGATION
 // ==========================================
 
 const modalExport = document.getElementById('exportModal');
@@ -1476,8 +1327,8 @@ if(btnGeneratePDF) {
         rows.forEach(row => {
             const cells = row.getElementsByTagName('td');
             if(cells.length > 0) {
-                // Date is in index 5 (dd/mm/yyyy)
-                const dateText = cells[5].innerText; 
+                 // Date is in index 4 (dd/mm/yyyy)
+                const dateText = cells[4].innerText; 
                 const [day, month, year] = dateText.split('/');
                 const rowDate = new Date(`${year}-${month}-${day}`);
                 
@@ -1485,11 +1336,10 @@ if(btnGeneratePDF) {
                     // Extract data for PDF
                     const id = cells[0].innerText;
                     const name = cells[1].innerText;
-                    const dni = cells[2].innerText;
-                    const purchaseData = cells[3].innerText; // "Consulta" or products
-                    const phone = cells[4].innerText;
-                    const status = cells[6].innerText; // Text inside span
-                    const paidAmount = cells[8].innerText; // Total
+                    const purchaseData = cells[2].innerText; // "Consulta" or products
+                    const phone = cells[3].innerText;
+                    const status = cells[5].innerText; // Text inside span
+                    const paidAmount = cells[7].innerText; // Total
                      // Wait, Logic for income:
                     // If PAID -> Income = Total
                     // If ADVANCE -> Income = Advance? Or just show Total amount involved?
@@ -1500,7 +1350,6 @@ if(btnGeneratePDF) {
                     rowsData.push([
                         id, 
                         name, 
-                        dni, 
                         purchaseData, 
                         dateText, 
                         status, 
@@ -1521,14 +1370,13 @@ if(btnGeneratePDF) {
         // Generate Table
         doc.autoTable({
             startY: 40,
-            head: [['ID', 'Nombre', 'DNI', 'Detalle', 'Fecha', 'Estado', 'Total']],
+             head: [['ID', 'Nombre', 'Detalle', 'Fecha', 'Estado', 'Total']],
             body: rowsData,
             theme: 'grid',
             headStyles: { fillColor: [41, 128, 185] },
             styles: { fontSize: 8 },
             columnStyles: {
-                2: { cellWidth: 20 }, // DNI
-                3: { cellWidth: 40 }  // Detalle
+                 2: { cellWidth: 40 }, // Detalle
             }
         });
 

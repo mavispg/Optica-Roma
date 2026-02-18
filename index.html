@@ -81,12 +81,6 @@
                 </li>
     
                 <li>
-                    <a href="#" class="nav-link" data-target="providers">
-                        <i class='bx bxs-truck'></i>
-                        <span class="links_name">LABORATORIO</span>
-                    </a>
-                </li>
-                <li>
                     <a href="#" class="nav-link" data-target="clients">
                         <i class='bx bx-id-card'></i>
                         <span class="links_name">CLIENTES</span>
@@ -212,14 +206,14 @@
                     <div class="dashboard-panel">
                         <h3>Acceso Rápido</h3>
                         <div class="quick-actions">
+                            <button class="action-btn" onclick="document.querySelector('[data-target=\'clients\']').click(); setTimeout(() => document.getElementById('btnAddClient').click(), 100);">
+                                <i class='bx bx-plus-circle'></i> Nuevo Cliente
+                            </button>
                             <button class="action-btn" onclick="document.querySelector('[data-target=\'lunas\']').click(); setTimeout(() => document.getElementById('btnAddLunal').click(), 100);">
                                 <i class='bx bx-plus-circle'></i> Nueva Luna
                             </button>
                             <button class="action-btn" onclick="document.querySelector('[data-target=\'monturas\']').click(); setTimeout(() => document.getElementById('btnAddMontura').click(), 100);">
                                 <i class='bx bx-plus-circle'></i> Nueva Montura
-                            </button>
-                            <button class="action-btn" onclick="document.querySelector('[data-target=\'providers\']').click(); setTimeout(() => document.getElementById('btnAddProvider').click(), 100);">
-                                <i class='bx bxs-truck'></i> Nuevo Laboratorio
                             </button>
                         </div>
                     </div>
@@ -372,73 +366,6 @@
         </div>
 
         <!-- Other sections placeholders -->
-        <div id="providers" class="content-section">
-            <div class="page-container">
-                <h2 class="page-title">PROVEEDOR</h2>
-                <h3 class="page-subtitle">LABORATORIOS</h3>
-
-                <div class="controls-bar">
-                    <div class="search-input-wrapper">
-                        <i class='bx bx-search'></i>
-                        <input type="text" id="searchProviderInput" placeholder="search">
-                    </div>
-                    <button class="btn-green" id="btnAddProvider">
-                        <i class='bx bx-plus'></i> Agregar
-                    </button>
-                </div>
-
-                <div class="white-box">
-                    <table class="custom-table" id="providersTable">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Encargado</th>
-                                <th>Direccion</th>
-                                <th>N° Celular</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Dummy Data -->
-                            <tr>
-                                <td>001</td>
-                                <td>SHINGWA</td>
-                                <td>Pedro Gutarra</td>
-                                <td>Calle San Pedro con Av. San Luis 879</td>
-                                <td>933479366</td>
-                                <td class="actions-cell">
-                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>002</td>
-                                <td>CRISOL</td>
-                                <td>Jose Alberto</td>
-                                <td>Jr. Santa Rosa con Av. Olaya 125</td>
-                                <td>987654321</td>
-                                <td class="actions-cell">
-                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>003</td>
-                                <td>EYES</td>
-                                <td>Jean Castro</td>
-                                <td>Av. Canada 789</td>
-                                <td>963852741</td>
-                                <td class="actions-cell">
-                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
         <div id="clients" class="content-section">
             <div class="page-container">
                 <h2 class="page-title">CLIENTES</h2>
@@ -474,7 +401,6 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Nombre</th>
-                                <th>DNI</th>
                                 <th>Datos de Compra</th>
                                 <th>Celular</th>
                                 <th>Fecha</th>
@@ -490,7 +416,6 @@
                             <tr>
                                 <td>001</td>
                                 <td>Jose David</td>
-                                <td>98765432</td>
                                 <td class="compact-cell">
                                     <div class="purchase-data">
                                         <span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>Montura</span>
@@ -513,7 +438,6 @@
                              <tr>
                                 <td>002</td>
                                 <td>Efrain Rojas</td>
-                                <td>36251487</td>
                                 <td class="compact-cell">
                                     <div class="purchase-data">
                                         <span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>Montura</span>
@@ -692,9 +616,10 @@
                 </div>
                 <div class="form-group">
                     <label>Laboratorio</label>
-                    <select id="laboratorySelect" required>
+                    <input type="text" id="laboratoryInput" list="laboratoryOptions" placeholder="Escribe o selecciona..." required>
+                    <datalist id="laboratoryOptions">
                         <!-- Options populated by JS -->
-                    </select>
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Medida</label>
@@ -746,36 +671,6 @@
         </div>
     </div>
 
-    <!-- Modal for Adding Provider -->
-    <div id="addProviderModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn provider-close">&times;</span>
-            <h2>Agregar Nuevo Laboratorio</h2>
-            <form id="addProviderForm">
-                <div class="form-group">
-                    <label>ID</label>
-                    <input type="text" id="p_id" required>
-                </div>
-                <div class="form-group">
-                    <label>Nombre</label>
-                    <input type="text" id="p_name" required>
-                </div>
-                <div class="form-group">
-                    <label>Encargado</label>
-                    <input type="text" id="p_manager" required>
-                </div>
-                <div class="form-group">
-                    <label>Dirección</label>
-                    <input type="text" id="p_address" required>
-                </div>
-                <div class="form-group">
-                    <label>N° Celular</label>
-                    <input type="text" id="p_phone" required>
-                </div>
-                <button type="submit" class="submit-btn">Guardar</button>
-            </form>
-        </div>
-    </div>
 
     <!-- Modal for Adding Client -->
     <div id="addClientModal" class="modal">
@@ -788,10 +683,6 @@
                         <label>ID</label>
                         <input type="text" id="c_id" required>
                     </div>
-                    <div class="form-group">
-                        <label>DNI</label>
-                        <input type="text" id="c_dni" required>
-                    </div>
                 </div>
                 <div class="form-group">
                     <label>Nombre Completo</label>
@@ -803,8 +694,8 @@
                         <input type="checkbox" id="chk_consulta" style="width: auto;">
                         <label for="chk_consulta" style="margin: 0; font-weight: normal; cursor: pointer;">Solo Consulta</label>
                     </div>
-                    <div class="form-row" style="margin-bottom: 10px;">
-                        <select id="sel_luna_name" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <select id="sel_luna_name" style="flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                             <option value="">Tipo de Luna</option>
                         </select>
                         <select id="sel_luna_measure" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" disabled>
@@ -824,8 +715,8 @@
                 </div>
                 <div class="form-row">
                      <div class="form-group">
-                        <label>Celular</label>
-                        <input type="text" id="c_phone" required>
+                        <label>N° Celular</label>
+                        <input type="text" id="c_phone">
                     </div>
                     <div class="form-group">
                         <label>Fecha</label>
