@@ -158,7 +158,7 @@
                         </div>
                     </div>
                     <!-- Financial KPIs -->
-                    <div class="card card-orange">
+                    <div class="card card-orange clickable-card" id="card-ventas-hoy" style="cursor: pointer;">
                         <div class="card-details">
                             <div class="card-number" id="dash-ventas-hoy">S/. 0.00</div>
                             <div class="card-name">Ventas Hoy</div>
@@ -167,7 +167,7 @@
                             <i class='bx bx-trending-up'></i>
                         </div>
                     </div>
-                    <div class="card card-purple">
+                    <div class="card card-purple clickable-card" id="card-ventas-semana" style="cursor: pointer;">
                         <div class="card-details">
                             <div class="card-number" id="dash-ventas-semana">S/. 0.00</div>
                             <div class="card-name">Ventas Semana</div>
@@ -412,49 +412,52 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Clients will be populated here -->
+                            <!-- Mock Client 1: Paid -->
                             <tr>
-                                <td>001</td>
-                                <td>Jose David</td>
-                                <td class="compact-cell">
-                                    <div class="purchase-data">
-                                        <span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>Montura</span>
-                                        <span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>Lunas</span>
-                                    </div>
-                                </td>
-                                <td>933479366</td>
-                                <td>12/02/2026</td>
+                                <td>C001</td>
+                                <td>Jorge Perez</td>
+                                <td><div class="purchase-data"><span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>Resina UV</span><span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>+2.00</span><span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>RayBan Aviator</span></div></td>
+                                <td>987654321</td>
+                                <td>2023-11-20</td>
                                 <td><span class="status-badge status-paid">CANCELADO</span></td>
                                 <td>S/. 0.00</td>
-                                <td>S/. 150.00</td>
+                                <td>S/. 450.00</td>
                                 <td><span class="payment-badge payment-efectivo">Efectivo</span></td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    <input type="hidden" class="raw-payment-method" value="Efectivo">
-                                    <input type="hidden" class="raw-data" value="Montura , Lunas">
                                 </td>
                             </tr>
-                             <tr>
-                                <td>002</td>
-                                <td>Efrain Rojas</td>
-                                <td class="compact-cell">
-                                    <div class="purchase-data">
-                                        <span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>Montura</span>
-                                        <span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>Lunas</span>
-                                    </div>
-                                </td>
-                                <td>987654321</td>
-                                <td>10/02/2026</td>
-                                <td><span class="status-badge status-advance">ADELANTO</span></td>
-                                <td>S/. 50.00</td>
+                            <!-- Mock Client 2: Partial -->
+                            <tr>
+                                <td>C002</td>
+                                <td>Ana Diaz</td>
+                                <td><div class="purchase-data"><span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>Policarbonato AR</span><span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>-1.50</span><span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>Vogue CatEye</span></div></td>
+                                <td>912345678</td>
+                                <td>2023-11-21</td>
+                                <td><span class="status-badge status-partial">ADELANTO</span></td>
                                 <td>S/. 150.00</td>
+                                <td>S/. 350.00</td>
                                 <td><span class="payment-badge payment-yape">Yape</span></td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    <input type="hidden" class="raw-payment-method" value="Yape">
-                                    <input type="hidden" class="raw-data" value="Montura , Lunas">
+                                </td>
+                            </tr>
+                            <!-- Mock Client 3: Pending -->
+                            <tr>
+                                <td>C003</td>
+                                <td>Carlos Gomez</td>
+                                <td><span class="purchase-data-item">Consulta</span></td>
+                                <td>998877665</td>
+                                <td>2023-11-22</td>
+                                <td><span class="status-badge status-pending">PENDIENTE</span></td>
+                                <td>S/. 50.00</td>
+                                <td>S/. 50.00</td>
+                                <td></td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
                                 </td>
                             </tr>
                         </tbody>
@@ -524,24 +527,37 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Expenses will be populated here -->
+                            <!-- Mock Expense 1: Rent -->
                             <tr>
-                                <td>001</td>
-                                <td>15/02/2026</td>
+                                <td>E001</td>
+                                <td>2023-11-01</td>
                                 <td>Alquiler</td>
-                                <td>Alquiler del local - Febrero 2026</td>
-                                <td>S/. 1,200.00</td>
+                                <td>Pago local Noviembre</td>
+                                <td>S/. 1200.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
                                 </td>
                             </tr>
+                            <!-- Mock Expense 2: Utilities -->
                             <tr>
-                                <td>002</td>
-                                <td>14/02/2026</td>
+                                <td>E002</td>
+                                <td>2023-11-05</td>
                                 <td>Servicios</td>
-                                <td>Luz y agua del mes</td>
+                                <td>Luz y Agua</td>
                                 <td>S/. 250.00</td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                                </td>
+                            </tr>
+                            <!-- Mock Expense 3: Supplies -->
+                            <tr>
+                                <td>E003</td>
+                                <td>2023-11-10</td>
+                                <td>Suministros</td>
+                                <td>Compra de estuches</td>
+                                <td>S/. 180.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
@@ -694,13 +710,9 @@
                         <input type="checkbox" id="chk_consulta" style="width: auto;">
                         <label for="chk_consulta" style="margin: 0; font-weight: normal; cursor: pointer;">Solo Consulta</label>
                     </div>
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                        <select id="sel_luna_name" style="flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                            <option value="">Tipo de Luna</option>
-                        </select>
-                        <select id="sel_luna_measure" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" disabled>
-                            <option value="">Medida</option>
-                        </select>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                        <input type="text" id="c_luna_name" placeholder="Tipo de Luna" style="flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 180px;">
+                        <input type="text" id="c_luna_measure" placeholder="Medida" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 120px;">
                     </div>
                     <div style="margin-bottom: 10px;">
                         <select id="sel_montura" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
@@ -840,6 +852,130 @@
         </div>
     </div>
 
+    <!-- Modal Resumen Diario -->
+    <div id="daySummaryModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="summary-close" style="float: right; cursor: pointer; font-size: 28px;">&times;</span>
+            <h2 id="summaryModalTitle">Resumen Financiero</h2>
+            <p id="summaryModalDate" style="color: #666; margin-bottom: 20px;"></p>
+            
+            <div class="summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div class="summary-box">
+                    <h3 style="color: var(--green-card); border-bottom: 2px solid var(--green-card); margin-bottom: 10px;">
+                        <i class='bx bx-trending-up'></i> Ingresos (Ventas)
+                    </h3>
+                    <table id="summarySalesTable" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align: left; border-bottom: 1px solid #ddd;">
+                                <th style="padding: 8px;">Cod</th>
+                                <th style="padding: 8px;">Vendido</th>
+                                <th style="padding: 8px; text-align: right;">Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                
+                <div class="summary-box">
+                    <h3 style="color: var(--red-card); border-bottom: 2px solid var(--red-card); margin-bottom: 10px;">
+                        <i class='bx bx-trending-down'></i> Egresos (Gastos)
+                    </h3>
+                    <table id="summaryExpensesTable" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align: left; border-bottom: 1px solid #ddd;">
+                                <th style="padding: 8px;">Descripción</th>
+                                <th style="padding: 8px; text-align: right;">Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="summary-footer" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div class="summary-actions">
+                        <button id="btnDownloadDayPDF" class="submit-btn" style="background-color: #e74c3c; width: auto; padding: 10px 20px; margin-top: 0;">
+                            <i class='bx bxs-file-pdf'></i> Descargar PDF
+                        </button>
+                    </div>
+                    <div class="summary-totals" style="text-align: right;">
+                        <div style="font-size: 1.1rem; margin-bottom: 5px;">Total Ingresos: <b id="sum-total-in" style="color: var(--green-card);">S/. 0.00</b></div>
+                        <div style="font-size: 1.1rem; margin-bottom: 5px;">Total Egresos: <b id="sum-total-out" style="color: var(--red-card);">S/. 0.00</b></div>
+                        <hr style="margin: 10px 0; border: 0; border-top: 2px solid #ddd;">
+                        <div style="font-size: 1.4rem;">Balance Neto: <b id="sum-balance" style="color: #333;">S/. 0.00</b></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Resumen Semanal -->
+    <div id="weeklySummaryModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <span class="weekly-close" style="float: right; cursor: pointer; font-size: 28px;">&times;</span>
+            <h2>Navegador Semanal</h2>
+            <p style="color: #666; margin-bottom: 20px;">Selecciona el día para ver el reporte detallado:</p>
+            
+            <!-- Day Selection Tabs -->
+            <div id="weeklyDayTabs" class="day-tabs" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; border-bottom: 1px solid #eee;">
+                <!-- Generated by JS -->
+            </div>
+
+            <div id="weeklyContentArea">
+                <h3 id="weeklyModalDateDisplay" style="margin-bottom: 15px; color: #333;"></h3>
+                
+                <div class="summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div class="summary-box">
+                        <h3 style="color: var(--green-card); border-bottom: 2px solid var(--green-card); margin-bottom: 10px;">
+                            <i class='bx bx-trending-up'></i> Ingresos (Ventas)
+                        </h3>
+                        <table id="weeklySalesTable" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="text-align: left; border-bottom: 1px solid #ddd;">
+                                    <th style="padding: 8px;">Cod</th>
+                                    <th style="padding: 8px;">Vendido</th>
+                                    <th style="padding: 8px; text-align: right;">Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="summary-box">
+                        <h3 style="color: var(--red-card); border-bottom: 2px solid var(--red-card); margin-bottom: 10px;">
+                            <i class='bx bx-trending-down'></i> Egresos (Gastos)
+                        </h3>
+                        <table id="weeklyExpensesTable" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="text-align: left; border-bottom: 1px solid #ddd;">
+                                    <th style="padding: 8px;">Descripción</th>
+                                    <th style="padding: 8px; text-align: right;">Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="summary-footer" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div class="summary-actions">
+                            <button id="btnDownloadWeeklyPDF" class="submit-btn" style="background-color: #e74c3c; width: auto; padding: 10px 20px; margin-top: 0;">
+                                <i class='bx bxs-file-pdf'></i> Descargar PDF
+                            </button>
+                        </div>
+                        <div class="summary-totals" style="text-align: right;">
+                            <div style="font-size: 1.1rem; margin-bottom: 5px;">Total Ingresos: <b id="weekly-sum-total-in" style="color: var(--green-card);">S/. 0.00</b></div>
+                            <div style="font-size: 1.1rem; margin-bottom: 5px;">Total Egresos: <b id="weekly-sum-total-out" style="color: var(--red-card);">S/. 0.00</b></div>
+                            <hr style="margin: 10px 0; border: 0; border-top: 2px solid #ddd;">
+                            <div style="font-size: 1.4rem;">Balance Neto: <b id="weekly-sum-balance" style="color: #333;">S/. 0.00</b></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="script.js"></script>
 </body>
 </html>

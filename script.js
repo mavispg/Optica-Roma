@@ -1,3 +1,7 @@
+
+
+
+
 // Sidebar Toggle
 let sidebar = document.querySelector(".sidebar");
 let sidebarBtn = document.querySelector(".sidebarBtn");
@@ -636,6 +640,7 @@ if(loginForm) {
         const pass = document.getElementById('password').value;
 
         // Hardcoded generic credentials for prototype
+        console.log('Login attempt:', user, pass);
         if(user === 'admin' && pass === 'admin') {
             sessionStorage.setItem('isLoggedIn', 'true');
             sessionStorage.setItem('username', user);
@@ -676,8 +681,31 @@ if(logoutBtn) {
     });
 }
 
-// Initial Check
-document.addEventListener('DOMContentLoaded', checkSession);
+// Initial Check & UX Improvements
+document.addEventListener('DOMContentLoaded', () => {
+    checkSession();
+    setupAutoSelectOnFocus();
+});
+
+// HELPER: Auto-select numeric inputs on focus for better UX
+function setupAutoSelectOnFocus() {
+    const fields = [
+        'buyPrice', 'sellPrice', 
+        'm_buyPrice', 'm_sellPrice', 'm_stock',
+        'c_total', 'c_advance',
+        'e_amount'
+    ];
+    
+    fields.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('focus', function() {
+                // Use a slight timeout to ensure selection works on some browsers
+                setTimeout(() => this.select(), 10);
+            });
+        }
+    });
+}
 
 // User Management Logic
 const btnAddUser = document.getElementById('btnAddUser');
@@ -803,34 +831,17 @@ if(btnAddClient) {
 // DYNAMIC PRODUCT SELECTION LOGIC
 // ==========================================
 
-const selLunaName = document.getElementById('sel_luna_name');
-const selLunaMeasure = document.getElementById('sel_luna_measure');
+const cLunaName = document.getElementById('c_luna_name');
+const cLunaMeasure = document.getElementById('c_luna_measure');
 const selMontura = document.getElementById('sel_montura');
 const cDataInput = document.getElementById('c_data');
-const chkConsulta = document.getElementById('chk_consulta'); // New Checkbox
+const chkConsulta = document.getElementById('chk_consulta');
 
 let lunasData = {}; // Structure: { "LunaName": ["Measure1", "Measure2"] }
 let monturasList = []; // Structure: ["MonturaName"]
 
 function updateClientProductDropdowns() {
-    // 1. Harvest Lunas Data
-    lunasData = {};
-    const lunasRows = document.querySelectorAll('#lunasTable tbody tr');
-    lunasRows.forEach(row => {
-        const cells = row.getElementsByTagName('td');
-        if(cells.length > 3) {
-            const name = cells[1].innerText;
-            const measure = cells[3].innerText;
-            
-            if (!lunasData[name]) {
-                lunasData[name] = [];
-            }
-            // Avoid duplicates
-            if (!lunasData[name].includes(measure)) {
-                lunasData[name].push(measure);
-            }
-        }
-    });
+    // 2. Harvest Monturas Data (Lunas harvest removed as we use manual entry now)
 
     // 2. Harvest Monturas Data
     monturasList = [];
@@ -845,18 +856,9 @@ function updateClientProductDropdowns() {
         }
     });
 
-    // 3. Populate Luna Names
-    selLunaName.innerHTML = '<option value="">Tipo de Luna</option>';
-    for (const name in lunasData) {
-        const option = document.createElement('option');
-        option.value = name;
-        option.text = name;
-        selLunaName.appendChild(option);
-    }
-    
-    // Reset Measure
-    selLunaMeasure.innerHTML = '<option value="">Medida</option>';
-    selLunaMeasure.disabled = true;
+    // 3. Reset Luna Inputs
+    if(cLunaName) cLunaName.value = '';
+    if(cLunaMeasure) cLunaMeasure.value = '';
 
     // 4. Populate Monturas
     selMontura.innerHTML = '<option value="">Modelo de Montura</option>';
@@ -880,19 +882,14 @@ function updateClientProductDropdowns() {
 // Helper to toggle dropdowns based on Checkbox
 function toggleProductSelection(enable) {
     if(enable) {
-        selLunaName.disabled = false;
-        selMontura.disabled = false;
-        // Measure depends on Name selection, so check that
-        if(selLunaName.value) {
-            selLunaMeasure.disabled = false;
-        } else {
-            selLunaMeasure.disabled = true;
-        }
-        updatePurchaseDataString(); // Recalculate based on current dropdowns
+        if(cLunaName) cLunaName.disabled = false;
+        if(cLunaMeasure) cLunaMeasure.disabled = false;
+        if(selMontura) selMontura.disabled = false;
+        updatePurchaseDataString();
     } else {
-        selLunaName.disabled = true;
-        selLunaMeasure.disabled = true;
-        selMontura.disabled = true;
+        if(cLunaName) cLunaName.disabled = true;
+        if(cLunaMeasure) cLunaMeasure.disabled = true;
+        if(selMontura) selMontura.disabled = true;
         cDataInput.value = 'Consulta';
     }
 }
@@ -904,44 +901,25 @@ if(chkConsulta) {
     });
 }
 
-// Luna Name Change -> Populate Measures
-if(selLunaName) {
-    selLunaName.addEventListener('change', function() {
-        const selectedName = this.value;
-        selLunaMeasure.innerHTML = '<option value="">Medida</option>';
-        
-        if (selectedName && lunasData[selectedName]) {
-            selLunaMeasure.disabled = false;
-            lunasData[selectedName].forEach(measure => {
-                const option = document.createElement('option');
-                option.value = measure;
-                option.text = measure;
-                selLunaMeasure.appendChild(option);
-            });
-        } else {
-            selLunaMeasure.disabled = true;
-        }
-        updatePurchaseDataString();
-    });
-}
-
-// Listeners for other selects to update string
-if(selLunaMeasure) selLunaMeasure.addEventListener('change', updatePurchaseDataString);
+// Listeners for Luna inputs
+const cIdInput = document.getElementById('c_id');
+if(cIdInput) cIdInput.addEventListener('input', updatePurchaseDataString);
+if(cLunaName) cLunaName.addEventListener('input', updatePurchaseDataString);
+if(cLunaMeasure) cLunaMeasure.addEventListener('input', updatePurchaseDataString);
 if(selMontura) selMontura.addEventListener('change', updatePurchaseDataString);
 
 function updatePurchaseDataString() {
-    // Safety check if checkbox is checked (redundant but safe)
     if(chkConsulta && chkConsulta.checked) {
         cDataInput.value = 'Consulta';
         return;
     }
 
-    const luna = selLunaName.value;
-    const measure = selLunaMeasure.value;
-    const montura = selMontura.value;
+    const lunaName = cLunaName ? cLunaName.value : '';
+    const measure = cLunaMeasure ? cLunaMeasure.value : '';
+    const montura = selMontura ? selMontura.value : '';
     
     let parts = [];
-    if(luna) parts.push(luna);
+    if(lunaName) parts.push(lunaName);
     if(measure) parts.push(measure);
     if(montura) parts.push(montura);
     
@@ -1007,39 +985,68 @@ if(addFormClient) {
         const paymentMethod = document.getElementById('c_payment_method').value;
 
         // ==========================================
-        // STOCK MANAGEMENT LOGIC
+        // STOCK & LUNA AUTOMATION LOGIC
         // ==========================================
-        if (!isEditingClient) {
-            // NEW CLIENT: Just decrement stock of selected montura
-            const selectedMontura = selMontura ? selMontura.value : '';
-            
-            // Only decrement if a montura was selected (not empty, not "Solo Consulta")
-            if (selectedMontura && !chkConsulta.checked) {
-                // Try to decrement stock
-                const stockDecremented = decrementMonturaStock(selectedMontura);
-                
-                if (!stockDecremented) {
-                    // Stock validation failed, abort the form submission
-                    return;
+        const lunaCodeValue = id; // Use main ID as Lens Code
+        const lunaNameValue = cLunaName ? cLunaName.value : '';
+        const lunaMeasureValue = cLunaMeasure ? cLunaMeasure.value : '';
+
+        // Function to ensure Luna product exists or creates it
+        function ensureLunaProduct(code, name, measure) {
+            if (!code) return;
+            const lunasRows = document.querySelectorAll('#lunasTable tbody tr');
+            let exists = false;
+            for (let row of lunasRows) {
+                const cells = row.getElementsByTagName('td');
+                if (cells[0] && cells[0].innerText === code) {
+                    exists = true;
+                    break;
                 }
             }
-        } else {
-            // EDITING CLIENT: Handle montura change
+            if (!exists) {
+                const tableBodyLunas = document.querySelector('#lunasTable tbody');
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td>${code}</td>
+                    <td>${name}</td>
+                    <td></td> <!-- Laboratory empty for manual edit -->
+                    <td>${measure}</td>
+                    <td>S/.0.00</td>
+                    <td>S/.0.00</td>
+                    <td class="actions-cell">
+                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                    </td>
+                `;
+                if(tableBodyLunas) tableBodyLunas.appendChild(newRow);
+            }
+        }
+
+        if (!isEditingClient) {
+            // NEW CLIENT: Check Luna Creation & decrement stock
+            if (lunaCodeValue && !chkConsulta.checked) {
+                ensureLunaProduct(lunaCodeValue, lunaNameValue, lunaMeasureValue);
+            }
+
             const selectedMontura = selMontura ? selMontura.value : '';
-            
-            // Check if montura changed
+            if (selectedMontura && !chkConsulta.checked) {
+                const stockDecremented = decrementMonturaStock(selectedMontura);
+                if (!stockDecremented) return;
+            }
+        } else {
+            // EDITING CLIENT: Check Luna Creation & handle montura change
+            if (lunaCodeValue && !chkConsulta.checked) {
+                ensureLunaProduct(lunaCodeValue, lunaNameValue, lunaMeasureValue);
+            }
+
+            const selectedMontura = selMontura ? selMontura.value : '';
             if (originalMonturaName !== selectedMontura) {
-                // Return stock to original montura (if there was one)
                 if (originalMonturaName && originalMonturaName !== '') {
                     incrementMonturaStock(originalMonturaName);
                 }
-                
-                // Decrement stock from new montura (if one is selected and not "Solo Consulta")
                 if (selectedMontura && selectedMontura !== '' && !chkConsulta.checked) {
                     const stockDecremented = decrementMonturaStock(selectedMontura);
-                    
                     if (!stockDecremented) {
-                        // Stock validation failed, restore original montura stock and abort
                         if (originalMonturaName && originalMonturaName !== '') {
                             decrementMonturaStock(originalMonturaName);
                         }
@@ -1742,6 +1749,7 @@ if (btnGenerateExpPDF) {
         doc.save(`Reporte_Egresos_${startDateVal}_${endDateVal}.pdf`);
         modalExportExpenses.style.display = 'none';
     });
+}
 
 // ==========================================
 // FINANCIAL DASHBOARD & SUMMARIES LOGIC
@@ -1856,9 +1864,391 @@ if (tableBodyExpenses) {
 }
 
 // Initial update on load
-document.addEventListener('DOMContentLoaded', updateFinancialDashboards);
+document.addEventListener('DOMContentLoaded', () => {
+    checkSession();
+    updateFinancialDashboards();
+    setupSummaryModal();
+    setupWeeklySummaryModal();
+});
 
+// ==========================================
+// DAILY SUMMARY MODAL LOGIC
+// ==========================================
+function setupSummaryModal() {
+    const cardVentasHoy = document.getElementById('card-ventas-hoy');
+    const modalSummary = document.getElementById('daySummaryModal');
+    const closeBtnSummary = document.querySelector('.summary-close');
+
+    if (cardVentasHoy && modalSummary) {
+        cardVentasHoy.addEventListener('click', () => {
+            showDaySummary();
+            modalSummary.style.display = 'block';
+        });
+    }
+
+    const btnDownloadDayPDF = document.getElementById('btnDownloadDayPDF');
+    if (btnDownloadDayPDF) {
+        btnDownloadDayPDF.addEventListener('click', () => {
+            exportDaySummaryToPDF();
+        });
+    }
+
+    if (closeBtnSummary) {
+        closeBtnSummary.addEventListener('click', () => {
+            modalSummary.style.display = 'none';
+        });
+    }
+
+    window.addEventListener('click', (e) => {
+        if (e.target == modalSummary) {
+            modalSummary.style.display = 'none';
+        }
+    });
 }
 
+function showDaySummary() {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const dateStr = getLocalDateString(); // yyyy-mm-dd
+    
+    const config = {
+        dateDisplayId: 'summaryModalDate',
+        salesTbodyId: '#summarySalesTable tbody',
+        expensesTbodyId: '#summaryExpensesTable tbody',
+        totalInId: 'sum-total-in',
+        totalOutId: 'sum-total-out',
+        balanceId: 'sum-balance'
+    };
+
+    populateSummaryData(today, dateStr, config);
+}
+
+function populateSummaryData(dateObj, dateStr, config) {
+    const dateDisplay = dateObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById(config.dateDisplayId).innerText = dateDisplay.charAt(0).toUpperCase() + dateDisplay.slice(1);
+
+    const salesTbody = document.querySelector(config.salesTbodyId);
+    const expensesTbody = document.querySelector(config.expensesTbodyId);
+    salesTbody.innerHTML = '';
+    expensesTbody.innerHTML = '';
+
+    let totalIn = 0;
+    let totalOut = 0;
+
+    // 1. Process Sales (Clients)
+    if (tableBodyClients) {
+        const rows = tableBodyClients.querySelectorAll('tr');
+        rows.forEach(row => {
+            const dateInput = row.querySelector('.raw-date');
+            if (dateInput && dateInput.value === dateStr) {
+                const cells = row.getElementsByTagName('td');
+                const id = cells[0].innerText;
+                const purchaseDataRaw = row.querySelector('.raw-data')?.value || '';
+                const advanceRaw = row.querySelector('.raw-advance');
+                const amount = advanceRaw ? parseFloat(advanceRaw.value) : 0;
+
+                totalIn += amount;
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid #eee';
+                tr.innerHTML = `
+                    <td style="padding: 8px;">${id}</td>
+                    <td style="padding: 8px; font-size: 0.85rem;">${formatPurchaseDataForDisplay(purchaseDataRaw)}</td>
+                    <td style="padding: 8px; text-align: right;">${formatCurrency(amount.toString())}</td>
+                `;
+                salesTbody.appendChild(tr);
+            }
+        });
+    }
+
+    // 2. Process Expenses
+    if (tableBodyExpenses) {
+        const rows = tableBodyExpenses.querySelectorAll('tr');
+        rows.forEach(row => {
+            const dateInput = row.querySelector('.raw-date');
+            if (dateInput && dateInput.value === dateStr) {
+                const description = row.getElementsByTagName('td')[3].innerText;
+                const amountInput = row.querySelector('.raw-amount');
+                const amount = amountInput ? parseFloat(amountInput.value) : 0;
+
+                totalOut += amount;
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid #eee';
+                tr.innerHTML = `<td style="padding: 8px;">${description}</td><td style="padding: 8px; text-align: right;">${formatCurrency(amount.toString())}</td>`;
+                expensesTbody.appendChild(tr);
+            }
+        });
+    }
+
+    // Handle empty states
+    if (salesTbody.innerHTML === '') salesTbody.innerHTML = `<tr><td colspan="3" style="padding: 8px; color: #999; text-align: center;">No hay ingresos este día</td></tr>`;
+    if (expensesTbody.innerHTML === '') expensesTbody.innerHTML = `<tr><td colspan="2" style="padding: 8px; color: #999; text-align: center;">No hay egresos este día</td></tr>`;
+
+    // 3. Update Footer
+    document.getElementById(config.totalInId).innerText = formatCurrency(totalIn.toString());
+    document.getElementById(config.totalOutId).innerText = formatCurrency(totalOut.toString());
+    const balance = totalIn - totalOut;
+    const balanceEl = document.getElementById(config.balanceId);
+    balanceEl.innerText = formatCurrency(balance.toString());
+    balanceEl.style.color = balance >= 0 ? 'var(--green-card)' : 'var(--red-card)';
+}
+
+// ==========================================
+// WEEKLY SUMMARY MODAL LOGIC
+// ==========================================
+let currentWeeklyDate = new Date();
+
+function setupWeeklySummaryModal() {
+    const cardVentasSemana = document.getElementById('card-ventas-semana');
+    const modalWeekly = document.getElementById('weeklySummaryModal');
+    const closeBtnWeekly = document.querySelector('.weekly-close');
+    const tabsContainer = document.getElementById('weeklyDayTabs');
+
+    if (cardVentasSemana && modalWeekly) {
+        cardVentasSemana.addEventListener('click', () => {
+            generateWeeklyTabs();
+            // Show today by default
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            selectWeeklyDay(today);
+            modalWeekly.style.display = 'block';
+        });
+    }
+
+    if (closeBtnWeekly) {
+        closeBtnWeekly.addEventListener('click', () => {
+            modalWeekly.style.display = 'none';
+        });
+    }
+
+    const btnDownloadWeeklyPDF = document.getElementById('btnDownloadWeeklyPDF');
+    if (btnDownloadWeeklyPDF) {
+        btnDownloadWeeklyPDF.addEventListener('click', () => {
+            exportSpecificDayToPDF(currentWeeklyDate);
+        });
+    }
+
+    window.addEventListener('click', (e) => {
+        if (e.target == modalWeekly) {
+            modalWeekly.style.display = 'none';
+        }
+    });
+
+    function generateWeeklyTabs() {
+        tabsContainer.innerHTML = '';
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        // Generate tabs from past to today (6 days ago -> Today)
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            
+            // Skip Sunday
+            if (d.getDay() === 0) continue;
+
+            const btn = document.createElement('button');
+            const isToday = (i === 0);
+            
+            btn.className = 'tab-btn';
+            btn.style.padding = '10px 15px';
+            btn.style.border = 'none';
+            btn.style.borderRadius = '20px';
+            btn.style.cursor = 'pointer';
+            
+            // Initial Active State (Today)
+            if (isToday) {
+                btn.style.backgroundColor = '#007bff'; // Blue
+                btn.style.color = 'white';
+                currentWeeklyDate = d; // Set initial state
+                selectWeeklyDay(d);    // Load initial data
+            } else {
+                btn.style.backgroundColor = '#f0f0f0';
+                btn.style.color = '#333';
+            }
+
+            btn.style.whiteSpace = 'nowrap';
+            btn.style.transition = 'all 0.3s';
+            
+            const dayName = d.toLocaleDateString('es-ES', { weekday: 'short' });
+            const dayNum = d.getDate();
+            btn.innerHTML = `<b>${dayName.toUpperCase()}</b> ${dayNum}`;
+            
+            btn.addEventListener('click', () => {
+                // Update button styles
+                const allTabs = tabsContainer.querySelectorAll('button');
+                allTabs.forEach(t => {
+                    t.style.backgroundColor = '#f0f0f0';
+                    t.style.color = '#333';
+                });
+                btn.style.backgroundColor = '#007bff';
+                btn.style.color = 'white';
+                
+                selectWeeklyDay(d);
+            });
+            
+            tabsContainer.appendChild(btn);
+        }
+    }
+
+    function selectWeeklyDay(dateObj) {
+        currentWeeklyDate = new Date(dateObj);
+        const y = dateObj.getFullYear();
+        const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+        const day = dateObj.getDate().toString().padStart(2, '0');
+        const dateStr = `${y}-${m}-${day}`;
+
+        const config = {
+            dateDisplayId: 'weeklyModalDateDisplay',
+            salesTbodyId: '#weeklySalesTable tbody',
+            expensesTbodyId: '#weeklyExpensesTable tbody',
+            totalInId: 'weekly-sum-total-in',
+            totalOutId: 'weekly-sum-total-out',
+            balanceId: 'weekly-sum-balance'
+        };
+
+        populateSummaryData(dateObj, dateStr, config);
+    }
+}
+
+function exportSpecificDayToPDF(dateObj, config) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Default to weekly if no config provided
+    const cfg = config || {
+        salesTbodyId: '#weeklySalesTable tbody',
+        expensesTbodyId: '#weeklyExpensesTable tbody',
+        totalInId: 'weekly-sum-total-in',
+        totalOutId: 'weekly-sum-total-out',
+        balanceId: 'weekly-sum-balance'
+    };
+    
+    const y = dateObj.getFullYear();
+    const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const d = dateObj.getDate().toString().padStart(2, '0');
+    const dateStr = `${y}-${m}-${d}`;
+    const dateDisplay = dateObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const formattedDate = dateDisplay.charAt(0).toUpperCase() + dateDisplay.slice(1);
+
+    // Header
+    doc.setFontSize(18);
+    doc.setTextColor(40);
+    doc.text('Resumen Financiero Diario', 14, 20);
+    doc.setFontSize(12);
+    doc.text(`Fecha: ${formattedDate}`, 14, 30);
+    doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 38);
+
+    // Sales Table
+    doc.setFontSize(14);
+    doc.setTextColor(0, 128, 0); // Green
+    doc.text('INGRESOS (VENTAS)', 14, 50);
+
+    const salesRows = [];
+    const salesTableRows = document.querySelectorAll(`${cfg.salesTbodyId} tr`);
+    salesTableRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 3) {
+            salesRows.push([
+                cells[0].innerText,
+                cells[1].innerText,
+                cells[2].innerText
+            ]);
+        }
+    });
+
+    if (salesRows.length > 0 && !salesRows[0][0].includes('No hay')) {
+        doc.autoTable({
+            startY: 55,
+            head: [['Cod', 'Vendido', 'Monto']],
+            body: salesRows,
+            theme: 'striped',
+            headStyles: { fillColor: [46, 204, 113] }
+        });
+    } else {
+        doc.setFontSize(10);
+        doc.setTextColor(150);
+        doc.text('No hay ingresos este día.', 14, 55);
+    }
+
+    // Expenses Table
+    let currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : 70;
+    doc.setFontSize(14);
+    doc.setTextColor(231, 76, 60); // Red
+    doc.text('EGRESOS (GASTOS)', 14, currentY);
+
+    const expensesRows = [];
+    const expensesTableRows = document.querySelectorAll(`${cfg.expensesTbodyId} tr`);
+    expensesTableRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 2) {
+            expensesRows.push([
+                cells[0].innerText,
+                cells[1].innerText
+            ]);
+        }
+    });
+
+    if (expensesRows.length > 0 && !expensesRows[0][0].includes('No hay')) {
+        doc.autoTable({
+            startY: currentY + 5,
+            head: [['Descripción', 'Monto']],
+            body: expensesRows,
+            theme: 'striped',
+            headStyles: { fillColor: [231, 76, 60] }
+        });
+    } else {
+        doc.setFontSize(10);
+        doc.setTextColor(150);
+        doc.text('No hay egresos este día.', 14, currentY + 5);
+        doc.lastAutoTable = { finalY: currentY + 5 };
+    }
+
+    // Summary Footer
+    currentY = doc.lastAutoTable.finalY + 20;
+    
+    // Draw box for balance
+    doc.setDrawColor(200);
+    doc.setFillColor(249, 249, 249);
+    doc.rect(14, currentY, 182, 35, 'F');
+    doc.rect(14, currentY, 182, 35, 'S');
+
+    doc.setFontSize(12);
+    doc.setTextColor(40);
+    
+    const totalIn = document.getElementById(cfg.totalInId).innerText;
+    const totalOut = document.getElementById(cfg.totalOutId).innerText;
+    const balance = document.getElementById(cfg.balanceId).innerText;
+
+    doc.text(`Total Ingresos:`, 20, currentY + 12);
+    doc.setTextColor(0, 128, 0);
+    doc.text(totalIn, 100, currentY + 12, { align: 'right' });
+
+    doc.setTextColor(40);
+    doc.text(`Total Egresos:`, 20, currentY + 19);
+    doc.setTextColor(231, 76, 60);
+    doc.text(totalOut, 100, currentY + 19, { align: 'right' });
+
+    doc.setDrawColor(220);
+    doc.line(20, currentY + 23, 190, currentY + 23);
+
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(40);
+    doc.text(`Balance Neto:`, 20, currentY + 30);
+    doc.text(balance, 100, currentY + 30, { align: 'right' });
+
+    doc.save(`Resumen_Diario_${dateStr}.pdf`);
+}
+
+function exportDaySummaryToPDF() {
+    const dailyConfig = {
+        salesTbodyId: '#summarySalesTable tbody',
+        expensesTbodyId: '#summaryExpensesTable tbody',
+        totalInId: 'sum-total-in',
+        totalOutId: 'sum-total-out',
+        balanceId: 'sum-balance'
+    };
+    exportSpecificDayToPDF(new Date(), dailyConfig);
+}
 
 
