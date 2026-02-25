@@ -182,7 +182,7 @@
                             <div class="card-name">Gastos Pendientes</div>
                             <div class="card-breakdown">
                                 <span>SUNAT: <b id="dash-pend-sunat">S/. 0.00</b></span>
-                                <span>NEGOCI: <b id="dash-pend-negoci">S/. 0.00</b></span>
+                                <span>NEGOSY: <b id="dash-pend-negosy">S/. 0.00</b></span>
                             </div>
                         </div>
                         <div class="card-icon">
@@ -320,7 +320,6 @@
                                 <th>Código</th>
                                 <th>Nombre</th>
                                 <th>Stock</th>
-                                <th>Precio Compra</th>
                                 <th>Precio Venta</th>
                                 <th></th>
                             </tr>
@@ -330,7 +329,6 @@
                                 <td>001</td>
                                 <td>Montura completa</td>
                                 <td>15</td>
-                                <td>S/.90.00</td>
                                 <td>S/.150.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
@@ -341,7 +339,6 @@
                                 <td>002</td>
                                 <td>Montura combinada</td>
                                 <td>10</td>
-                                <td>S/.120.00</td>
                                 <td>S/.210.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
@@ -352,7 +349,6 @@
                                 <td>003</td>
                                 <td>Aviador</td>
                                 <td>18</td>
-                                <td>S/.210.00</td>
                                 <td>S/.420.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
@@ -675,10 +671,6 @@
                     <input type="number" id="m_stock" required>
                 </div>
                 <div class="form-group">
-                    <label>Precio Compra</label>
-                    <input type="text" id="m_buyPrice" placeholder="S/.0.00">
-                </div>
-                <div class="form-group">
                     <label>Precio Venta</label>
                     <input type="text" id="m_sellPrice" placeholder="S/.0.00">
                 </div>
@@ -788,12 +780,24 @@
                     <label>Categoría</label>
                     <select id="e_category" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                         <option value="">Seleccionar Categoría...</option>
-                        <option value="Alquiler">Alquiler</option>
-                        <option value="Servicios">Servicios (Luz, Agua, Internet)</option>
-                        <option value="Suministros">Suministros</option>
-                        <option value="Salarios">Salarios</option>
-                        <option value="SUNAT">SUNAT</option>
-                        <option value="NEGOCI">NEGOCI</option>
+                        <option value="Consulta Pool">Consulta Pool</option>
+                        <option value="Consulta Carlos">Consulta Carlos</option>
+                        <option value="Consulta Chino">Consulta Chino</option>
+                        <option value="Consulta Yaret">Consulta Yaret</option>
+                        <option value="Almuerzo">Almuerzo</option>
+                        <option value="Trimax">Trimax</option>
+                        <option value="Negosy">Negosy</option>
+                        <option value="Inoops">Inoops</option>
+                        <option value="Exclusivo">Exclusivo</option>
+                        <option value="Agurto Loreto">Agurto Loreto</option>
+                        <option value="Agurto Lima">Agurto Lima</option>
+                        <option value="Oxo">Oxo</option>
+                        <option value="Topsa">Topsa</option>
+                        <option value="Smart Lents">Smart Lents</option>
+                        <option value="Calu">Calu</option>
+                        <option value="Agua">Agua</option>
+                        <option value="Luz">Luz</option>
+                        <option value="Internet">Internet</option>
                         <option value="Otros">Otros</option>
                     </select>
                 </div>

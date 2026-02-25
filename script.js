@@ -390,7 +390,6 @@ if(addFormMontura) {
         const code = document.getElementById('m_code').value;
         const name = document.getElementById('m_name').value;
         const stock = document.getElementById('m_stock').value;
-        const buyPrice = document.getElementById('m_buyPrice').value;
         const sellPrice = document.getElementById('m_sellPrice').value;
         
         if (isEditingMontura && currentEditRowMontura) {
@@ -399,7 +398,6 @@ if(addFormMontura) {
                 <td>${code}</td>
                 <td>${name}</td>
                 <td>${stock}</td>
-                <td>${formatCurrency(buyPrice)}</td>
                 <td>${formatCurrency(sellPrice)}</td>
                 <td class="actions-cell">
                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
@@ -415,7 +413,6 @@ if(addFormMontura) {
                 <td>${code}</td>
                 <td>${name}</td>
                 <td>${stock}</td>
-                <td>${formatCurrency(buyPrice)}</td>
                 <td>${formatCurrency(sellPrice)}</td>
                 <td class="actions-cell">
                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
@@ -451,8 +448,7 @@ if(tableBodyMonturas) {
             document.getElementById('m_stock').value = cells[2].innerText;
              
             // Strip currency symbol
-            document.getElementById('m_buyPrice').value = cells[3].innerText.replace('S/. ', '');
-            document.getElementById('m_sellPrice').value = cells[4].innerText.replace('S/. ', '');
+            document.getElementById('m_sellPrice').value = cells[3].innerText.replace('S/. ', '');
             
             // Set Edit Mode
             isEditingMontura = true;
@@ -691,7 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupAutoSelectOnFocus() {
     const fields = [
         'buyPrice', 'sellPrice', 
-        'm_buyPrice', 'm_sellPrice', 'm_stock',
+        'm_sellPrice', 'm_stock',
         'c_total', 'c_advance',
         'e_amount'
     ];
@@ -1754,7 +1750,7 @@ if (btnGenerateExpPDF) {
 // ==========================================
 // FINANCIAL DASHBOARD & SUMMARIES LOGIC
 // ==========================================
-const NEGOCI_GOAL = 50;
+const NEGOSY_GOAL = 50;
 
 function updateFinancialDashboards() {
     const today = new Date();
@@ -1804,9 +1800,9 @@ function updateFinancialDashboards() {
         });
     }
 
-    // 2. Calculate Pending Expenses (SUNAT + NEGOCI)
+    // 2. Calculate Pending Expenses (SUNAT + NEGOSY)
     let sunatPaid = 0;
-    let negociPaid = 0;
+    let negosyPaid = 0;
 
     if (tableBodyExpenses) {
         const rows = tableBodyExpenses.querySelectorAll('tr');
@@ -1818,14 +1814,14 @@ function updateFinancialDashboards() {
                 const amount = amountInput ? parseFloat(amountInput.value) : 0;
                 
                 if (category === 'SUNAT') sunatPaid += amount;
-                else if (category === 'NEGOCI') negociPaid += amount;
+                else if (category === 'Negosy') negosyPaid += amount;
             }
         });
     }
 
     const sunatPending = Math.max(0, sunatGoal - sunatPaid);
-    const negociPending = Math.max(0, NEGOCI_GOAL - negociPaid);
-    const totalPending = sunatPending + negociPending;
+    const negosyPending = Math.max(0, NEGOSY_GOAL - negosyPaid);
+    const totalPending = sunatPending + negosyPending;
 
     // 3. Update UI Elements
     // Dashboard Cards
@@ -1833,13 +1829,13 @@ function updateFinancialDashboards() {
     const dashVentasSemana = document.getElementById('dash-ventas-semana');
     const dashGastosPend = document.getElementById('dash-gastos-pend');
     const dashPendSunat = document.getElementById('dash-pend-sunat');
-    const dashPendNegoci = document.getElementById('dash-pend-negoci');
+    const dashPendNegosy = document.getElementById('dash-pend-negosy');
 
     if (dashVentasHoy) dashVentasHoy.innerText = formatCurrency(salesToday.toString());
     if (dashVentasSemana) dashVentasSemana.innerText = formatCurrency(salesWeek.toString());
     if (dashGastosPend) dashGastosPend.innerText = formatCurrency(totalPending.toString());
     if (dashPendSunat) dashPendSunat.innerText = formatCurrency(sunatPending.toString());
-    if (dashPendNegoci) dashPendNegoci.innerText = formatCurrency(negociPending.toString());
+    if (dashPendNegosy) dashPendNegosy.innerText = formatCurrency(negosyPending.toString());
 
     // Clientes Summary
     const clientSalesVal = document.getElementById('client-sales-today');
