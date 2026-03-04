@@ -64,26 +64,33 @@ function formatPurchaseDataForDisplay(dataString) {
         return '<span class="purchase-data-item">Consulta</span>';
     }
     
-    // Split the data string by ' , '
-    const parts = dataString.split(' , ').map(p => p.trim());
+    let parts = [];
+    if (dataString.includes('|')) {
+        // Structured format: Luna | Medida | Montura
+        parts = dataString.split('|').map(p => p.trim());
+    } else {
+        // Legacy formatted string
+        parts = dataString.split(' , ').map(p => p.trim());
+    }
     
     let html = '<div class="purchase-data">';
     
-    // Identify which parts are what based on position and content
-    // Format: Luna, Medida, Montura (in that order typically)
-    
-    if (parts.length === 1) {
-        // Only one item (could be Luna or Montura)
-        html += `<span class="purchase-data-item">${parts[0]}</span>`;
-    } else if (parts.length === 2) {
-        // Two items (could be Luna+Medida or Luna+Montura)
-        html += `<span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>${parts[0]}</span>`;
-        html += `<span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>${parts[1]}</span>`;
-    } else if (parts.length >= 3) {
-        // All three items
-        html += `<span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>${parts[0]}</span>`;
-        html += `<span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>${parts[1]}</span>`;
-        html += `<span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>${parts[2]}</span>`;
+    if (dataString.includes('|')) {
+        if (parts[0]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>${parts[0]}</span>`;
+        if (parts[1]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>${parts[1]}</span>`;
+        if (parts[2]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>${parts[2]}</span>`;
+    } else {
+        // Fallback for old records
+        if (parts.length === 1) {
+            html += `<span class="purchase-data-item">${parts[0]}</span>`;
+        } else if (parts.length === 2) {
+            html += `<span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>${parts[0]}</span>`;
+            html += `<span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>${parts[1]}</span>`;
+        } else if (parts.length >= 3) {
+            html += `<span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>${parts[0]}</span>`;
+            html += `<span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>${parts[1]}</span>`;
+            html += `<span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>${parts[2]}</span>`;
+        }
     }
     
     html += '</div>';
@@ -162,11 +169,11 @@ if(btnAdd) {
         isEditing = false;
         currentEditRow = null;
         addForm.reset();
+        document.getElementById('l_date').value = getLocalDateString();
         document.querySelector('#addModal h2').innerText = 'Agregar Nueva Luna';
         updateProviderDropdown();
         modal.style.display = 'block';
     });
-
 }
 
 // LABORATORIES DATA MANAGEMENT
@@ -216,6 +223,7 @@ if(addForm) {
         const measure = document.getElementById('measure').value;
         const buyPrice = document.getElementById('buyPrice').value;
         const sellPrice = document.getElementById('sellPrice').value;
+        const date = document.getElementById('l_date').value;
 
         // Auto-save laboratory if new
         if (laboratory && !laboratories.includes(laboratory)) {
@@ -234,6 +242,7 @@ if(addForm) {
                 <td>${measure}</td>
                 <td>${formatCurrency(buyPrice)}</td>
                 <td>${formatCurrency(sellPrice)}</td>
+                <td>${date}</td>
                 <td class="actions-cell">
                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
@@ -251,6 +260,7 @@ if(addForm) {
                 <td>${measure}</td>
                 <td>${formatCurrency(buyPrice)}</td>
                 <td>${formatCurrency(sellPrice)}</td>
+                <td>${date}</td>
                 <td class="actions-cell">
                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
@@ -294,6 +304,7 @@ if(tableBody) {
             // Strip currency symbol for input
             document.getElementById('buyPrice').value = cells[4].innerText.replace('S/. ', '');
             document.getElementById('sellPrice').value = cells[5].innerText.replace('S/. ', '');
+            document.getElementById('l_date').value = cells[6].innerText;
 
             
             // Set Edit Mode
@@ -354,6 +365,23 @@ const tableBodyMonturas = document.querySelector('#monturasTable tbody');
 let isEditingMontura = false;
 let currentEditRowMontura = null;
 
+// Helper: Get Next Montura Code
+function getNextMonturaCode() {
+    const rows = document.querySelectorAll('#monturasTable tbody tr');
+    let maxId = 0;
+    
+    rows.forEach(row => {
+        const codeText = row.cells[0].innerText;
+        const codeNum = parseInt(codeText);
+        if (!isNaN(codeNum) && codeNum > maxId) {
+            maxId = codeNum;
+        }
+    });
+    
+    const nextId = maxId + 1;
+    return nextId.toString().padStart(3, '0');
+}
+
 
 // Open Modal Montura
 if(btnAddMontura) {
@@ -361,10 +389,13 @@ if(btnAddMontura) {
         isEditingMontura = false;
         currentEditRowMontura = null;
         addFormMontura.reset();
+        
+        // Auto-generate Code
+        document.getElementById('m_code').value = getNextMonturaCode();
+        
         document.querySelector('#addMonturaModal h2').innerText = 'Agregar Nueva Montura';
         modalMontura.style.display = 'block';
     });
-
 }
 
 // Close Modal Montura
@@ -390,14 +421,23 @@ if(addFormMontura) {
         const code = document.getElementById('m_code').value;
         const name = document.getElementById('m_name').value;
         const stock = document.getElementById('m_stock').value;
-        const sellPrice = document.getElementById('m_sellPrice').value;
+        const sellPrice = document.getElementById('m_sell_price').value;
         
         if (isEditingMontura && currentEditRowMontura) {
             // Update existing row
+            // We preserve 'Available' if possible or reset if stock changes
+            const oldStockText = currentEditRowMontura.cells[2].innerText;
+            const match = oldStockText.match(/(\d+)\((\d+)\)/);
+            let available = stock; // default to reset
+            
+            if (match && match[1] === stock) {
+                available = match[2]; // keep available if total didn't change
+            }
+
             currentEditRowMontura.innerHTML = `
                 <td>${code}</td>
                 <td>${name}</td>
-                <td>${stock}</td>
+                <td>${stock}(${available})</td>
                 <td>${formatCurrency(sellPrice)}</td>
                 <td class="actions-cell">
                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
@@ -412,7 +452,7 @@ if(addFormMontura) {
             newRow.innerHTML = `
                 <td>${code}</td>
                 <td>${name}</td>
-                <td>${stock}</td>
+                <td>${stock}(${stock})</td>
                 <td>${formatCurrency(sellPrice)}</td>
                 <td class="actions-cell">
                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
@@ -442,13 +482,16 @@ if(tableBodyMonturas) {
             const row = e.target.closest('tr');
             const cells = row.getElementsByTagName('td');
             
-            // Populate Form
             document.getElementById('m_code').value = cells[0].innerText;
             document.getElementById('m_name').value = cells[1].innerText;
-            document.getElementById('m_stock').value = cells[2].innerText;
-             
-            // Strip currency symbol
-            document.getElementById('m_sellPrice').value = cells[3].innerText.replace('S/. ', '');
+            
+            // Extract total from format "Total(Available)"
+            const stockText = cells[2].innerText;
+            const stockMatch = stockText.match(/(\d+)/);
+            document.getElementById('m_stock').value = stockMatch ? stockMatch[1] : stockText;
+            
+            const priceText = cells[3].innerText.replace('S/. ', '').replace(',', '');
+            document.getElementById('m_sell_price').value = priceText;
             
             // Set Edit Mode
             isEditingMontura = true;
@@ -677,10 +720,172 @@ if(logoutBtn) {
     });
 }
 
+// ==========================================
+// EXPORT LUNAS & MONTURAS PDF LOGIC
+// ==========================================
+
+function setupExportLunas() {
+    const btnOpen = document.getElementById('btnOpenExportLunas');
+    const modal = document.getElementById('exportLunasModal');
+    const closeBtn = document.querySelector('.export-lunas-close');
+    const btnGenerate = document.getElementById('btnGenerateLunasPDF');
+
+    if (btnOpen && modal) {
+        btnOpen.addEventListener('click', () => {
+            document.getElementById('exportLunasStartDate').value = getLocalDateString();
+            document.getElementById('exportLunasEndDate').value = getLocalDateString();
+            modal.style.display = 'block';
+        });
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+
+    if (btnGenerate) {
+        btnGenerate.addEventListener('click', () => {
+            const start = document.getElementById('exportLunasStartDate').value;
+            const end = document.getElementById('exportLunasEndDate').value;
+            generateLunasPDF(start, end);
+            modal.style.display = 'none';
+        });
+    }
+
+    window.addEventListener('click', (e) => {
+        if (e.target == modal) modal.style.display = 'none';
+    });
+}
+
+function generateLunasPDF(startDate, endDate) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l'); // Landscape for more columns
+
+    doc.setFontSize(18);
+    doc.text('Reporte de Lunas - OPTICA ROMA', 14, 20);
+    doc.setFontSize(11);
+    doc.text(`Rango: ${startDate} al ${endDate}`, 14, 30);
+    doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 37);
+
+    const rows = [];
+    const tableRows = document.querySelectorAll('#lunasTable tbody tr');
+
+    tableRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 7) {
+            const date = cells[6].innerText;
+            if (date >= startDate && date <= endDate) {
+                rows.push([
+                    cells[0].innerText, // Code
+                    cells[1].innerText, // Name
+                    cells[2].innerText, // Lab
+                    cells[3].innerText, // Measure
+                    cells[4].innerText, // Buy Price
+                    cells[5].innerText, // Sell Price
+                    date               // Date
+                ]);
+            }
+        }
+    });
+
+    if (rows.length > 0) {
+        doc.autoTable({
+            startY: 45,
+            head: [['Código', 'Nombre', 'Laboratorio', 'Medida', 'P. Compra', 'P. Venta', 'Fecha']],
+            body: rows,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 153, 0] }
+        });
+        doc.save(`Reporte_Lunas_${startDate}_${endDate}.pdf`);
+    } else {
+        alert('No se encontraron lunas en el rango de fechas seleccionado.');
+    }
+}
+
+function setupExportMonturas() {
+    const btnOpen = document.getElementById('btnOpenExportMonturas');
+    const modal = document.getElementById('exportMonturasModal');
+    const closeBtn = document.querySelector('.export-monturas-close');
+    const btnGenerate = document.getElementById('btnGenerateMonturasPDF');
+
+    if (btnOpen && modal) {
+        btnOpen.addEventListener('click', () => {
+            document.getElementById('exportMonturasStartDate').value = getLocalDateString();
+            document.getElementById('exportMonturasEndDate').value = getLocalDateString();
+            modal.style.display = 'block';
+        });
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+
+    if (btnGenerate) {
+        btnGenerate.addEventListener('click', () => {
+            const start = document.getElementById('exportMonturasStartDate').value;
+            const end = document.getElementById('exportMonturasEndDate').value;
+            generateMonturasPDF(start, end);
+            modal.style.display = 'none';
+        });
+    }
+
+    window.addEventListener('click', (e) => {
+        if (e.target == modal) modal.style.display = 'none';
+    });
+}
+
+function generateMonturasPDF(startDate, endDate) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text('Reporte de Monturas - OPTICA ROMA', 14, 20);
+    doc.setFontSize(11);
+    doc.text(`Rango: ${startDate} al ${endDate}`, 14, 30);
+    doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 37);
+
+    const rows = [];
+    const tableRows = document.querySelectorAll('#monturasTable tbody tr');
+
+    tableRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 5) {
+            const date = cells[4].innerText;
+            if (date >= startDate && date <= endDate) {
+                rows.push([
+                    cells[0].innerText, // Code
+                    cells[1].innerText, // Name
+                    cells[2].innerText, // Stock
+                    cells[3].innerText, // Sell Price
+                    date               // Date
+                ]);
+            }
+        }
+    });
+
+    if (rows.length > 0) {
+        doc.autoTable({
+            startY: 45,
+            head: [['Código', 'Nombre', 'Stock', 'Precio Venta', 'Fecha']],
+            body: rows,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 153, 0] }
+        });
+        doc.save(`Reporte_Monturas_${startDate}_${endDate}.pdf`);
+    } else {
+        alert('No se encontraron monturas en el rango de fechas seleccionado.');
+    }
+}
+
 // Initial Check & UX Improvements
 document.addEventListener('DOMContentLoaded', () => {
     checkSession();
     setupAutoSelectOnFocus();
+    setupExportLunas();
+    setupExportMonturas();
 });
 
 // HELPER: Auto-select numeric inputs on focus for better UX
@@ -715,7 +920,7 @@ if(btnAddUser) {
 // HELPER: Decrement Montura Stock
 // ==========================================
 
-function decrementMonturaStock(monturaName) {
+function decrementMonturaStock(monturaName, transactionDate) {
     if (!monturaName) return true; // No montura selected, proceed normally
     
     const monturasRows = document.querySelectorAll('#monturasTable tbody tr');
@@ -727,18 +932,34 @@ function decrementMonturaStock(monturaName) {
             
             if (name === monturaName) {
                 const stockCell = cells[2]; // Column 2 is Stock
-                const currentStock = parseInt(stockCell.innerText);
+                const stockText = stockCell.innerText;
                 
-                if (isNaN(currentStock) || currentStock <= 0) {
-                    alert(`No hay stock disponible para la montura "${monturaName}". Stock actual: ${currentStock || 0}`);
-                    return false;
+                // Parse format "Total(Available)"
+                const match = stockText.match(/(\d+)\((\d+)\)/);
+                
+                if (match) {
+                    const total = parseInt(match[1]);
+                    let available = parseInt(match[2]);
+                    
+                    if (available <= 0) {
+                        alert(`No hay stock disponible para la montura "${monturaName}".`);
+                        return false;
+                    }
+                    
+                    // Decrement available
+                    available--;
+                    stockCell.innerText = `${total}(${available})`;
+                    return true;
+                } else {
+                    // Fallback for old format
+                    const currentStock = parseInt(stockText);
+                    if (isNaN(currentStock) || currentStock <= 0) {
+                        alert(`No hay stock disponible.`);
+                        return false;
+                    }
+                    stockCell.innerText = `${currentStock}(${currentStock - 1})`;
+                    return true;
                 }
-                
-                // Decrement stock
-                const newStock = currentStock - 1;
-                stockCell.innerText = newStock;
-                
-                return true;
             }
         }
     }
@@ -764,12 +985,20 @@ function incrementMonturaStock(monturaName) {
             
             if (name === monturaName) {
                 const stockCell = cells[2]; // Column 2 is Stock
-                const currentStock = parseInt(stockCell.innerText);
+                const stockText = stockCell.innerText;
+                const match = stockText.match(/(\d+)\((\d+)\)/);
                 
-                if (!isNaN(currentStock)) {
-                    // Increment stock
-                    const newStock = currentStock + 1;
-                    stockCell.innerText = newStock;
+                if (match) {
+                    const total = match[1];
+                    let available = parseInt(match[2]);
+                    available++;
+                    stockCell.innerText = `${total}(${available})`;
+                } else {
+                    // Fallback
+                    const currentStock = parseInt(stockText);
+                    if (!isNaN(currentStock)) {
+                        stockCell.innerText = `${currentStock}(${currentStock + 1})`;
+                    }
                 }
                 
                 return;
@@ -805,6 +1034,7 @@ if(document.getElementById('c_total') && document.getElementById('c_advance')) {
     document.getElementById('c_advance').addEventListener('input', calculateBalance);
 }
 
+
 // Open Modal Client
 if(btnAddClient) {
     btnAddClient.addEventListener('click', () => {
@@ -812,7 +1042,9 @@ if(btnAddClient) {
         currentEditRowClient = null;
         addFormClient.reset();
         document.querySelector('#addClientModal h2').innerText = 'Agregar Nuevo Cliente';
-        // Set default date to today
+        
+        // Código is now manual, default date
+        document.getElementById('c_id').value = '';
         document.getElementById('c_date').value = getLocalDateString();
         document.getElementById('c_balance').value = 'S/. 0.00';
         
@@ -914,12 +1146,8 @@ function updatePurchaseDataString() {
     const measure = cLunaMeasure ? cLunaMeasure.value : '';
     const montura = selMontura ? selMontura.value : '';
     
-    let parts = [];
-    if(lunaName) parts.push(lunaName);
-    if(measure) parts.push(measure);
-    if(montura) parts.push(montura);
-    
-    cDataInput.value = parts.join(' , ');
+    // Use structured format Luna|Measure|Montura to prevent shifting
+    cDataInput.value = `${lunaName}|${measure}|${montura}`;
 }
 
 // Edit Mode - Load existing data string back into dropdowns (Best Effort)
@@ -988,7 +1216,7 @@ if(addFormClient) {
         const lunaMeasureValue = cLunaMeasure ? cLunaMeasure.value : '';
 
         // Function to ensure Luna product exists or creates it
-        function ensureLunaProduct(code, name, measure) {
+        function ensureLunaProduct(code, name, measure, date) {
             if (!code) return;
             const lunasRows = document.querySelectorAll('#lunasTable tbody tr');
             let exists = false;
@@ -996,6 +1224,8 @@ if(addFormClient) {
                 const cells = row.getElementsByTagName('td');
                 if (cells[0] && cells[0].innerText === code) {
                     exists = true;
+                    // Update date even if exists (sync from transaction)
+                    if (date && cells[6]) cells[6].innerText = date;
                     break;
                 }
             }
@@ -1009,6 +1239,7 @@ if(addFormClient) {
                     <td>${measure}</td>
                     <td>S/.0.00</td>
                     <td>S/.0.00</td>
+                    <td>${date || getLocalDateString()}</td>
                     <td class="actions-cell">
                         <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                         <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
@@ -1021,18 +1252,18 @@ if(addFormClient) {
         if (!isEditingClient) {
             // NEW CLIENT: Check Luna Creation & decrement stock
             if (lunaCodeValue && !chkConsulta.checked) {
-                ensureLunaProduct(lunaCodeValue, lunaNameValue, lunaMeasureValue);
+                ensureLunaProduct(lunaCodeValue, lunaNameValue, lunaMeasureValue, dateRaw);
             }
 
             const selectedMontura = selMontura ? selMontura.value : '';
             if (selectedMontura && !chkConsulta.checked) {
-                const stockDecremented = decrementMonturaStock(selectedMontura);
+                const stockDecremented = decrementMonturaStock(selectedMontura, dateRaw);
                 if (!stockDecremented) return;
             }
         } else {
             // EDITING CLIENT: Check Luna Creation & handle montura change
             if (lunaCodeValue && !chkConsulta.checked) {
-                ensureLunaProduct(lunaCodeValue, lunaNameValue, lunaMeasureValue);
+                ensureLunaProduct(lunaCodeValue, lunaNameValue, lunaMeasureValue, dateRaw);
             }
 
             const selectedMontura = selMontura ? selMontura.value : '';
@@ -1041,7 +1272,7 @@ if(addFormClient) {
                     incrementMonturaStock(originalMonturaName);
                 }
                 if (selectedMontura && selectedMontura !== '' && !chkConsulta.checked) {
-                    const stockDecremented = decrementMonturaStock(selectedMontura);
+                    const stockDecremented = decrementMonturaStock(selectedMontura, dateRaw);
                     if (!stockDecremented) {
                         if (originalMonturaName && originalMonturaName !== '') {
                             decrementMonturaStock(originalMonturaName);
@@ -1049,6 +1280,9 @@ if(addFormClient) {
                         return;
                     }
                 }
+            } else if (selectedMontura && selectedMontura !== '') {
+                // Same montura, but maybe date changed? Sync date.
+                decrementMonturaStock(selectedMontura, dateRaw);
             }
         }
         // ==========================================
@@ -1199,15 +1433,19 @@ if(tableBodyClients) {
                  const datosCompra = cells[2].innerText;
                 
                 if (datosCompra && datosCompra !== 'Consulta') {
-                    // Parse the data string to extract montura
-                    // Format could be: "Luna , Measure , Montura" or just "Montura" or "Luna , Measure"
-                    const parts = datosCompra.split(' , ').map(p => p.trim());
-                    
-                    // Check if any part matches a montura name from the monturas list
-                    for (let i = parts.length - 1; i >= 0; i--) {
-                        if (monturasList.includes(parts[i])) {
-                            originalMonturaName = parts[i];
-                            break;
+                    // Try new format first, then fallback
+                    let parts = [];
+                    if (datosCompra.includes('|')) {
+                        parts = datosCompra.split('|').map(p => p.trim());
+                        originalMonturaName = parts[2] || null;
+                    } else {
+                        parts = datosCompra.split(' , ').map(p => p.trim());
+                        // Check if any part matches a montura name from the monturas list
+                        for (let i = parts.length - 1; i >= 0; i--) {
+                            if (monturasList.includes(parts[i])) {
+                                originalMonturaName = parts[i];
+                                break;
+                            }
                         }
                     }
                 }
@@ -1239,9 +1477,10 @@ if(searchClientInput && tableBodyClients) {
         for (let i = 0; i < rows.length; i++) {
             const cells = rows[i].getElementsByTagName('td');
             let match = false;
-             // Check ID (0), Name (1), Date (4), Status (5)
+             // Check ID (0), Name (1), Purchase Data (2), Date (4), Status (5)
             if (cells[0] && cells[0].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             if (cells[1] && cells[1].innerText.toLowerCase().indexOf(filter) > -1) match = true;
+            if (cells[2] && cells[2].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             if (cells[4] && cells[4].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             if (cells[5] && cells[5].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             
@@ -1407,6 +1646,24 @@ const searchExpenseInput = document.getElementById('searchExpenseInput');
 let isEditingExpense = false;
 let currentEditRowExpense = null;
 
+// Helper to generate next Expense ID (E-001, E-002, etc.)
+function getNextExpenseID() {
+    if (!tableBodyExpenses) return "E-001";
+    const rows = tableBodyExpenses.querySelectorAll('tr');
+    let maxNum = 0;
+    
+    rows.forEach(row => {
+        const idText = row.getElementsByTagName('td')[0].innerText;
+        if (idText.startsWith('E-')) {
+            const num = parseInt(idText.split('-')[1]);
+            if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+    });
+    
+    const nextNum = maxNum + 1;
+    return `E-${nextNum.toString().padStart(3, '0')}`;
+}
+
 // Open Modal Expense
 if(btnAddExpense) {
     btnAddExpense.addEventListener('click', () => {
@@ -1415,7 +1672,8 @@ if(btnAddExpense) {
         addFormExpense.reset();
         document.getElementById('expenseModalTitle').innerText = 'Agregar Nuevo Egreso';
         
-        // Auto-set today's date
+        // Auto-set ID and date
+        document.getElementById('e_id').value = getNextExpenseID();
         document.getElementById('e_date').value = getLocalDateString();
         
         modalExpense.style.display = 'block';
@@ -1913,7 +2171,10 @@ function showDaySummary() {
         expensesTbodyId: '#summaryExpensesTable tbody',
         totalInId: 'sum-total-in',
         totalOutId: 'sum-total-out',
-        balanceId: 'sum-balance'
+        balanceId: 'sum-balance',
+        totalVisaId: 'sum-total-visa',
+        totalYapeId: 'sum-total-yape',
+        totalCashId: 'sum-total-efectivo'
     };
 
     populateSummaryData(today, dateStr, config);
@@ -1930,6 +2191,9 @@ function populateSummaryData(dateObj, dateStr, config) {
 
     let totalIn = 0;
     let totalOut = 0;
+    let totalVisa = 0;
+    let totalYape = 0;
+    let totalCash = 0;
 
     // 1. Process Sales (Clients)
     if (tableBodyClients) {
@@ -1941,15 +2205,31 @@ function populateSummaryData(dateObj, dateStr, config) {
                 const id = cells[0].innerText;
                 const purchaseDataRaw = row.querySelector('.raw-data')?.value || '';
                 const advanceRaw = row.querySelector('.raw-advance');
+                const paymentMethod = row.querySelector('.raw-payment-method')?.value || '';
                 const amount = advanceRaw ? parseFloat(advanceRaw.value) : 0;
+                const status = cells[5].innerHTML; // Get the badge
+
+                let paymentIcon = '';
+                const pMethodLower = paymentMethod.toLowerCase();
+                if (pMethodLower.includes('efectivo')) {
+                    paymentIcon = "<i class='bx bx-money' style='margin-right:5px; color:#27ae60;'></i>";
+                    totalCash += amount;
+                } else if (pMethodLower.includes('yape') || pMethodLower.includes('plin') || pMethodLower.includes('transferencia')) {
+                    paymentIcon = "<i class='bx bx-transfer' style='margin-right:5px; color:#9b59b6;'></i>";
+                    totalYape += amount;
+                } else if (pMethodLower.includes('tarjeta') || pMethodLower.includes('visa')) {
+                    paymentIcon = "<i class='bx bx-credit-card' style='margin-right:5px; color:#2980b9;'></i>";
+                    totalVisa += amount;
+                }
 
                 totalIn += amount;
                 const tr = document.createElement('tr');
-                tr.style.borderBottom = '1px solid #eee';
                 tr.innerHTML = `
-                    <td style="padding: 8px;">${id}</td>
-                    <td style="padding: 8px; font-size: 0.85rem;">${formatPurchaseDataForDisplay(purchaseDataRaw)}</td>
-                    <td style="padding: 8px; text-align: right;">${formatCurrency(amount.toString())}</td>
+                    <td style="font-weight:600; color:#555;">${id}</td>
+                    <td>${formatPurchaseDataForDisplay(purchaseDataRaw)}</td>
+                    <td>${status}</td>
+                    <td><span style="display:flex; align-items:center; font-size:0.9rem; color:#444;">${paymentIcon} ${paymentMethod}</span></td>
+                    <td style="text-align: right; font-weight:700; color:#333;">${formatCurrency(amount.toString())}</td>
                 `;
                 salesTbody.appendChild(tr);
             }
@@ -1976,10 +2256,14 @@ function populateSummaryData(dateObj, dateStr, config) {
     }
 
     // Handle empty states
-    if (salesTbody.innerHTML === '') salesTbody.innerHTML = `<tr><td colspan="3" style="padding: 8px; color: #999; text-align: center;">No hay ingresos este día</td></tr>`;
+    if (salesTbody.innerHTML === '') salesTbody.innerHTML = `<tr><td colspan="5" style="padding: 8px; color: #999; text-align: center;">No hay ingresos este día</td></tr>`;
     if (expensesTbody.innerHTML === '') expensesTbody.innerHTML = `<tr><td colspan="2" style="padding: 8px; color: #999; text-align: center;">No hay egresos este día</td></tr>`;
 
     // 3. Update Footer
+    if (config.totalVisaId) document.getElementById(config.totalVisaId).innerText = formatCurrency(totalVisa.toString());
+    if (config.totalYapeId) document.getElementById(config.totalYapeId).innerText = formatCurrency(totalYape.toString());
+    if (config.totalCashId) document.getElementById(config.totalCashId).innerText = formatCurrency(totalCash.toString());
+
     document.getElementById(config.totalInId).innerText = formatCurrency(totalIn.toString());
     document.getElementById(config.totalOutId).innerText = formatCurrency(totalOut.toString());
     const balance = totalIn - totalOut;
@@ -2046,38 +2330,20 @@ function setupWeeklySummaryModal() {
             const isToday = (i === 0);
             
             btn.className = 'tab-btn';
-            btn.style.padding = '10px 15px';
-            btn.style.border = 'none';
-            btn.style.borderRadius = '20px';
-            btn.style.cursor = 'pointer';
-            
-            // Initial Active State (Today)
             if (isToday) {
-                btn.style.backgroundColor = '#007bff'; // Blue
-                btn.style.color = 'white';
-                currentWeeklyDate = d; // Set initial state
-                selectWeeklyDay(d);    // Load initial data
-            } else {
-                btn.style.backgroundColor = '#f0f0f0';
-                btn.style.color = '#333';
+                btn.classList.add('active');
+                currentWeeklyDate = d;
+                selectWeeklyDay(d);
             }
-
-            btn.style.whiteSpace = 'nowrap';
-            btn.style.transition = 'all 0.3s';
             
             const dayName = d.toLocaleDateString('es-ES', { weekday: 'short' });
             const dayNum = d.getDate();
             btn.innerHTML = `<b>${dayName.toUpperCase()}</b> ${dayNum}`;
             
             btn.addEventListener('click', () => {
-                // Update button styles
-                const allTabs = tabsContainer.querySelectorAll('button');
-                allTabs.forEach(t => {
-                    t.style.backgroundColor = '#f0f0f0';
-                    t.style.color = '#333';
-                });
-                btn.style.backgroundColor = '#007bff';
-                btn.style.color = 'white';
+                const allTabs = tabsContainer.querySelectorAll('.tab-btn');
+                allTabs.forEach(t => t.classList.remove('active'));
+                btn.classList.add('active');
                 
                 selectWeeklyDay(d);
             });
@@ -2099,7 +2365,10 @@ function setupWeeklySummaryModal() {
             expensesTbodyId: '#weeklyExpensesTable tbody',
             totalInId: 'weekly-sum-total-in',
             totalOutId: 'weekly-sum-total-out',
-            balanceId: 'weekly-sum-balance'
+            balanceId: 'weekly-sum-balance',
+            totalVisaId: 'weekly-sum-total-visa',
+            totalYapeId: 'weekly-sum-total-yape',
+            totalCashId: 'weekly-sum-total-efectivo'
         };
 
         populateSummaryData(dateObj, dateStr, config);
@@ -2143,11 +2412,13 @@ function exportSpecificDayToPDF(dateObj, config) {
     const salesTableRows = document.querySelectorAll(`${cfg.salesTbodyId} tr`);
     salesTableRows.forEach(row => {
         const cells = row.querySelectorAll('td');
-        if (cells.length >= 3) {
+        if (cells.length >= 4) {
             salesRows.push([
                 cells[0].innerText,
                 cells[1].innerText,
-                cells[2].innerText
+                cells[2].innerText,
+                cells[3].innerText,
+                cells[4].innerText
             ]);
         }
     });
@@ -2155,7 +2426,7 @@ function exportSpecificDayToPDF(dateObj, config) {
     if (salesRows.length > 0 && !salesRows[0][0].includes('No hay')) {
         doc.autoTable({
             startY: 55,
-            head: [['Cod', 'Vendido', 'Monto']],
+            head: [['Cod', 'Vendido', 'Estado', 'Mod', 'Monto']],
             body: salesRows,
             theme: 'striped',
             headStyles: { fillColor: [46, 204, 113] }
@@ -2247,4 +2518,190 @@ function exportDaySummaryToPDF() {
     exportSpecificDayToPDF(new Date(), dailyConfig);
 }
 
+// ==========================================
+// EXPORT LUNAS & MONTURAS PDF LOGIC
+// ==========================================
 
+function setupExportLunas() {
+    const btnOpen = document.getElementById('btnOpenExportLunas');
+    const modal = document.getElementById('exportLunasModal');
+    const btnGenerate = document.getElementById('btnGenerateLunasPDF');
+    const closeBtn = document.querySelector('.export-lunas-close');
+
+    if (btnOpen && modal) {
+        btnOpen.addEventListener('click', () => {
+            document.getElementById('exportLunasStartDate').value = getLocalDateString();
+            document.getElementById('exportLunasEndDate').value = getLocalDateString();
+            modal.style.display = 'block';
+        });
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => modal.style.display = 'none');
+        }
+
+        if (btnGenerate) {
+            btnGenerate.addEventListener('click', () => {
+                const start = document.getElementById('exportLunasStartDate').value;
+                const end = document.getElementById('exportLunasEndDate').value;
+                generateLunasPDF(start, end);
+                modal.style.display = 'none';
+            });
+        }
+    }
+}
+
+function setupExportMonturas() {
+    const btnOpen = document.getElementById('btnOpenExportMonturas');
+    const modal = document.getElementById('exportMonturasModal');
+    const btnGenerate = document.getElementById('btnGenerateMonturasPDF');
+    const closeBtn = document.querySelector('.export-monturas-close');
+
+    if (btnOpen && modal) {
+        btnOpen.addEventListener('click', () => {
+            document.getElementById('exportMonturasStartDate').value = getLocalDateString();
+            document.getElementById('exportMonturasEndDate').value = getLocalDateString();
+            modal.style.display = 'block';
+        });
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => modal.style.display = 'none');
+        }
+
+        if (btnGenerate) {
+            btnGenerate.addEventListener('click', () => {
+                const start = document.getElementById('exportMonturasStartDate').value;
+                const end = document.getElementById('exportMonturasEndDate').value;
+                generateMonturasPDF(start, end);
+                modal.style.display = 'none';
+            });
+        }
+    }
+}
+
+function generateLunasPDF(startDate, endDate) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    start.setHours(0,0,0,0);
+    end.setHours(23,59,59,999);
+
+    doc.setFontSize(18);
+    doc.text('Reporte de Lunas', 14, 20);
+    doc.setFontSize(11);
+    doc.text(`Rango: ${startDate} al ${endDate}`, 14, 28);
+
+    const rows = [];
+    const lunasTableRows = document.querySelectorAll('#lunasTable tbody tr');
+    
+    lunasTableRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 7) {
+            const rowDateRaw = cells[6].innerText;
+            const rowDate = new Date(rowDateRaw);
+            if (!isNaN(rowDate) && rowDate >= start && rowDate <= end) {
+                rows.push([
+                    cells[0].innerText,
+                    cells[1].innerText,
+                    cells[2].innerText,
+                    cells[3].innerText,
+                    cells[4].innerText,
+                    cells[5].innerText,
+                    rowDateRaw
+                ]);
+            }
+        }
+    });
+
+    if (rows.length > 0) {
+        doc.autoTable({
+            startY: 35,
+            head: [['Cod', 'Nombre', 'Lab', 'Medida', 'Costo', 'Venta', 'Fecha']],
+            body: rows,
+            theme: 'striped',
+            headStyles: { fillColor: [41, 128, 185] }
+        });
+    } else {
+        doc.text('No se encontraron registros en el rango seleccionado.', 14, 40);
+    }
+
+    doc.save(`Reporte_Lunas_${startDate}_${endDate}.pdf`);
+}
+
+function generateMonturasPDF(startDate, endDate) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    start.setHours(0,0,0,0);
+    end.setHours(23,59,59,999);
+
+    doc.setFontSize(18);
+    doc.text('Reporte de Ventas de Monturas', 14, 20);
+    doc.setFontSize(11);
+    doc.text(`Rango: ${startDate} al ${endDate}`, 14, 28);
+    doc.text('Este reporte muestra las monturas vendidas según el historial de clientes.', 14, 34);
+
+    const rows = [];
+    const clientRows = document.querySelectorAll('#clientsTable tbody tr');
+    
+    clientRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const rawDateField = row.querySelector('.raw-date');
+        const rawDataField = row.querySelector('.raw-data');
+        
+        if (rawDateField && rawDataField) {
+            const rowDate = new Date(rawDateField.value);
+            if (!isNaN(rowDate) && rowDate >= start && rowDate <= end) {
+                const dataString = rawDataField.value;
+                if (dataString && dataString !== 'Consulta') {
+                    let monturaSold = '';
+                    
+                    if (dataString.includes('|')) {
+                        const parts = dataString.split('|').map(p => p.trim());
+                        monturaSold = parts[2] || '';
+                    } else {
+                        // Compatibility for old format
+                        const parts = dataString.split(' , ').map(p => p.trim());
+                        if (parts.length >= 3) {
+                            monturaSold = parts[2];
+                        } else if (parts.length === 1 && !parts[0].toLowerCase().includes('luna')) {
+                            monturaSold = parts[0];
+                        }
+                    }
+
+                    if (monturaSold) {
+                        rows.push([
+                            rawDateField.value,
+                            cells[1].innerText, // Client Name
+                            monturaSold,
+                            cells[7].innerText  // Total Sales (Monto)
+                        ]);
+                    }
+                }
+            }
+        }
+    });
+
+    if (rows.length > 0) {
+        doc.autoTable({
+            startY: 40,
+            head: [['Fecha', 'Cliente', 'Modelo Montura', 'Monto Venta']],
+            body: rows,
+            theme: 'striped',
+            headStyles: { fillColor: [231, 76, 60] }
+        });
+    } else {
+        doc.text('No se encontraron ventas de monturas en el rango seleccionado.', 14, 45);
+    }
+
+    doc.save(`Reporte_Ventas_Monturas_${startDate}_${endDate}.pdf`);
+}
+
+// Call setups
+window.addEventListener('DOMContentLoaded', () => {
+    setupExportLunas();
+    setupExportMonturas();
+});

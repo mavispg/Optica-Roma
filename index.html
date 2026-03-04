@@ -26,10 +26,14 @@
         <div class="login-bg-overlay"></div>
         <div class="login-box">
             <div class="login-header">
-                <div class="logo-circle">
-                    <i class='bx bxs-glasses'></i>
+                <div class="brand-logo">
+                    <i class='bx bx-glasses brand-icon'></i>
+                    <div class="brand-text-row">
+                        <div class="brand-block opticas">OPTICAS</div>
+                        <div class="brand-block roma">ROMA</div>
+                    </div>
                 </div>
-                <h2>OPTICA ROMA</h2>
+                <h2>OPTICA <span>ROMA</span></h2>
                 <p>Bienvenido al Sistema</p>
             </div>
             <form id="loginForm">
@@ -53,8 +57,13 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo-details">
-                <i class='bx bxs-glasses icon'></i> 
-                <div class="logo_name">OPTICA ROMA</div>
+                <div class="brand-logo" style="flex-direction: row; gap: 12px;">
+                    <i class='bx bx-glasses brand-icon' style="font-size: 32px; margin: 0;"></i>
+                    <div class="brand-text-row" style="align-items: flex-start; gap: 3px;">
+                        <div class="brand-block opticas" style="font-size: 14px; padding: 2px 8px;">OPTICAS</div>
+                        <div class="brand-block roma" style="font-size: 14px; padding: 2px 8px; margin-left: 20px;">ROMA</div>
+                    </div>
+                </div>
                 <i class='bx bx-x' id="mobileCloseBtn"></i>
             </div>
             <ul class="nav-list">
@@ -232,9 +241,14 @@
                         <i class='bx bx-search'></i>
                         <input type="text" id="searchInput" placeholder="search">
                     </div>
-                    <button class="btn-green" id="btnAddLunal">
-                        <i class='bx bx-plus'></i> Agregar
-                    </button>
+                    <div class="actions-group">
+                        <button class="btn-green" id="btnAddLunal">
+                            <i class='bx bx-plus'></i> Agregar
+                        </button>
+                        <button class="btn-red" id="btnOpenExportLunas">
+                            <i class='bx bxs-file-pdf'></i> Exportar PDF
+                        </button>
+                    </div>
                 </div>
 
                 <div class="white-box">
@@ -247,7 +261,7 @@
                                 <th>Medida</th>
                                 <th>Precio Compra</th>
                                 <th>Precio Venta</th>
-
+                                <th>Fecha</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -260,6 +274,7 @@
                                 <td>-2.00 -0.50 x 10</td>
                                 <td>S/.90.00</td>
                                 <td>S/.150.00</td>
+                                <td>2023-11-20</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
@@ -273,6 +288,7 @@
                                 <td>4.0</td>
                                 <td>S/.120.00</td>
                                 <td>S/.210.00</td>
+                                <td>2023-11-21</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
@@ -286,6 +302,7 @@
                                 <td>3.0</td>
                                 <td>S/.210.00</td>
                                 <td>S/.420.00</td>
+                                <td>2023-11-22</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
                                     <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
@@ -308,9 +325,14 @@
                         <i class='bx bx-search'></i>
                         <input type="text" id="searchMonturasInput" placeholder="search">
                     </div>
-                    <button class="btn-green" id="btnAddMontura">
-                        <i class='bx bx-plus'></i> Agregar
-                    </button>
+                    <div class="actions-group">
+                        <button class="btn-green" id="btnAddMontura">
+                            <i class='bx bx-plus'></i> Agregar
+                        </button>
+                        <button class="btn-red" id="btnOpenExportMonturas">
+                            <i class='bx bxs-file-pdf'></i> Exportar PDF
+                        </button>
+                    </div>
                 </div>
 
                  <div class="white-box">
@@ -328,7 +350,7 @@
                              <tr>
                                 <td>001</td>
                                 <td>Montura completa</td>
-                                <td>15</td>
+                                <td>15(15)</td>
                                 <td>S/.150.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
@@ -338,7 +360,7 @@
                             <tr>
                                 <td>002</td>
                                 <td>Montura combinada</td>
-                                <td>10</td>
+                                <td>10(10)</td>
                                 <td>S/.210.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
@@ -348,7 +370,7 @@
                              <tr>
                                 <td>003</td>
                                 <td>Aviador</td>
-                                <td>18</td>
+                                <td>18(18)</td>
                                 <td>S/.420.00</td>
                                 <td class="actions-cell">
                                     <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
@@ -395,7 +417,7 @@
                     <table class="custom-table" id="clientsTable">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>Código</th>
                                 <th>Nombre</th>
                                 <th>Datos de Compra</th>
                                 <th>Celular</th>
@@ -514,7 +536,7 @@
                     <table class="custom-table" id="expensesTable">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>Código</th>
                                 <th>Fecha</th>
                                 <th>Categoría</th>
                                 <th>Descripción</th>
@@ -646,6 +668,10 @@
                     <label>Precio Venta</label>
                     <input type="text" id="sellPrice" placeholder="S/.0.00">
                 </div>
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="l_date" required>
+                </div>
                 <button type="submit" class="submit-btn">Guardar</button>
             </form>
         </div>
@@ -665,14 +691,15 @@
                     <label>Nombre</label>
                     <input type="text" id="m_name" required>
                 </div>
-
-                <div class="form-group">
-                    <label>Stock</label>
-                    <input type="number" id="m_stock" required>
-                </div>
-                <div class="form-group">
-                    <label>Precio Venta</label>
-                    <input type="text" id="m_sellPrice" placeholder="S/.0.00">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Stock Inicial</label>
+                        <input type="number" id="m_stock" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Precio Venta</label>
+                        <input type="number" step="0.01" id="m_sell_price" required>
+                    </div>
                 </div>
                 <button type="submit" class="submit-btn">Guardar</button>
             </form>
@@ -688,7 +715,7 @@
             <form id="addClientForm">
                 <div class="form-row">
                     <div class="form-group">
-                        <label>ID</label>
+                        <label>Código</label>
                         <input type="text" id="c_id" required>
                     </div>
                 </div>
@@ -768,8 +795,8 @@
             <form id="addExpenseForm">
                 <div class="form-row">
                     <div class="form-group">
-                        <label>ID</label>
-                        <input type="text" id="e_id" required>
+                        <label>Código</label>
+                        <input type="text" id="e_id" readonly style="background-color: #f0f0f0; cursor: not-allowed;">
                     </div>
                     <div class="form-group">
                         <label>Fecha</label>
@@ -856,24 +883,68 @@
         </div>
     </div>
 
+    <!-- Modal for Export Lunas PDF -->
+    <div id="exportLunasModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn export-lunas-close">&times;</span>
+            <h2>Exportar Reporte de Lunas</h2>
+            <p style="margin-bottom: 15px; color: #666;">Selecciona el rango de fechas para el reporte:</p>
+            <div class="form-group">
+                <label>Desde:</label>
+                <input type="date" id="exportLunasStartDate">
+            </div>
+            <div class="form-group">
+                <label>Hasta:</label>
+                <input type="date" id="exportLunasEndDate">
+            </div>
+            <button id="btnGenerateLunasPDF" class="submit-btn" style="background-color: #e74c3c; margin-top: 10px;">
+                <i class='bx bxs-download'></i> Descargar PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for Export Monturas PDF -->
+    <div id="exportMonturasModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn export-monturas-close">&times;</span>
+            <h2>Exportar Reporte de Monturas</h2>
+            <p style="margin-bottom: 15px; color: #666;">Selecciona el rango de fechas para el reporte:</p>
+            <div class="form-group">
+                <label>Desde:</label>
+                <input type="date" id="exportMonturasStartDate">
+            </div>
+            <div class="form-group">
+                <label>Hasta:</label>
+                <input type="date" id="exportMonturasEndDate">
+            </div>
+            <button id="btnGenerateMonturasPDF" class="submit-btn" style="background-color: #e74c3c; margin-top: 10px;">
+                <i class='bx bxs-download'></i> Descargar PDF
+            </button>
+        </div>
+    </div>
+
     <!-- Modal Resumen Diario -->
     <div id="daySummaryModal" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <span class="summary-close" style="float: right; cursor: pointer; font-size: 28px;">&times;</span>
-            <h2 id="summaryModalTitle">Resumen Financiero</h2>
-            <p id="summaryModalDate" style="color: #666; margin-bottom: 20px;"></p>
+        <div class="modal-content">
+            <div class="summary-header">
+                <span class="summary-close">&times;</span>
+                <h2 id="summaryModalTitle">Resumen Financiero</h2>
+                <p id="summaryModalDate"></p>
+            </div>
             
-            <div class="summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="summary-grid">
                 <div class="summary-box">
-                    <h3 style="color: var(--green-card); border-bottom: 2px solid var(--green-card); margin-bottom: 10px;">
+                    <h3 style="color: var(--green-card);">
                         <i class='bx bx-trending-up'></i> Ingresos (Ventas)
                     </h3>
-                    <table id="summarySalesTable" style="width: 100%; border-collapse: collapse;">
+                    <table id="summarySalesTable" class="summary-table">
                         <thead>
-                            <tr style="text-align: left; border-bottom: 1px solid #ddd;">
-                                <th style="padding: 8px;">Cod</th>
-                                <th style="padding: 8px;">Vendido</th>
-                                <th style="padding: 8px; text-align: right;">Monto</th>
+                            <tr>
+                                <th>Cod</th>
+                                <th>Vendido</th>
+                                <th>Estado</th>
+                                <th>Modalidad</th>
+                                <th style="text-align: right;">Monto</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -881,14 +952,14 @@
                 </div>
                 
                 <div class="summary-box">
-                    <h3 style="color: var(--red-card); border-bottom: 2px solid var(--red-card); margin-bottom: 10px;">
+                    <h3 style="color: var(--red-card);">
                         <i class='bx bx-trending-down'></i> Egresos (Gastos)
                     </h3>
-                    <table id="summaryExpensesTable" style="width: 100%; border-collapse: collapse;">
+                    <table id="summaryExpensesTable" class="summary-table">
                         <thead>
-                            <tr style="text-align: left; border-bottom: 1px solid #ddd;">
-                                <th style="padding: 8px;">Descripción</th>
-                                <th style="padding: 8px; text-align: right;">Monto</th>
+                            <tr>
+                                <th>Descripción</th>
+                                <th style="text-align: right;">Monto</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -896,18 +967,45 @@
                 </div>
             </div>
             
-            <div class="summary-footer" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div class="summary-actions">
-                        <button id="btnDownloadDayPDF" class="submit-btn" style="background-color: #e74c3c; width: auto; padding: 10px 20px; margin-top: 0;">
-                            <i class='bx bxs-file-pdf'></i> Descargar PDF
+            <div class="summary-footer">
+                <div class="summary-totals-grid" style="justify-content: space-between; align-items: center;">
+                    <!-- Left: PDF Action -->
+                    <div class="summary-actions" style="flex: 0 0 auto;">
+                        <button id="btnDownloadDayPDF" class="btn-red" style="padding: 12px 25px; font-weight: 700;">
+                            <i class='bx bxs-file-pdf'></i> PDF
                         </button>
                     </div>
-                    <div class="summary-totals" style="text-align: right;">
-                        <div style="font-size: 1.1rem; margin-bottom: 5px;">Total Ingresos: <b id="sum-total-in" style="color: var(--green-card);">S/. 0.00</b></div>
-                        <div style="font-size: 1.1rem; margin-bottom: 5px;">Total Egresos: <b id="sum-total-out" style="color: var(--red-card);">S/. 0.00</b></div>
-                        <hr style="margin: 10px 0; border: 0; border-top: 2px solid #ddd;">
-                        <div style="font-size: 1.4rem;">Balance Neto: <b id="sum-balance" style="color: #333;">S/. 0.00</b></div>
+
+                    <!-- Middle: Payment Method Breakdowns (Increased gap) -->
+                    <div class="payment-methods-breakdown" style="display: flex; gap: 50px; flex: 1; justify-content: center; margin: 0 40px;">
+                        <div class="total-item" style="text-align: center;">
+                            <span class="total-label" style="font-size: 10px;">VISA</span>
+                            <span class="total-value" id="sum-total-visa" style="font-size: 16px; color: #2980b9;">S/. 0.00</span>
+                        </div>
+                        <div class="total-item" style="text-align: center;">
+                            <span class="total-label" style="font-size: 10px;">YAPE</span>
+                            <span class="total-value" id="sum-total-yape" style="font-size: 16px; color: #9b59b6;">S/. 0.00</span>
+                        </div>
+                        <div class="total-item" style="text-align: center;">
+                            <span class="total-label" style="font-size: 10px;">EFECTIVO</span>
+                            <span class="total-value" id="sum-total-efectivo" style="font-size: 16px; color: #27ae60;">S/. 0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Right: Overall Totals (Increased gap) -->
+                    <div style="display: flex; gap: 50px; align-items: center;">
+                        <div class="total-item">
+                            <span class="total-label">Total Ingresos</span>
+                            <span class="total-value" id="sum-total-in" style="color: var(--green-card);">S/. 0.00</span>
+                        </div>
+                        <div class="total-item">
+                            <span class="total-label">Total Egresos</span>
+                            <span class="total-value" id="sum-total-out" style="color: var(--red-card);">S/. 0.00</span>
+                        </div>
+                        <div class="total-item balance-card">
+                            <span class="total-label">Balance Neto</span>
+                            <span class="total-value" id="sum-balance">S/. 0.00</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -916,30 +1014,36 @@
 
     <!-- Modal Resumen Semanal -->
     <div id="weeklySummaryModal" class="modal">
-        <div class="modal-content" style="max-width: 900px;">
-            <span class="weekly-close" style="float: right; cursor: pointer; font-size: 28px;">&times;</span>
-            <h2>Navegador Semanal</h2>
-            <p style="color: #666; margin-bottom: 20px;">Selecciona el día para ver el reporte detallado:</p>
-            
-            <!-- Day Selection Tabs -->
-            <div id="weeklyDayTabs" class="day-tabs" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; border-bottom: 1px solid #eee;">
-                <!-- Generated by JS -->
-            </div>
-
-            <div id="weeklyContentArea">
-                <h3 id="weeklyModalDateDisplay" style="margin-bottom: 15px; color: #333;"></h3>
+        <div class="modal-content">
+            <div class="summary-header" style="padding-bottom: 20px;">
+                <span class="weekly-close">&times;</span>
+                <h2>Navegador Semanal</h2>
+                <p style="margin-bottom: 20px;">Selecciona el día para ver el reporte detallado:</p>
                 
-                <div class="summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <!-- Day Selection Tabs (Moved inside header) -->
+                <div id="weeklyDayTabs" class="day-tabs">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+            
+            <div id="weeklyContentArea" style="padding-top: 20px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin: 0 40px 10px 40px;">
+                    <h3 id="weeklyModalDateDisplay" style="margin: 0; color: #475569; font-size: 1.1rem; font-weight: 600;"></h3>
+                </div>
+                
+                <div class="summary-grid">
                     <div class="summary-box">
-                        <h3 style="color: var(--green-card); border-bottom: 2px solid var(--green-card); margin-bottom: 10px;">
+                        <h3 style="color: var(--green-card);">
                             <i class='bx bx-trending-up'></i> Ingresos (Ventas)
                         </h3>
-                        <table id="weeklySalesTable" style="width: 100%; border-collapse: collapse;">
+                        <table id="weeklySalesTable" class="summary-table">
                             <thead>
-                                <tr style="text-align: left; border-bottom: 1px solid #ddd;">
-                                    <th style="padding: 8px;">Cod</th>
-                                    <th style="padding: 8px;">Vendido</th>
-                                    <th style="padding: 8px; text-align: right;">Monto</th>
+                                <tr>
+                                    <th>Cod</th>
+                                    <th>Vendido</th>
+                                    <th>Estado</th>
+                                    <th>Modalidad</th>
+                                    <th style="text-align: right;">Monto</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -947,14 +1051,14 @@
                     </div>
                     
                     <div class="summary-box">
-                        <h3 style="color: var(--red-card); border-bottom: 2px solid var(--red-card); margin-bottom: 10px;">
+                        <h3 style="color: var(--red-card);">
                             <i class='bx bx-trending-down'></i> Egresos (Gastos)
                         </h3>
-                        <table id="weeklyExpensesTable" style="width: 100%; border-collapse: collapse;">
+                        <table id="weeklyExpensesTable" class="summary-table">
                             <thead>
-                                <tr style="text-align: left; border-bottom: 1px solid #ddd;">
-                                    <th style="padding: 8px;">Descripción</th>
-                                    <th style="padding: 8px; text-align: right;">Monto</th>
+                                <tr>
+                                    <th>Descripción</th>
+                                    <th style="text-align: right;">Monto</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -962,18 +1066,45 @@
                     </div>
                 </div>
                 
-                <div class="summary-footer" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div class="summary-actions">
-                            <button id="btnDownloadWeeklyPDF" class="submit-btn" style="background-color: #e74c3c; width: auto; padding: 10px 20px; margin-top: 0;">
-                                <i class='bx bxs-file-pdf'></i> Descargar PDF
+                <div class="summary-footer">
+                    <div class="summary-totals-grid" style="justify-content: space-between; align-items: center;">
+                        <!-- Left: PDF Action -->
+                        <div class="summary-actions" style="flex: 0 0 auto;">
+                            <button id="btnDownloadWeeklyPDF" class="btn-red" style="padding: 12px 25px; font-weight: 700;">
+                                <i class='bx bxs-file-pdf'></i> PDF
                             </button>
                         </div>
-                        <div class="summary-totals" style="text-align: right;">
-                            <div style="font-size: 1.1rem; margin-bottom: 5px;">Total Ingresos: <b id="weekly-sum-total-in" style="color: var(--green-card);">S/. 0.00</b></div>
-                            <div style="font-size: 1.1rem; margin-bottom: 5px;">Total Egresos: <b id="weekly-sum-total-out" style="color: var(--red-card);">S/. 0.00</b></div>
-                            <hr style="margin: 10px 0; border: 0; border-top: 2px solid #ddd;">
-                            <div style="font-size: 1.4rem;">Balance Neto: <b id="weekly-sum-balance" style="color: #333;">S/. 0.00</b></div>
+
+                        <!-- Middle: Payment Method Breakdowns (Increased gap) -->
+                        <div class="payment-methods-breakdown" style="display: flex; gap: 50px; flex: 1; justify-content: center; margin: 0 40px;">
+                            <div class="total-item" style="text-align: center;">
+                                <span class="total-label" style="font-size: 10px;">VISA</span>
+                                <span class="total-value" id="weekly-sum-total-visa" style="font-size: 16px; color: #2980b9;">S/. 0.00</span>
+                            </div>
+                            <div class="total-item" style="text-align: center;">
+                                <span class="total-label" style="font-size: 10px;">YAPE/PLIN</span>
+                                <span class="total-value" id="weekly-sum-total-yape" style="font-size: 16px; color: #9b59b6;">S/. 0.00</span>
+                            </div>
+                            <div class="total-item" style="text-align: center;">
+                                <span class="total-label" style="font-size: 10px;">EFECTIVO</span>
+                                <span class="total-value" id="weekly-sum-total-efectivo" style="font-size: 16px; color: #27ae60;">S/. 0.00</span>
+                            </div>
+                        </div>
+
+                        <!-- Right: Overall Totals (Increased gap) -->
+                        <div style="display: flex; gap: 50px; align-items: center;">
+                            <div class="total-item">
+                                <span class="total-label">Total Ingresos</span>
+                                <span class="total-value" id="weekly-sum-total-in" style="color: var(--green-card);">S/. 0.00</span>
+                            </div>
+                            <div class="total-item">
+                                <span class="total-label">Total Egresos</span>
+                                <span class="total-value" id="weekly-sum-total-out" style="color: var(--red-card);">S/. 0.00</span>
+                            </div>
+                            <div class="total-item balance-card">
+                                <span class="total-label">Balance Neto</span>
+                                <span class="total-value" id="weekly-sum-balance">S/. 0.00</span>
+                            </div>
                         </div>
                     </div>
                 </div>

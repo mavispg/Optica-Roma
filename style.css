@@ -82,11 +82,53 @@ body {
     color: #fff;
 }
 
+/* Brand Identity - Official Logo Style */
+.brand-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.brand-icon {
+    font-size: 75px; /* Increased from 50px */
+    color: #2e61b3;
+    margin-bottom: 12px;
+}
+
+.brand-text-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.brand-block {
+    display: inline-block;
+    padding: 6px 20px; /* Increased padding */
+    font-size: 32px;    /* Increased from 22px */
+    font-weight: 800;
+    text-transform: uppercase;
+    font-family: 'Times New Roman', serif;
+    letter-spacing: 2px;
+}
+
+.brand-block.opticas {
+    background-color: #2e61b3;
+    color: #fff;
+    margin-right: 30px; /* Offset like the logo */
+    transform: skew(-5deg); /* Subtle tilt like the logo appears to have */
+}
+
+.brand-block.roma {
+    background-color: #e2e8f0;
+    color: #2e61b3;
+    margin-left: 40px; /* Offset like the logo */
+    transform: skew(-5deg);
+}
+
 .login-header h2 {
-    color: #333;
-    margin-bottom: 5px;
-    font-weight: 600;
-    letter-spacing: 1px;
+    display: none; /* Hide old title */
 }
 
 .login-header p {
@@ -207,13 +249,25 @@ body {
   color: #000;
 }
 
+/* Sidebar Logo Adjustment */
+.sidebar .logo-details {
+    height: 100px;
+    justify-content: center;
+    padding: 10px;
+}
+
+.sidebar .brand-block {
+    font-size: 18px; /* Increased from 16px */
+    padding: 3px 10px;
+}
+
+.sidebar .brand-icon {
+    font-size: 36px; /* Increased from 30px */
+    margin-bottom: 5px;
+}
+
 .sidebar .logo-details .logo_name {
-  color: #000;
-  font-size: 20px;
-  font-weight: 700;
-  white-space: nowrap;
-  opacity: 1;
-  transition: 0.3s;
+    display: none; /* Already integrated in brand-logo */
 }
 
 #mobileCloseBtn {
@@ -479,6 +533,28 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+    transition: background 0.3s;
+}
+.btn-green:hover {
+    background: #007700;
+}
+
+.btn-red {
+    background: #e74c3c;
+    color: #fff;
+    border: none;
+    padding: 10px 25px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.3s;
+}
+.btn-red:hover {
+    background: #c0392b;
 }
 .btn-green i {
     font-size: 20px;
@@ -1172,3 +1248,239 @@ body {
     }
 }
 
+
+/* ==========================================
+   MODERN FINANCIAL SUMMARY STYLES (PREMIUM)
+   ========================================== */
+
+/* Enhanced Modal for Summary */
+#daySummaryModal .modal-content,
+#weeklySummaryModal .modal-content {
+    max-width: 1150px;
+    width: 95%;
+    border-radius: 20px;
+    padding: 0;
+    background: #f8fafc; /* Clinical Slate-White background */
+    box-shadow: 0 30px 60px rgba(46, 97, 179, 0.15), 0 10px 20px rgba(0,0,0,0.05); /* Soft Blue Shadow */
+    overflow: hidden;
+    border: 1px solid rgba(46, 97, 179, 0.2);
+    animation: modalPopIn 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.summary-header {
+    background: #2e61b3; /* Final Blue requested by User */
+    padding: 30px 40px;
+    margin-bottom: 0;
+    border-bottom: none;
+    position: relative;
+    color: #fff;
+    display: block; /* Ensure it takes full width */
+}
+
+.summary-header h2 {
+    color: #fff;
+    margin: 0 0 10px 0;
+    font-size: 26px;
+    font-weight: 700;
+}
+
+#summaryModalTitle {
+    font-size: 26px;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+#summaryModalDate {
+    font-size: 14px;
+    color: rgba(255,255,255,0.9);
+    margin: 5px 0 0 0;
+}
+
+.summary-close, .weekly-close {
+    color: #fff !important;
+    opacity: 0.8;
+    transition: all 0.3s;
+    position: absolute;
+    top: 25px;
+    right: 30px;
+    font-size: 32px;
+    float: none !important;
+}
+
+.summary-close:hover, .weekly-close:hover {
+    opacity: 1;
+    transform: rotate(90deg) scale(1.1);
+}
+
+/* Container spacing */
+.summary-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 0.6fr; 
+    gap: 30px;
+    padding: 30px 40px;
+}
+
+/* Card-like summary boxes */
+.summary-box {
+    background: #fff;
+    border-radius: 15px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(46, 97, 179, 0.03);
+    border: 1px solid #e2e8f0;
+}
+
+.summary-box h3 {
+    font-size: 19px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+    font-weight: 700;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+/* Enhanced Tables */
+.summary-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.summary-table th {
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 15px 12px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.summary-table td {
+    padding: 18px 12px;
+    font-size: 14px;
+    color: #1e293b;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.summary-table tbody tr:hover td {
+    background: #f8fafc; 
+    color: #2e61b3;
+}
+
+/* Totals Section Refined */
+.summary-footer {
+    background: #fff !important;
+    border: none !important;
+    border-top: 1px solid #e2e8f0 !important;
+    padding: 30px 40px !important;
+    border-radius: 0 0 20px 20px !important;
+    margin: 0;
+}
+
+.summary-totals-grid {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 40px;
+}
+
+.total-item {
+    text-align: right;
+}
+
+.total-item .total-label {
+    display: block;
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+
+.total-item .total-value {
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.balance-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+    padding: 15px 35px !important;
+    border-radius: 16px;
+    border: 2px solid rgba(46, 97, 179, 0.2);
+    box-shadow: 0 10px 25px rgba(46, 97, 179, 0.08);
+}
+
+.balance-card .total-value {
+    font-size: 32px;
+    color: #1a202c;
+}
+
+/* Animations */
+@keyframes slideInUp {
+    from { transform: translateY(15px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.summary-table tbody tr {
+    animation: slideInUp 0.4s cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+
+/* Staggered effects */
+.summary-table tbody tr:nth-child(1) { animation-delay: 0.1s; }
+.summary-table tbody tr:nth-child(2) { animation-delay: 0.15s; }
+.summary-table tbody tr:nth-child(3) { animation-delay: 0.2s; }
+.summary-table tbody tr:nth-child(4) { animation-delay: 0.25s; }
+.summary-table tbody tr:nth-child(5) { animation-delay: 0.3s; }
+
+/* Weekly Navigation Tabs */
+.day-tabs {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.tab-btn {
+    border: none;
+    padding: 10px 18px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255, 255, 255, 0.15); /* Glass effect */
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab-btn b {
+    font-weight: 800;
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.tab-btn.active {
+    background: #fff;
+    color: #2e61b3; /* Brand Blue */
+    font-weight: 700;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.tab-btn.active b {
+    opacity: 1;
+}
