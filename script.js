@@ -1127,7 +1127,6 @@ function updateClientProductDropdowns() {
     }
 }
 
-// Helper to toggle dropdowns based on Checkbox
 // Helper to toggle dropdowns (Simplified as it no longer blocks based on Vendedor)
 function toggleProductSelection(enable) {
     if(cLunaName) cLunaName.disabled = !enable;
@@ -1139,7 +1138,6 @@ function toggleProductSelection(enable) {
     }
 }
 
-// Checkbox Listener
 // Listener for Consulta changed - just update string if needed
 if(selConsulta) {
     selConsulta.addEventListener('change', updatePurchaseDataString);
@@ -1147,25 +1145,27 @@ if(selConsulta) {
 if(cOthers) {
     cOthers.addEventListener('input', updatePurchaseDataString);
 }
-
+    
 // Split Payment Toggle Logic
 const chkSplitPayment = document.getElementById('chk_split_payment');
 const splitPaymentContainer = document.getElementById('split_payment_container');
 const singlePaymentContainer = document.getElementById('single_payment_container');
+const cPaymentMethod = document.getElementById('c_payment_method');
 
-if (chkSplitPayment && splitPaymentContainer && singlePaymentContainer) {
+if (chkSplitPayment) {
     chkSplitPayment.addEventListener('change', function() {
         if (this.checked) {
-            splitPaymentContainer.style.display = 'block';
-            singlePaymentContainer.style.display = 'none';
-            document.getElementById('c_payment_method').required = false;
+            if (splitPaymentContainer) splitPaymentContainer.style.display = 'block';
+            if (singlePaymentContainer) singlePaymentContainer.style.display = 'none';
+            if (cPaymentMethod) cPaymentMethod.required = false;
         } else {
-            splitPaymentContainer.style.display = 'none';
-            singlePaymentContainer.style.display = 'block';
-            document.getElementById('c_payment_method').required = true;
+            if (splitPaymentContainer) splitPaymentContainer.style.display = 'none';
+            if (singlePaymentContainer) singlePaymentContainer.style.display = 'block';
+            if (cPaymentMethod) cPaymentMethod.required = true;
         }
     });
 }
+
 
 // Listeners for Luna inputs
 const cIdInput = document.getElementById('c_id');
