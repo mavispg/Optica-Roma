@@ -621,32 +621,66 @@ body {
 
 /* Action Buttons */
 .actions-cell {
+    width: 100px;
+}
+.actions-wrapper {
     display: flex;
     gap: 10px;
+    align-items: center;
+    justify-content: flex-start;
 }
 .icon-btn {
-    background: none;
     border: none;
+    background: none;
+    font-size: 1.25rem;
     cursor: pointer;
-    font-size: 20px;
-    padding: 5px;
-    border-radius: 50%;
-    transition: background 0.2s;
+    transition: color 0.3s ease;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.icon-btn .bx-trash {
-    background: #000;
-    color: #fff;
-    border-radius: 50%;
-    padding: 4px;
-    font-size: 16px;
+.edit-btn {
+    color: var(--primary-color);
 }
-.icon-btn .bx-edit-alt {
-    background: #000;
-    color: #fff; /* Inverted for high contrast wireframe look */
-    border-radius: 4px; /* Slight variation */
-    padding: 4px;
-    font-size: 16px; 
-    border-radius: 0 0 0 10px; /* just mimicking the icon look */
+.edit-btn:hover {
+    color: var(--secondary-color);
+}
+.delete-btn {
+    color: #e74c3c;
+}
+.delete-btn:hover {
+    color: #c0392b;
+}
+.pay-btn {
+    color: #27ae60;
+}
+.pay-btn:hover {
+    color: #219150;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.status-paid {
+    background-color: #eafaf1;
+    color: #27ae60;
+}
+.status-advance {
+    background-color: #fef9e7;
+    color: #f1c40f;
+}
+.status-pending {
+    background-color: #fcece8;
+    color: #e67e22;
+}
+.status-partial {
+    background-color: #fef9e7;
+    color: #f1c40f;
 }
 /* Let's stick to simple FontAwesome-like styling for icons */
 .icon-btn i {
@@ -1108,6 +1142,11 @@ body {
 .payment-visa {
     background-color: #fff3cd;
     color: #856404;
+}
+
+.payment-stack .payment-badge {
+    padding: 2px 8px;
+    margin-bottom: 2px;
 }
 /* Tax Summary Section (SUNAT) */
 .tax-summary {

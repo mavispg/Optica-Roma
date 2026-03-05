@@ -79,6 +79,8 @@ function formatPurchaseDataForDisplay(dataString) {
         if (parts[0]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>${parts[0]}</span>`;
         if (parts[1]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>${parts[1]}</span>`;
         if (parts[2]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>${parts[2]}</span>`;
+        if (parts[3]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Consulta:</span>${parts[3]}</span>`;
+        if (parts[4]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Otros:</span>${parts[4]}</span>`;
     } else {
         // Fallback for old records
         if (parts.length === 1) {
@@ -100,22 +102,27 @@ function formatPurchaseDataForDisplay(dataString) {
 // ==========================================
 // HELPER: Format Payment Method Badge
 // ==========================================
-
+// Helper to format payment method badge (Supports split payments)
 function formatPaymentMethodBadge(method) {
-    if (!method) return '';
+    if (!method) return '<span class="status-badge status-pending">N/A</span>';
     
-    const methodLower = method.toLowerCase();
-    let badgeClass = 'payment-badge';
-    
-    if (methodLower === 'efectivo') {
-        badgeClass += ' payment-efectivo';
-    } else if (methodLower === 'yape') {
-        badgeClass += ' payment-yape';
-    } else if (methodLower === 'visa') {
-        badgeClass += ' payment-visa';
+    // Check if it's a split payment (e.g., "Efectivo:50|Yape:30")
+    if (method.includes('|')) {
+        const parts = method.split('|');
+        const badgesHtml = parts.map(part => {
+            const [name, amount] = part.split(':');
+            const type = name.toLowerCase();
+            const colorClass = (type === 'efectivo') ? 'efectivo' : (type === 'yape' ? 'yape' : 'visa');
+            const displayAmount = amount ? ` S/. ${parseFloat(amount).toFixed(2)}` : '';
+            return `<span class="payment-badge payment-${colorClass}" style="margin-bottom: 4px; display: block; width: fit-content; white-space: nowrap;">${name}${displayAmount}</span>`;
+        }).join('');
+        return `<div class="payment-stack" style="display: flex; flex-direction: column; align-items: flex-start;">${badgesHtml}</div>`;
     }
-    
-    return `<span class="${badgeClass}">${method}</span>`;
+
+    // Standard single payment
+    const type = method.toLowerCase();
+    const colorClass = (type === 'efectivo') ? 'efectivo' : (type === 'yape' ? 'yape' : 'visa');
+    return `<span class="payment-badge payment-${colorClass}">${method}</span>`;
 }
 
 
@@ -886,6 +893,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAutoSelectOnFocus();
     setupExportLunas();
     setupExportMonturas();
+    // setupDoctorSettlement(); // REMOVED
+    updateFinancialDashboards();
+    setupSummaryModal();
+    setupWeeklySummaryModal();
 });
 
 // HELPER: Auto-select numeric inputs on focus for better UX
@@ -894,7 +905,7 @@ function setupAutoSelectOnFocus() {
         'buyPrice', 'sellPrice', 
         'm_sellPrice', 'm_stock',
         'c_total', 'c_advance',
-        'e_amount'
+        'e_amount', 'split_amount_1', 'split_amount_2'
     ];
     
     fields.forEach(id => {
@@ -1050,6 +1061,15 @@ if(btnAddClient) {
         
         // Reset and Populate Dropdowns
         updateClientProductDropdowns();
+
+        // Reset split payment UI
+        const chkSplitPayment = document.getElementById('chk_split_payment');
+        const splitPaymentContainer = document.getElementById('split_payment_container');
+        const singlePaymentContainer = document.getElementById('single_payment_container');
+        if (chkSplitPayment) chkSplitPayment.checked = false;
+        if (splitPaymentContainer) splitPaymentContainer.style.display = 'none';
+        if (singlePaymentContainer) singlePaymentContainer.style.display = 'block';
+        if (document.getElementById('c_payment_method')) document.getElementById('c_payment_method').required = true;
         
         modalClient.style.display = 'block';
     });
@@ -1063,7 +1083,8 @@ const cLunaName = document.getElementById('c_luna_name');
 const cLunaMeasure = document.getElementById('c_luna_measure');
 const selMontura = document.getElementById('sel_montura');
 const cDataInput = document.getElementById('c_data');
-const chkConsulta = document.getElementById('chk_consulta');
+const selConsulta = document.getElementById('sel_consulta');
+const cOthers = document.getElementById('c_others');
 
 let lunasData = {}; // Structure: { "LunaName": ["Measure1", "Measure2"] }
 let monturasList = []; // Structure: ["MonturaName"]
@@ -1100,32 +1121,49 @@ function updateClientProductDropdowns() {
     // Reset Result
     cDataInput.value = '';
     
-    // Reset Checkbox
-    if(chkConsulta) {
-        chkConsulta.checked = false;
-        toggleProductSelection(true); // Enable dropdowns
+    // Reset Otros
+    if(cOthers) {
+        cOthers.value = '';
     }
 }
 
 // Helper to toggle dropdowns based on Checkbox
+// Helper to toggle dropdowns (Simplified as it no longer blocks based on Vendedor)
 function toggleProductSelection(enable) {
+    if(cLunaName) cLunaName.disabled = !enable;
+    if(cLunaMeasure) cLunaMeasure.disabled = !enable;
+    if(selMontura) selMontura.disabled = !enable;
+    
     if(enable) {
-        if(cLunaName) cLunaName.disabled = false;
-        if(cLunaMeasure) cLunaMeasure.disabled = false;
-        if(selMontura) selMontura.disabled = false;
         updatePurchaseDataString();
-    } else {
-        if(cLunaName) cLunaName.disabled = true;
-        if(cLunaMeasure) cLunaMeasure.disabled = true;
-        if(selMontura) selMontura.disabled = true;
-        cDataInput.value = 'Consulta';
     }
 }
 
 // Checkbox Listener
-if(chkConsulta) {
-    chkConsulta.addEventListener('change', function() {
-        toggleProductSelection(!this.checked);
+// Listener for Consulta changed - just update string if needed
+if(selConsulta) {
+    selConsulta.addEventListener('change', updatePurchaseDataString);
+}
+if(cOthers) {
+    cOthers.addEventListener('input', updatePurchaseDataString);
+}
+
+// Split Payment Toggle Logic
+const chkSplitPayment = document.getElementById('chk_split_payment');
+const splitPaymentContainer = document.getElementById('split_payment_container');
+const singlePaymentContainer = document.getElementById('single_payment_container');
+
+if (chkSplitPayment && splitPaymentContainer && singlePaymentContainer) {
+    chkSplitPayment.addEventListener('change', function() {
+        if (this.checked) {
+            splitPaymentContainer.style.display = 'block';
+            singlePaymentContainer.style.display = 'none';
+            document.getElementById('c_payment_method').required = false;
+        } else {
+            splitPaymentContainer.style.display = 'none';
+            singlePaymentContainer.style.display = 'block';
+            document.getElementById('c_payment_method').required = true;
+        }
     });
 }
 
@@ -1137,17 +1175,17 @@ if(cLunaMeasure) cLunaMeasure.addEventListener('input', updatePurchaseDataString
 if(selMontura) selMontura.addEventListener('change', updatePurchaseDataString);
 
 function updatePurchaseDataString() {
-    if(chkConsulta && chkConsulta.checked) {
-        cDataInput.value = 'Consulta';
-        return;
-    }
+    const consulta = selConsulta ? selConsulta.value : '';
+
+
 
     const lunaName = cLunaName ? cLunaName.value : '';
     const measure = cLunaMeasure ? cLunaMeasure.value : '';
     const montura = selMontura ? selMontura.value : '';
+    const others = cOthers ? cOthers.value : '';
     
-    // Use structured format Luna|Measure|Montura to prevent shifting
-    cDataInput.value = `${lunaName}|${measure}|${montura}`;
+    // Use structured format Luna|Measure|Montura|Consulta|Otros
+    cDataInput.value = `${lunaName}|${measure}|${montura}|${consulta}|${others}`;
 }
 
 // Edit Mode - Load existing data string back into dropdowns (Best Effort)
@@ -1185,17 +1223,63 @@ function getStatusBadge(total, advance) {
     }
 }
 
-// Add/Edit Client
+// Helper: Find expense row by linked client ID
+function findExpenseByLinkedId(clientId) {
+    if (!tableBodyExpenses || !clientId) return null;
+    const rows = tableBodyExpenses.querySelectorAll('tr');
+    for (const row of rows) {
+        const linkedIdInput = row.querySelector('.raw-linked-client-id');
+        if (linkedIdInput && linkedIdInput.value === clientId) {
+            return row;
+        }
+    }
+    return null;
+}
+
+// ==========================================
+// CRUD LOGIC FOR CLIENTS
+// ==========================================
 if(addFormClient) {
     addFormClient.addEventListener('submit', (e) => {
         e.preventDefault();
         
-        // Get values
-        const id = document.getElementById('c_id').value;
-        const name = document.getElementById('c_name').value;
-        const data = document.getElementById('c_data').value;
-        const phone = document.getElementById('c_phone').value;
+        let id = document.getElementById('c_id').value.trim();
         const dateRaw = document.getElementById('c_date').value;
+        const name = document.getElementById('c_name').value;
+        const phone = document.getElementById('c_phone').value;
+        const data = document.getElementById('c_data').value;
+        
+        // Auto-generate code if empty (as a fallback)
+        if (!id) {
+            id = getNextClientID();
+        }
+
+        // --- VALIDATION: Check for duplicate "Código" ---
+        const rows = tableBodyClients.querySelectorAll('tr');
+        let codeExists = false;
+        let isSameRow = false;
+
+        for (let row of rows) {
+            const cells = row.getElementsByTagName('td');
+            if (cells.length > 0) {
+                const existingCode = cells[0].innerText.trim();
+                if (existingCode === id) {
+                    codeExists = true;
+                    // If we are editing, check if it's the SAME row we are editing
+                    if (isEditingClient && currentEditRowClient === row) {
+                        isSameRow = true;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (codeExists && !isSameRow) {
+            alert(`Error: El código de venta "${id}" ya existe. Por favor, asigne un código diferente.`);
+            return; // Stop saving
+        }
+        // --- END VALIDATION ---
+
         // Format date to dd/mm/yyyy for display
         const dateObj = new Date(dateRaw);
         // Fix timezone issue by using UTC methods or simple string split if YYYY-MM-DD
@@ -1206,7 +1290,35 @@ if(addFormClient) {
         const advance = parseFloat(document.getElementById('c_advance').value) || 0;
         const balance = total - advance;
         const statusBadge = getStatusBadge(total, advance);
-        const paymentMethod = document.getElementById('c_payment_method').value;
+        
+        // Handle Payment Method (Single vs Mixed)
+        let paymentMethod = "";
+        const isSplit = document.getElementById('chk_split_payment')?.checked;
+        
+        if (isSplit) {
+            const m1 = document.getElementById('split_method_1').value;
+            const a1 = parseFloat(document.getElementById('split_amount_1').value) || 0;
+            const m2 = document.getElementById('split_method_2').value;
+            const a2 = parseFloat(document.getElementById('split_amount_2').value) || 0;
+
+            if (!m1 || !m2 || a1 <= 0 || a2 <= 0) {
+                alert('Por favor complete ambos métodos y montos para el pago mixto.');
+                return;
+            }
+
+            if (Math.abs((a1 + a2) - advance) > 0.01) {
+                alert(`La suma de los montos mixtos (S/. ${(a1 + a2).toFixed(2)}) debe coincidir con el adelanto (S/. ${advance.toFixed(2)}).`);
+                return;
+            }
+
+            paymentMethod = `${m1}:${a1}|${m2}:${a2}`;
+        } else {
+            paymentMethod = document.getElementById('c_payment_method').value;
+            if (!paymentMethod && advance > 0) {
+                alert('Seleccione una modalidad de pago.');
+                return;
+            }
+        }
 
         // ==========================================
         // STOCK & LUNA AUTOMATION LOGIC
@@ -1241,8 +1353,10 @@ if(addFormClient) {
                     <td>S/.0.00</td>
                     <td>${date || getLocalDateString()}</td>
                     <td class="actions-cell">
-                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                        <div class="actions-wrapper">
+                            <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                            <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                        </div>
                     </td>
                 `;
                 if(tableBodyLunas) tableBodyLunas.appendChild(newRow);
@@ -1250,19 +1364,54 @@ if(addFormClient) {
         }
 
         if (!isEditingClient) {
-            // NEW CLIENT: Check Luna Creation & decrement stock
-            if (lunaCodeValue && !chkConsulta.checked) {
-                ensureLunaProduct(lunaCodeValue, lunaNameValue, lunaMeasureValue, dateRaw);
+            // Check for Consultation
+            const selectedConsulta = selConsulta ? selConsulta.value : '';
+            if (selectedConsulta !== '') {
+                const isSoloConsulta = lunaNameValue === '' && lunaMeasureValue === '' && (selMontura ? selMontura.value === '' : true);
+                const expenseId = getNextExpenseID();
+                const category = `Consulta ${selectedConsulta}`;
+                // If it's mixed sales, amount is 0 (pending for manual add)
+                const expenseAmount = isSoloConsulta ? total : 0;
+                createNewExpenseRow(expenseId, dateRaw, category, category, expenseAmount, false, null, id);
             }
 
+            // Always check for Luna/Montura stock regardless of consultation
+            if (lunaCodeValue) {
+                ensureLunaProduct(lunaCodeValue, lunaNameValue, lunaMeasureValue, dateRaw);
+            }
             const selectedMontura = selMontura ? selMontura.value : '';
-            if (selectedMontura && !chkConsulta.checked) {
+            if (selectedMontura) {
                 const stockDecremented = decrementMonturaStock(selectedMontura, dateRaw);
                 if (!stockDecremented) return;
             }
         } else {
-            // EDITING CLIENT: Check Luna Creation & handle montura change
-            if (lunaCodeValue && !chkConsulta.checked) {
+            // EDITING CLIENT (Sync expenses)
+            const selectedConsulta = selConsulta ? selConsulta.value : '';
+            const isSoloConsulta = selectedConsulta !== '' && lunaNameValue === '' && lunaMeasureValue === '' && (selMontura ? selMontura.value === '' : true);
+            const linkedExpenseRow = findExpenseByLinkedId(id);
+
+            if (selectedConsulta !== '') {
+                const category = `Consulta ${selectedConsulta}`;
+                const expenseAmount = isSoloConsulta ? total : 0;
+                
+                if (linkedExpenseRow) {
+                    // Update existing expense
+                    const expenseId = linkedExpenseRow.cells[0].innerText;
+                    createNewExpenseRow(expenseId, dateRaw, category, category, expenseAmount, true, linkedExpenseRow, id);
+                } else {
+                    // Create new linked expense
+                    const expenseId = getNextExpenseID();
+                    createNewExpenseRow(expenseId, dateRaw, category, category, expenseAmount, false, null, id);
+                }
+            } else {
+                // If it no longer has a consultation, remove linked expense
+                if (linkedExpenseRow) {
+                    linkedExpenseRow.remove();
+                }
+            }
+
+            // EDITING CLIENT: Check Luna/Stock
+            if (lunaCodeValue) {
                 ensureLunaProduct(lunaCodeValue, lunaNameValue, lunaMeasureValue, dateRaw);
             }
 
@@ -1271,7 +1420,7 @@ if(addFormClient) {
                 if (originalMonturaName && originalMonturaName !== '') {
                     incrementMonturaStock(originalMonturaName);
                 }
-                if (selectedMontura && selectedMontura !== '' && !chkConsulta.checked) {
+                if (selectedMontura && selectedMontura !== '') {
                     const stockDecremented = decrementMonturaStock(selectedMontura, dateRaw);
                     if (!stockDecremented) {
                         if (originalMonturaName && originalMonturaName !== '') {
@@ -1304,8 +1453,10 @@ if(addFormClient) {
                 <td>${formatCurrency(total.toString())}</td>
                 <td>${formattedPayment}</td>
                 <td class="actions-cell">
-                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                    <div class="actions-wrapper">
+                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                    </div>
                     <!-- Hidden data for logic -->
                     <input type="hidden" class="raw-date" value="${dateRaw}">
                     <input type="hidden" class="raw-total" value="${total}">
@@ -1334,8 +1485,10 @@ if(addFormClient) {
                 <td>${formatCurrency(total.toString())}</td>
                 <td>${formattedPayment}</td>
                 <td class="actions-cell">
-                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                    <div class="actions-wrapper">
+                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                    </div>
                     <!-- Hidden data for logic -->
                     <input type="hidden" class="raw-date" value="${dateRaw}">
                     <input type="hidden" class="raw-total" value="${total}">
@@ -1360,6 +1513,14 @@ if(tableBodyClients) {
         if(e.target.closest('.delete-btn')) {
             if(confirm('¿Estás seguro de eliminar este cliente?')) {
                 const row = e.target.closest('tr');
+                const clientId = row.getElementsByTagName('td')[0].innerText;
+                
+                // Remove linked expense if any
+                const linkedExpenseRow = findExpenseByLinkedId(clientId);
+                if (linkedExpenseRow) {
+                    linkedExpenseRow.remove();
+                }
+
                 row.remove();
             }
         }
@@ -1455,8 +1616,50 @@ if(tableBodyClients) {
             // Load payment method
             const rawPaymentMethod = row.querySelector('.raw-payment-method') ? row.querySelector('.raw-payment-method').value : '';
             if(rawPaymentMethod) {
-                document.getElementById('c_payment_method').value = rawPaymentMethod;
+                // Check if it's a split payment
+                const isSplit = rawPaymentMethod.includes('|');
+                const chkSplitPayment = document.getElementById('chk_split_payment');
+                const splitPaymentContainer = document.getElementById('split_payment_container');
+                const singlePaymentContainer = document.getElementById('single_payment_container');
+
+                if (isSplit) {
+                    if (chkSplitPayment) chkSplitPayment.checked = true;
+                    if (splitPaymentContainer) splitPaymentContainer.style.display = 'block';
+                    if (singlePaymentContainer) singlePaymentContainer.style.display = 'none';
+                    
+                    const parts = rawPaymentMethod.split('|');
+                    if (parts[0]) {
+                        const [m1, a1] = parts[0].split(':');
+                        document.getElementById('split_method_1').value = m1;
+                        document.getElementById('split_amount_1').value = parseFloat(a1).toFixed(2);
+                    }
+                    if (parts[1]) {
+                        const [m2, a2] = parts[1].split(':');
+                        document.getElementById('split_method_2').value = m2;
+                        document.getElementById('split_amount_2').value = parseFloat(a2).toFixed(2);
+                    }
+                } else {
+                    if (chkSplitPayment) chkSplitPayment.checked = false;
+                    if (splitPaymentContainer) splitPaymentContainer.style.display = 'none';
+                    if (singlePaymentContainer) singlePaymentContainer.style.display = 'block';
+                    document.getElementById('c_payment_method').value = rawPaymentMethod;
+                }
             }
+            
+            // ==========================================
+            // Deconstruct Purchase Data to fill form fields
+            // ==========================================
+            if (rawDataValue) {
+                const parts = rawDataValue.split('|');
+                if (parts.length >= 5) {
+                    if (cLunaName) cLunaName.value = parts[0] || '';
+                    if (cLunaMeasure) cLunaMeasure.value = parts[1] || '';
+                    if (selMontura) selMontura.value = parts[2] || '';
+                    if (selConsulta) selConsulta.value = parts[3] || '';
+                    if (cOthers) cOthers.value = parts[4] || '';
+                }
+            }
+            // ==========================================
             
             // Set Edit Mode
             isEditingClient = true;
@@ -1721,67 +1924,73 @@ if(addFormExpense) {
     addFormExpense.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        // Get values
         const id = document.getElementById('e_id').value;
         const dateRaw = document.getElementById('e_date').value;
         const category = document.getElementById('e_category').value;
-        let description = document.getElementById('e_description').value;
-        
-        // Use category as description if empty (and not "Otros")
-        if(!description && category !== 'Otros') {
-            description = category;
-        }
-        
+        const description = document.getElementById('e_description').value;
         const amount = parseFloat(document.getElementById('e_amount').value) || 0;
 
-        // Format date to dd/mm/yyyy
-        const dateParts = dateRaw.split('-');
-        const dateDisplay = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
-
-        // Format amount
-        const amountFormatted = formatCurrency(amount.toString());
-
-        if (isEditingExpense && currentEditRowExpense) {
-            // Update existing row
-            currentEditRowExpense.innerHTML = `
-                <td>${id}</td>
-                <td>${dateDisplay}</td>
-                <td>${category}</td>
-                <td>${description}</td>
-                <td>${amountFormatted}</td>
-                <td class="actions-cell">
-                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                    <!-- Hidden data -->
-                    <input type="hidden" class="raw-date" value="${dateRaw}">
-                    <input type="hidden" class="raw-amount" value="${amount}">
-                </td>
-            `;
-            isEditingExpense = false;
-            currentEditRowExpense = null;
-        } else {
-            // Create Row
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = `
-                <td>${id}</td>
-                <td>${dateDisplay}</td>
-                <td>${category}</td>
-                <td>${description}</td>
-                <td>${amountFormatted}</td>
-                <td class="actions-cell">
-                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                    <!-- Hidden data -->
-                    <input type="hidden" class="raw-date" value="${dateRaw}">
-                    <input type="hidden" class="raw-amount" value="${amount}">
-                </td>
-            `;
-            if(tableBodyExpenses) tableBodyExpenses.appendChild(newRow);
+        if (category === 'Otros' && !description) {
+            alert('Por favor, especifique la descripción para la categoría "Otros".');
+            return;
         }
 
+        createNewExpenseRow(id, dateRaw, category, description, amount, isEditingExpense, currentEditRowExpense, null);
         modalExpense.style.display = 'none';
         addFormExpense.reset();
     });
+}
+
+// Reusable function to create/update an expense row
+function createNewExpenseRow(id, dateRaw, category, description, amount, isEdit = false, editRow = null, linkedClientId = null) {
+    // Format date to dd/mm/yyyy
+    const dateParts = dateRaw.split('-');
+    const dateDisplay = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+
+    // Format amount
+    const amountFormatted = formatCurrency(amount.toString());
+    
+    if (isEdit && editRow) {
+        // Update existing row
+        editRow.innerHTML = `
+            <td>${id}</td>
+            <td>${dateDisplay}</td>
+            <td>${category}</td>
+            <td>${description}</td>
+            <td>${amountFormatted}</td>
+            <td class="actions-cell">
+                <div class="actions-wrapper">
+                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                </div>
+                <!-- Hidden data -->
+                <input type="hidden" class="raw-date" value="${dateRaw}">
+                <input type="hidden" class="raw-amount" value="${amount}">
+                <input type="hidden" class="raw-linked-client-id" value="${linkedClientId || ''}">
+            </td>
+        `;
+    } else {
+        // Create Row
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+            <td>${id}</td>
+            <td>${dateDisplay}</td>
+            <td>${category}</td>
+            <td>${description}</td>
+            <td>${amountFormatted}</td>
+            <td class="actions-cell">
+                <div class="actions-wrapper">
+                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                </div>
+                <!-- Hidden data -->
+                <input type="hidden" class="raw-date" value="${dateRaw}">
+                <input type="hidden" class="raw-amount" value="${amount}">
+                <input type="hidden" class="raw-linked-client-id" value="${linkedClientId || ''}">
+            </td>
+        `;
+        if(tableBodyExpenses) tableBodyExpenses.appendChild(newRow);
+    }
 }
 
 // Table actions (Edit / Delete)
@@ -1819,6 +2028,7 @@ if(tableBodyExpenses) {
             document.getElementById('expenseModalTitle').innerText = 'Editar Egreso';
             modalExpense.style.display = 'block';
         }
+
     });
 }
 
@@ -1865,7 +2075,7 @@ function updateTaxSummary() {
             }
         }
     });
-    
+
     const totalPendingSunat = Math.max(0, sunatGoal - totalPaidSunat);
     
     // Update UI
@@ -1877,8 +2087,6 @@ function updateTaxSummary() {
     if (paidEl) paidEl.innerText = formatCurrency(totalPaidSunat.toString());
     if (pendingEl) pendingEl.innerText = formatCurrency(totalPendingSunat.toString());
 }
-
-// Edit Tax Goal
 const btnEditTaxGoal = document.getElementById('btnEditTaxGoal');
 if (btnEditTaxGoal) {
     btnEditTaxGoal.addEventListener('click', () => {
@@ -2027,13 +2235,11 @@ function updateFinancialDashboards() {
         const rows = tableBodyClients.querySelectorAll('tr');
         rows.forEach(row => {
             const dateRawInput = row.querySelector('.raw-date');
-            const totalInput = row.querySelector('.raw-total');
             const advanceInput = row.querySelector('.raw-advance');
             
-            if (dateRawInput && (totalInput || advanceInput)) {
-                const advance = parseFloat(advanceInput?.value) || 0;
+            if (dateRawInput && advanceInput) {
+                const advance = parseFloat(advanceInput.value) || 0;
                 
-                // dateRaw is yyyy-mm-dd
                 const parts = dateRawInput.value.split('-');
                 const rowYear = parseInt(parts[0]);
                 const rowMonth = parseInt(parts[1]) - 1;
@@ -2041,7 +2247,6 @@ function updateFinancialDashboards() {
                 const rowDate = new Date(rowYear, rowMonth, rowDay);
                 rowDate.setHours(0,0,0,0);
 
-                // Check if today (strictly comparing year, month, day to avoid TZ issues)
                 const isToday = rowYear === today.getFullYear() && 
                                 rowMonth === today.getMonth() && 
                                 rowDay === today.getDate();
@@ -2050,7 +2255,6 @@ function updateFinancialDashboards() {
                     salesToday += advance;
                 }
 
-                // Check if within week
                 if (rowDate >= sevenDaysAgo && rowDate <= today) {
                     salesWeek += advance;
                 }
@@ -2058,51 +2262,52 @@ function updateFinancialDashboards() {
         });
     }
 
-    // 2. Calculate Pending Expenses (SUNAT + NEGOSY)
-    let sunatPaid = 0;
-    let negosyPaid = 0;
+    // 2. Calculate Expenses
+    let expensesToday = 0;
 
     if (tableBodyExpenses) {
         const rows = tableBodyExpenses.querySelectorAll('tr');
         rows.forEach(row => {
-            const cells = row.getElementsByTagName('td');
-            if (cells.length > 2) {
-                const category = cells[2].innerText;
-                const amountInput = row.querySelector('.raw-amount');
-                const amount = amountInput ? parseFloat(amountInput.value) : 0;
+            const dateRawInput = row.querySelector('.raw-date');
+            const amountInput = row.querySelector('.raw-amount');
+            
+            if (dateRawInput && amountInput) {
+                const amount = parseFloat(amountInput.value) || 0;
                 
-                if (category === 'SUNAT') sunatPaid += amount;
-                else if (category === 'Negosy') negosyPaid += amount;
+                const parts = dateRawInput.value.split('-');
+                const rowYear = parseInt(parts[0]);
+                const rowMonth = parseInt(parts[1]) - 1;
+                const rowDay = parseInt(parts[2]);
+
+                // For Today
+                if (rowYear === today.getFullYear() && 
+                    rowMonth === today.getMonth() && 
+                    rowDay === today.getDate()) {
+                    expensesToday += amount;
+                }
             }
         });
     }
 
-    const sunatPending = Math.max(0, sunatGoal - sunatPaid);
-    const negosyPending = Math.max(0, NEGOSY_GOAL - negosyPaid);
-    const totalPending = sunatPending + negosyPending;
+    const netSalesToday = salesToday - expensesToday;
 
     // 3. Update UI Elements
-    // Dashboard Cards
     const dashVentasHoy = document.getElementById('dash-ventas-hoy');
     const dashVentasSemana = document.getElementById('dash-ventas-semana');
-    const dashGastosPend = document.getElementById('dash-gastos-pend');
-    const dashPendSunat = document.getElementById('dash-pend-sunat');
-    const dashPendNegosy = document.getElementById('dash-pend-negosy');
 
-    if (dashVentasHoy) dashVentasHoy.innerText = formatCurrency(salesToday.toString());
+    if (dashVentasHoy) dashVentasHoy.innerText = formatCurrency(netSalesToday.toString());
     if (dashVentasSemana) dashVentasSemana.innerText = formatCurrency(salesWeek.toString());
-    if (dashGastosPend) dashGastosPend.innerText = formatCurrency(totalPending.toString());
-    if (dashPendSunat) dashPendSunat.innerText = formatCurrency(sunatPending.toString());
-    if (dashPendNegosy) dashPendNegosy.innerText = formatCurrency(negosyPending.toString());
 
     // Clientes Summary
     const clientSalesVal = document.getElementById('client-sales-today');
-
-    if (clientSalesVal) clientSalesVal.innerText = formatCurrency(salesToday.toString());
+    if (clientSalesVal) clientSalesVal.innerText = formatCurrency(netSalesToday.toString());
     
-    // Trigger existing SUNAT summary update if we are in that section
+    // Trigger existing SUNAT/Gastos Pendientes summary update
     if (typeof updateTaxSummary === 'function') {
         updateTaxSummary();
+    }
+    if (typeof updateGastosPendientes === 'function') {
+        updateGastosPendientes();
     }
 }
 
@@ -2117,13 +2322,46 @@ if (tableBodyExpenses) {
     expensesObserver.observe(tableBodyExpenses, { childList: true, subtree: true });
 }
 
-// Initial update on load
-document.addEventListener('DOMContentLoaded', () => {
-    checkSession();
-    updateFinancialDashboards();
-    setupSummaryModal();
-    setupWeeklySummaryModal();
-});
+function updateGastosPendientes() {
+    if (!tableBodyExpenses) return;
+    
+    let totalSunatPaid = 0;
+    let totalNegosyPaid = 0;
+
+    const rows = tableBodyExpenses.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        const cells = row.getElementsByTagName('td');
+        if (cells.length > 2) {
+            const category = cells[2].innerText.trim().toUpperCase();
+            const rawAmountField = row.querySelector('.raw-amount');
+            const amount = rawAmountField ? (parseFloat(rawAmountField.value) || 0) : 0;
+
+            if (category === 'SUNAT') {
+                totalSunatPaid += amount;
+            } else if (category === 'NEGOSY') {
+                totalNegosyPaid += amount;
+            }
+        }
+    });
+
+    // Calculate pending based on goals
+    const pendingSunat = Math.max(0, sunatGoal - totalSunatPaid);
+    const pendingNegosy = Math.max(0, NEGOSY_GOAL - totalNegosyPaid);
+
+    const totalPending = pendingSunat + pendingNegosy;
+
+    // Update Dashboard UI
+    const dashGastosPend = document.getElementById('dash-gastos-pend');
+    const dashPendSunat = document.getElementById('dash-pend-sunat');
+    const dashPendNegosy = document.getElementById('dash-pend-negosy');
+
+    if (dashGastosPend) dashGastosPend.innerText = formatCurrency(totalPending.toString());
+    if (dashPendSunat) dashPendSunat.innerText = formatCurrency(pendingSunat.toString());
+    if (dashPendNegosy) dashPendNegosy.innerText = formatCurrency(pendingNegosy.toString());
+}
+
+// setupDoctorSettlement(); 
 
 // ==========================================
 // DAILY SUMMARY MODAL LOGIC
@@ -2205,31 +2443,46 @@ function populateSummaryData(dateObj, dateStr, config) {
                 const id = cells[0].innerText;
                 const purchaseDataRaw = row.querySelector('.raw-data')?.value || '';
                 const advanceRaw = row.querySelector('.raw-advance');
-                const paymentMethod = row.querySelector('.raw-payment-method')?.value || '';
-                const amount = advanceRaw ? parseFloat(advanceRaw.value) : 0;
+                const paymentMethod = row.querySelector('.raw-payment-method') ? row.querySelector('.raw-payment-method').value : '';
+                const advance = parseFloat(advanceRaw?.value) || 0;
+
+                if (paymentMethod.includes('|')) {
+                    // Mixed payment breakdown
+                    const splitParts = paymentMethod.split('|');
+                    splitParts.forEach(part => {
+                        const [method, amountStr] = part.split(':');
+                        const amount = parseFloat(amountStr) || 0;
+                        if (method === 'Visa') totalVisa += amount;
+                        else if (method === 'Yape') totalYape += amount;
+                        else if (method === 'Efectivo') totalCash += amount;
+                    });
+                } else {
+                    // Single payment
+                    if (paymentMethod === 'Visa') totalVisa += advance;
+                    else if (paymentMethod === 'Yape') totalYape += advance;
+                    else if (paymentMethod === 'Efectivo') totalCash += advance;
+                }
+
+                totalIn += advance;
                 const status = cells[5].innerHTML; // Get the badge
 
                 let paymentIcon = '';
                 const pMethodLower = paymentMethod.toLowerCase();
                 if (pMethodLower.includes('efectivo')) {
                     paymentIcon = "<i class='bx bx-money' style='margin-right:5px; color:#27ae60;'></i>";
-                    totalCash += amount;
                 } else if (pMethodLower.includes('yape') || pMethodLower.includes('plin') || pMethodLower.includes('transferencia')) {
                     paymentIcon = "<i class='bx bx-transfer' style='margin-right:5px; color:#9b59b6;'></i>";
-                    totalYape += amount;
                 } else if (pMethodLower.includes('tarjeta') || pMethodLower.includes('visa')) {
                     paymentIcon = "<i class='bx bx-credit-card' style='margin-right:5px; color:#2980b9;'></i>";
-                    totalVisa += amount;
                 }
 
-                totalIn += amount;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td style="font-weight:600; color:#555;">${id}</td>
                     <td>${formatPurchaseDataForDisplay(purchaseDataRaw)}</td>
                     <td>${status}</td>
                     <td><span style="display:flex; align-items:center; font-size:0.9rem; color:#444;">${paymentIcon} ${paymentMethod}</span></td>
-                    <td style="text-align: right; font-weight:700; color:#333;">${formatCurrency(amount.toString())}</td>
+                    <td style="text-align: right; font-weight:700; color:#333;">${formatCurrency(advance.toString())}</td>
                 `;
                 salesTbody.appendChild(tr);
             }
@@ -2259,10 +2512,13 @@ function populateSummaryData(dateObj, dateStr, config) {
     if (salesTbody.innerHTML === '') salesTbody.innerHTML = `<tr><td colspan="5" style="padding: 8px; color: #999; text-align: center;">No hay ingresos este día</td></tr>`;
     if (expensesTbody.innerHTML === '') expensesTbody.innerHTML = `<tr><td colspan="2" style="padding: 8px; color: #999; text-align: center;">No hay egresos este día</td></tr>`;
 
+    // Subtract Expenses from Cash
+    const netCash = totalCash - totalOut;
+
     // 3. Update Footer
     if (config.totalVisaId) document.getElementById(config.totalVisaId).innerText = formatCurrency(totalVisa.toString());
     if (config.totalYapeId) document.getElementById(config.totalYapeId).innerText = formatCurrency(totalYape.toString());
-    if (config.totalCashId) document.getElementById(config.totalCashId).innerText = formatCurrency(totalCash.toString());
+    if (config.totalCashId) document.getElementById(config.totalCashId).innerText = formatCurrency(netCash.toString());
 
     document.getElementById(config.totalInId).innerText = formatCurrency(totalIn.toString());
     document.getElementById(config.totalOutId).innerText = formatCurrency(totalOut.toString());
@@ -2412,7 +2668,7 @@ function exportSpecificDayToPDF(dateObj, config) {
     const salesTableRows = document.querySelectorAll(`${cfg.salesTbodyId} tr`);
     salesTableRows.forEach(row => {
         const cells = row.querySelectorAll('td');
-        if (cells.length >= 4) {
+        if (cells.length >= 5) {
             salesRows.push([
                 cells[0].innerText,
                 cells[1].innerText,
@@ -2701,7 +2957,6 @@ function generateMonturasPDF(startDate, endDate) {
 }
 
 // Call setups
-window.addEventListener('DOMContentLoaded', () => {
-    setupExportLunas();
-    setupExportMonturas();
-});
+// setupExportLunas();
+// setupExportMonturas(); 
+// ==========================================
