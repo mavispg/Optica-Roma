@@ -1363,16 +1363,103 @@ if(addFormClient) {
             }
         }
 
+        // ==========================================
+        // CONSOLIDATED CONSULTATION EXPENSE LOGIC
+        // ==========================================
+        function syncConsultationExpense(date, newDoctor, oldDoctor = null) {
+            // Helper to extract base name and count from "Consulta Doctor(X)"
+            function parseDoctorCategory(categoryText) {
+                const match = categoryText.match(/^(Consulta [^(]+)(?:\((\d+)\))?$/);
+                if (match) {
+                    return {
+                        baseName: match[1].trim(),
+                        count: match[2] ? parseInt(match[2]) : 1
+                    };
+                }
+                return null;
+            }
+
+            // Decrement old doctor if changed or removed
+            if (oldDoctor && oldDoctor !== newDoctor) {
+                const oldBaseName = `Consulta ${oldDoctor}`;
+                let rowToUpdate = null;
+                const rows = tableBodyExpenses.querySelectorAll('tr');
+                
+                for (let row of rows) {
+                    const cells = row.getElementsByTagName('td');
+                    const rawDateField = row.querySelector('.raw-date');
+                    if (cells.length > 2 && rawDateField && rawDateField.value === date) {
+                        const parsed = parseDoctorCategory(cells[2].innerText);
+                        if (parsed && parsed.baseName === oldBaseName) {
+                            rowToUpdate = { row, count: parsed.count, unitPrice: parseFloat(row.getAttribute('data-unit-price')) || 0 };
+                            break;
+                        }
+                    }
+                }
+
+                if (rowToUpdate) {
+                    const newCount = rowToUpdate.count - 1;
+                    if (newCount <= 0) {
+                        rowToUpdate.row.remove();
+                    } else {
+                        const cells = rowToUpdate.row.getElementsByTagName('td');
+                        cells[2].innerText = `${oldBaseName}(${newCount})`;
+                        // Update total based on unit price
+                        const newTotal = rowToUpdate.unitPrice * newCount;
+                        cells[4].innerText = formatCurrency(newTotal.toString());
+                        const rawAmountField = rowToUpdate.row.querySelector('.raw-amount');
+                        if (rawAmountField) rawAmountField.value = newTotal;
+                    }
+                }
+            }
+
+            // Increment new doctor
+            if (newDoctor) {
+                const newBaseName = `Consulta ${newDoctor}`;
+                let rowToUpdate = null;
+                const rows = tableBodyExpenses.querySelectorAll('tr');
+                
+                for (let row of rows) {
+                    const cells = row.getElementsByTagName('td');
+                    const rawDateField = row.querySelector('.raw-date');
+                    if (cells.length > 2 && rawDateField && rawDateField.value === date) {
+                        const parsed = parseDoctorCategory(cells[2].innerText);
+                        if (parsed && parsed.baseName === newBaseName) {
+                            rowToUpdate = { row, count: parsed.count, unitPrice: parseFloat(row.getAttribute('data-unit-price')) || 0 };
+                            break;
+                        }
+                    }
+                }
+
+                if (rowToUpdate) {
+                    const newCount = rowToUpdate.count + 1;
+                    const cells = rowToUpdate.row.getElementsByTagName('td');
+                    cells[2].innerText = `${newBaseName}(${newCount})`;
+                    // Update total based on unit price
+                    const newTotal = rowToUpdate.unitPrice * newCount;
+                    cells[4].innerText = formatCurrency(newTotal.toString());
+                    const rawAmountField = rowToUpdate.row.querySelector('.raw-amount');
+                    if (rawAmountField) rawAmountField.value = newTotal;
+                } else {
+                    // Create new consolidated row
+                    const expenseId = getNextExpenseID();
+                    const initialTotal = 0; // Starts at 0, user enters unit price later
+                    createNewExpenseRow(expenseId, date, newBaseName, newBaseName, initialTotal, false, null, null);
+                    // Find the newly created row to set the data attribute (it's appended to the end)
+                    const newRow = tableBodyExpenses.lastElementChild;
+                    if (newRow) {
+                        newRow.setAttribute('data-unit-price', '0');
+                    }
+                }
+            }
+        }
+
+
         if (!isEditingClient) {
             // Check for Consultation
             const selectedConsulta = selConsulta ? selConsulta.value : '';
             if (selectedConsulta !== '') {
-                const isSoloConsulta = lunaNameValue === '' && lunaMeasureValue === '' && (selMontura ? selMontura.value === '' : true);
-                const expenseId = getNextExpenseID();
-                const category = `Consulta ${selectedConsulta}`;
-                // If it's mixed sales, amount is 0 (pending for manual add)
-                const expenseAmount = isSoloConsulta ? total : 0;
-                createNewExpenseRow(expenseId, dateRaw, category, category, expenseAmount, false, null, id);
+                syncConsultationExpense(dateRaw, selectedConsulta);
             }
 
             // Always check for Luna/Montura stock regardless of consultation
@@ -1387,27 +1474,33 @@ if(addFormClient) {
         } else {
             // EDITING CLIENT (Sync expenses)
             const selectedConsulta = selConsulta ? selConsulta.value : '';
-            const isSoloConsulta = selectedConsulta !== '' && lunaNameValue === '' && lunaMeasureValue === '' && (selMontura ? selMontura.value === '' : true);
-            const linkedExpenseRow = findExpenseByLinkedId(id);
-
-            if (selectedConsulta !== '') {
-                const category = `Consulta ${selectedConsulta}`;
-                const expenseAmount = isSoloConsulta ? total : 0;
-                
-                if (linkedExpenseRow) {
-                    // Update existing expense
-                    const expenseId = linkedExpenseRow.cells[0].innerText;
-                    createNewExpenseRow(expenseId, dateRaw, category, category, expenseAmount, true, linkedExpenseRow, id);
+            
+            // Get original consultation doctor from rawDataValue
+            let originalConsultaDoctor = null;
+            if (currentEditRowClient) {
+                const rawDataField = currentEditRowClient.querySelector('.raw-data');
+                if (rawDataField && rawDataField.value) {
+                    const parts = rawDataField.value.split('|');
+                    if (parts.length >= 4) {
+                        originalConsultaDoctor = parts[3];
+                    }
                 } else {
-                    // Create new linked expense
-                    const expenseId = getNextExpenseID();
-                    createNewExpenseRow(expenseId, dateRaw, category, category, expenseAmount, false, null, id);
+                    // Fallback for older data format
+                    const displayData = currentEditRowClient.getElementsByTagName('td')[2].innerText;
+                    if (displayData === 'Consulta') {
+                        // We can't know the exact doctor if it wasn't saved in raw-data in older versions,
+                        // but normally it says "Consulta Pool", etc. Try parsing:
+                        if (displayData.startsWith('Consulta ')) {
+                            originalConsultaDoctor = displayData.replace('Consulta ', '').trim();
+                        }
+                    }
                 }
-            } else {
-                // If it no longer has a consultation, remove linked expense
-                if (linkedExpenseRow) {
-                    linkedExpenseRow.remove();
-                }
+            }
+
+            // Only sync if there's a consultation value (either originally or newly added)
+            // or if a consultation was removed
+            if (originalConsultaDoctor !== selectedConsulta) {
+                syncConsultationExpense(dateRaw, selectedConsulta, originalConsultaDoctor);
             }
 
             // EDITING CLIENT: Check Luna/Stock
@@ -1919,30 +2012,62 @@ window.addEventListener('click', (e) => {
     }
 });
 
+// Helper to extract base name and count from "Consulta Doctor(X)"
+function parseDoctorCategory(categoryText) {
+    const match = categoryText.match(/^(Consulta [^(]+)(?:\((\d+)\))?$/);
+    if (match) {
+        return {
+            baseName: match[1].trim(),
+            count: match[2] ? parseInt(match[2]) : 1
+        };
+    }
+    return null;
+}
+
 // Add/Edit Expense
 if(addFormExpense) {
     addFormExpense.addEventListener('submit', (e) => {
         e.preventDefault();
-
+        
         const id = document.getElementById('e_id').value;
         const dateRaw = document.getElementById('e_date').value;
         const category = document.getElementById('e_category').value;
         const description = document.getElementById('e_description').value;
-        const amount = parseFloat(document.getElementById('e_amount').value) || 0;
+        let amount = parseFloat(document.getElementById('e_amount').value) || 0;
+        
+        // --- MULTIPLIER LOGIC FOR CONSULTATIONS ---
+        // If this is an edit of a "Consulta Doctor(X)", apply the multiplier
+        let unitPrice = amount; // Store the unit price before potential multiplication
+        if (isEditingExpense && currentEditRowExpense) {
+            const currentCategoryText = currentEditRowExpense.getElementsByTagName('td')[2].innerText;
+            const parsed = parseDoctorCategory(currentCategoryText);
+            
+            // Only multiply if the category wasn't changed away from the original Consulta category
+            // (If user changed category in dropdown, we don't multiply)
+            if (parsed && category.startsWith("Consulta ")) {
+                amount = unitPrice * parsed.count;
+            }
+        }
+        // -------------------------------------------
 
         if (category === 'Otros' && !description) {
             alert('Por favor, especifique la descripción para la categoría "Otros".');
             return;
         }
 
-        createNewExpenseRow(id, dateRaw, category, description, amount, isEditingExpense, currentEditRowExpense, null);
+        // TargetLintErrorIds: 1
+        createNewExpenseRow(id, dateRaw, category, description, amount, isEditingExpense, currentEditRowExpense, null, unitPrice);
+        
+        // Update dashboards after saving expense
+        updateFinancialDashboards();
+        
         modalExpense.style.display = 'none';
         addFormExpense.reset();
     });
 }
 
 // Reusable function to create/update an expense row
-function createNewExpenseRow(id, dateRaw, category, description, amount, isEdit = false, editRow = null, linkedClientId = null) {
+function createNewExpenseRow(id, dateRaw, category, description, amount, isEdit = false, editRow = null, linkedClientId = null, unitPrice = null) {
     // Format date to dd/mm/yyyy
     const dateParts = dateRaw.split('-');
     const dateDisplay = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
@@ -1969,9 +2094,15 @@ function createNewExpenseRow(id, dateRaw, category, description, amount, isEdit 
                 <input type="hidden" class="raw-linked-client-id" value="${linkedClientId || ''}">
             </td>
         `;
+        if (unitPrice !== null) {
+            editRow.setAttribute('data-unit-price', unitPrice.toString());
+        }
     } else {
         // Create Row
         const newRow = document.createElement('tr');
+        if (unitPrice !== null) {
+            newRow.setAttribute('data-unit-price', unitPrice.toString());
+        }
         newRow.innerHTML = `
             <td>${id}</td>
             <td>${dateDisplay}</td>
@@ -2015,12 +2146,26 @@ if(tableBodyExpenses) {
             const rawDateField = row.querySelector('.raw-date');
             if(rawDateField) document.getElementById('e_date').value = rawDateField.value;
             
-            document.getElementById('e_category').value = cells[2].innerText;
+            // Extract base category (remove the count (X) if present) for the dropdown
+            const categoryText = cells[2].innerText;
+            const parsed = parseDoctorCategory(categoryText);
+            if (parsed) {
+                document.getElementById('e_category').value = parsed.baseName;
+            } else {
+                document.getElementById('e_category').value = categoryText;
+            }
+            
             document.getElementById('e_category').dispatchEvent(new Event('change'));
             document.getElementById('e_description').value = cells[3].innerText;
             
-            const rawAmountField = row.querySelector('.raw-amount');
-            if(rawAmountField) document.getElementById('e_amount').value = rawAmountField.value;
+            // If it's a counted consultation, populate with unit price, else total amount
+            if (parsed) {
+                const unitPrice = parseFloat(row.getAttribute('data-unit-price')) || 0;
+                document.getElementById('e_amount').value = unitPrice;
+            } else {
+                const rawAmountField = row.querySelector('.raw-amount');
+                if(rawAmountField) document.getElementById('e_amount').value = rawAmountField.value;
+            }
 
             // Set state
             isEditingExpense = true;
