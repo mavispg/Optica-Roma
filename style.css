@@ -1119,6 +1119,13 @@ body {
     max-width: 180px;
 }
 
+/* Prevent currency symbol (S/.) from wrapping to next line in money columns */
+#clientsTable td:nth-child(6),
+#clientsTable td:nth-child(7),
+#clientsTable td:nth-child(8) {
+    white-space: nowrap;
+}
+
 /* Payment method badge styling */
 .payment-badge {
     display: inline-block;
@@ -1295,8 +1302,8 @@ body {
 /* Enhanced Modal for Summary */
 #daySummaryModal .modal-content,
 #weeklySummaryModal .modal-content {
-    max-width: 1150px;
-    width: 95%;
+    max-width: 1350px;
+    width: 96%;
     border-radius: 20px;
     padding: 0;
     background: #f8fafc; /* Clinical Slate-White background */

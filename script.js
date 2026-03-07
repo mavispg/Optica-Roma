@@ -81,6 +81,7 @@ function formatPurchaseDataForDisplay(dataString) {
         if (parts[2]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>${parts[2]}</span>`;
         if (parts[3]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Consulta:</span>${parts[3]}</span>`;
         if (parts[4]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Otros:</span>${parts[4]}</span>`;
+        if (parts[5]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Vendedora:</span>${parts[5]}</span>`;
     } else {
         // Fallback for old records
         if (parts.length === 1) {
@@ -1085,6 +1086,23 @@ const selMontura = document.getElementById('sel_montura');
 const cDataInput = document.getElementById('c_data');
 const selConsulta = document.getElementById('sel_consulta');
 const cOthers = document.getElementById('c_others');
+const selVendedora = document.getElementById('sel_vendedora');
+const btnAddVendedora = document.getElementById('btnAddVendedora');
+
+// '+' button: add new seller to dropdown
+if (btnAddVendedora && selVendedora) {
+    btnAddVendedora.addEventListener('click', () => {
+        const newName = prompt('Ingresa el nombre de la nueva vendedora:');
+        if (newName && newName.trim() !== '') {
+            const opt = document.createElement('option');
+            opt.value = newName.trim();
+            opt.text = newName.trim();
+            selVendedora.appendChild(opt);
+            selVendedora.value = newName.trim();
+            updatePurchaseDataString();
+        }
+    });
+}
 
 let lunasData = {}; // Structure: { "LunaName": ["Measure1", "Measure2"] }
 let monturasList = []; // Structure: ["MonturaName"]
@@ -1125,6 +1143,10 @@ function updateClientProductDropdowns() {
     if(cOthers) {
         cOthers.value = '';
     }
+    // Reset Vendedora
+    if(selVendedora) {
+        selVendedora.value = '';
+    }
 }
 
 // Helper to toggle dropdowns (Simplified as it no longer blocks based on Vendedor)
@@ -1144,6 +1166,9 @@ if(selConsulta) {
 }
 if(cOthers) {
     cOthers.addEventListener('input', updatePurchaseDataString);
+}
+if(selVendedora) {
+    selVendedora.addEventListener('change', updatePurchaseDataString);
 }
     
 // Split Payment Toggle Logic
@@ -1176,16 +1201,14 @@ if(selMontura) selMontura.addEventListener('change', updatePurchaseDataString);
 
 function updatePurchaseDataString() {
     const consulta = selConsulta ? selConsulta.value : '';
-
-
-
     const lunaName = cLunaName ? cLunaName.value : '';
     const measure = cLunaMeasure ? cLunaMeasure.value : '';
     const montura = selMontura ? selMontura.value : '';
     const others = cOthers ? cOthers.value : '';
+    const vendedora = selVendedora ? selVendedora.value : '';
     
-    // Use structured format Luna|Measure|Montura|Consulta|Otros
-    cDataInput.value = `${lunaName}|${measure}|${montura}|${consulta}|${others}`;
+    // Use structured format Luna|Measure|Montura|Consulta|Otros|Vendedora
+    cDataInput.value = `${lunaName}|${measure}|${montura}|${consulta}|${others}|${vendedora}`;
 }
 
 // Edit Mode - Load existing data string back into dropdowns (Best Effort)
@@ -1541,9 +1564,10 @@ if(addFormClient) {
                 <td class="compact-cell">${formattedData}</td>
                 <td>${phone}</td>
                 <td>${dateDisplay}</td>
-                <td>${statusBadge}</td>
-                <td>${formatCurrency(balance.toString())}</td>
                 <td>${formatCurrency(total.toString())}</td>
+                <td>${formatCurrency(advance.toString())}</td>
+                <td>${formatCurrency(balance.toString())}</td>
+                <td>${statusBadge}</td>
                 <td>${formattedPayment}</td>
                 <td class="actions-cell">
                     <div class="actions-wrapper">
@@ -1573,9 +1597,10 @@ if(addFormClient) {
                 <td class="compact-cell">${formattedData}</td>
                 <td>${phone}</td>
                 <td>${dateDisplay}</td>
-                <td>${statusBadge}</td>
-                <td>${formatCurrency(balance.toString())}</td>
                 <td>${formatCurrency(total.toString())}</td>
+                <td>${formatCurrency(advance.toString())}</td>
+                <td>${formatCurrency(balance.toString())}</td>
+                <td>${statusBadge}</td>
                 <td>${formattedPayment}</td>
                 <td class="actions-cell">
                     <div class="actions-wrapper">
@@ -1654,11 +1679,10 @@ if(tableBodyClients) {
                 // If I modify index.html static rows, I should add hidden inputs there too OR parse currency.
                 
                 // Let's parse currency for now as fallback
-                 const totalText = cells[8].innerText.replace('S/. ', ''); 
-                const balanceText = cells[6].innerText.replace('S/. ', '');
+                const totalText = cells[5].innerText.replace('S/. ', '').replace(',', ''); 
+                const advanceText = cells[6].innerText.replace('S/. ', '').replace(',', '');
                 const totalVal = parseFloat(totalText);
-                const balanceVal = parseFloat(balanceText);
-                const advanceVal = totalVal - balanceVal;
+                const advanceVal = parseFloat(advanceText);
                 
                 document.getElementById('c_total').value = totalVal;
                 document.getElementById('c_advance').value = advanceVal;
@@ -1778,7 +1802,7 @@ if(searchClientInput && tableBodyClients) {
             if (cells[1] && cells[1].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             if (cells[2] && cells[2].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             if (cells[4] && cells[4].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-            if (cells[5] && cells[5].innerText.toLowerCase().indexOf(filter) > -1) match = true;
+            if (cells[8] && cells[8].innerText.toLowerCase().indexOf(filter) > -1) match = true;
             
             if (match) {
                 rows[i].style.display = "";
@@ -2590,6 +2614,9 @@ function populateSummaryData(dateObj, dateStr, config) {
                 const advanceRaw = row.querySelector('.raw-advance');
                 const paymentMethod = row.querySelector('.raw-payment-method') ? row.querySelector('.raw-payment-method').value : '';
                 const advance = parseFloat(advanceRaw?.value) || 0;
+                const totalRaw = row.querySelector('.raw-total');
+                const totalAmount = parseFloat(totalRaw?.value) || 0;
+                const balanceAmount = totalAmount - advance;
 
                 if (paymentMethod.includes('|')) {
                     // Mixed payment breakdown
@@ -2623,11 +2650,13 @@ function populateSummaryData(dateObj, dateStr, config) {
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="font-weight:600; color:#555;">${id}</td>
+                    <td style="font-weight:600; color:#555; white-space: nowrap;">${id}</td>
                     <td>${formatPurchaseDataForDisplay(purchaseDataRaw)}</td>
-                    <td>${status}</td>
-                    <td><span style="display:flex; align-items:center; font-size:0.9rem; color:#444;">${paymentIcon} ${paymentMethod}</span></td>
-                    <td style="text-align: right; font-weight:700; color:#333;">${formatCurrency(advance.toString())}</td>
+                    <td style="text-align: right; color:#333; white-space: nowrap;">${formatCurrency(totalAmount.toString())}</td>
+                    <td style="text-align: right; font-weight:700; color:#333; white-space: nowrap;">${formatCurrency(advance.toString())}</td>
+                    <td style="text-align: right; color:#333; white-space: nowrap;">${formatCurrency(balanceAmount.toString())}</td>
+                    <td style="white-space: nowrap;">${status}</td>
+                    <td style="white-space: nowrap;"><span style="display:flex; align-items:center; font-size:0.9rem; color:#444;">${paymentIcon} ${paymentMethod}</span></td>
                 `;
                 salesTbody.appendChild(tr);
             }
@@ -2640,21 +2669,24 @@ function populateSummaryData(dateObj, dateStr, config) {
         rows.forEach(row => {
             const dateInput = row.querySelector('.raw-date');
             if (dateInput && dateInput.value === dateStr) {
-                const description = row.getElementsByTagName('td')[3].innerText;
+                const category = row.getElementsByTagName('td')[2].innerText;
+                const descriptionRaw = row.getElementsByTagName('td')[3].innerText;
+                // Show category as the label, unless "Otros" — then show the custom description
+                const displayLabel = (category === 'Otros') ? descriptionRaw : category;
                 const amountInput = row.querySelector('.raw-amount');
                 const amount = amountInput ? parseFloat(amountInput.value) : 0;
 
                 totalOut += amount;
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid #eee';
-                tr.innerHTML = `<td style="padding: 8px;">${description}</td><td style="padding: 8px; text-align: right;">${formatCurrency(amount.toString())}</td>`;
+                tr.innerHTML = `<td style="padding: 8px;">${displayLabel}</td><td style="padding: 8px; text-align: right;">${formatCurrency(amount.toString())}</td>`;
                 expensesTbody.appendChild(tr);
             }
         });
     }
 
     // Handle empty states
-    if (salesTbody.innerHTML === '') salesTbody.innerHTML = `<tr><td colspan="5" style="padding: 8px; color: #999; text-align: center;">No hay ingresos este día</td></tr>`;
+    if (salesTbody.innerHTML === '') salesTbody.innerHTML = `<tr><td colspan="7" style="padding: 8px; color: #999; text-align: center;">No hay ingresos este día</td></tr>`;
     if (expensesTbody.innerHTML === '') expensesTbody.innerHTML = `<tr><td colspan="2" style="padding: 8px; color: #999; text-align: center;">No hay egresos este día</td></tr>`;
 
     // Subtract Expenses from Cash
@@ -2813,13 +2845,15 @@ function exportSpecificDayToPDF(dateObj, config) {
     const salesTableRows = document.querySelectorAll(`${cfg.salesTbodyId} tr`);
     salesTableRows.forEach(row => {
         const cells = row.querySelectorAll('td');
-        if (cells.length >= 5) {
+        if (cells.length >= 7) {
             salesRows.push([
                 cells[0].innerText,
                 cells[1].innerText,
                 cells[2].innerText,
                 cells[3].innerText,
-                cells[4].innerText
+                cells[4].innerText,
+                cells[5].innerText,
+                cells[6].innerText
             ]);
         }
     });
@@ -2827,7 +2861,7 @@ function exportSpecificDayToPDF(dateObj, config) {
     if (salesRows.length > 0 && !salesRows[0][0].includes('No hay')) {
         doc.autoTable({
             startY: 55,
-            head: [['Cod', 'Vendido', 'Estado', 'Mod', 'Monto']],
+            head: [['Cod', 'Vendido', 'M. Total', 'A Cuenta', 'Saldo', 'Estado', 'Mod']],
             body: salesRows,
             theme: 'striped',
             headStyles: { fillColor: [46, 204, 113] }

@@ -434,9 +434,10 @@
                                 <th>Datos de Compra</th>
                                 <th>Celular</th>
                                 <th>Fecha</th>
-                                <th>Estado</th>
-                                <th>Saldo</th>
                                 <th>Monto Total</th>
+                                <th>A Cuenta</th>
+                                <th>Saldo</th>
+                                <th>Estado</th>
                                 <th>Modalidad</th>
                                 <th></th>
                             </tr>
@@ -449,9 +450,10 @@
                                 <td><div class="purchase-data"><span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>Resina UV</span><span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>+2.00</span><span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>RayBan Aviator</span></div></td>
                                 <td>987654321</td>
                                 <td>2023-11-20</td>
-                                <td><span class="status-badge status-paid">CANCELADO</span></td>
-                                <td>S/. 0.00</td>
                                 <td>S/. 450.00</td>
+                                <td>S/. 450.00</td>
+                                <td>S/. 0.00</td>
+                                <td><span class="status-badge status-paid">CANCELADO</span></td>
                                 <td><span class="payment-badge payment-efectivo">Efectivo</span></td>
                                 <td class="actions-cell">
                                     <div class="actions-wrapper">
@@ -467,9 +469,10 @@
                                 <td><div class="purchase-data"><span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>Policarbonato AR</span><span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>-1.50</span><span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>Vogue CatEye</span></div></td>
                                 <td>912345678</td>
                                 <td>2023-11-21</td>
-                                <td><span class="status-badge status-partial">ADELANTO</span></td>
-                                <td>S/. 150.00</td>
                                 <td>S/. 350.00</td>
+                                <td>S/. 200.00</td>
+                                <td>S/. 150.00</td>
+                                <td><span class="status-badge status-partial">ADELANTO</span></td>
                                 <td><span class="payment-badge payment-yape">Yape</span></td>
                                 <td class="actions-cell">
                                     <div class="actions-wrapper">
@@ -485,9 +488,10 @@
                                 <td><span class="purchase-data-item">Consulta</span></td>
                                 <td>998877665</td>
                                 <td>2023-11-22</td>
+                                <td>S/. 50.00</td>
+                                <td>S/. 0.00</td>
+                                <td>S/. 50.00</td>
                                 <td><span class="status-badge status-pending">PENDIENTE</span></td>
-                                <td>S/. 50.00</td>
-                                <td>S/. 50.00</td>
                                 <td></td>
                                 <td class="actions-cell">
                                     <div class="actions-wrapper">
@@ -767,6 +771,12 @@
                     <div style="margin-bottom: 10px;">
                         <input type="text" id="c_others" placeholder="Otros (opcional)" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     </div>
+                    <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                        <select id="sel_vendedora" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">Vendedora</option>
+                        </select>
+                        <button type="button" id="btnAddVendedora" title="Agregar nueva vendedora" style="padding: 8px 12px; background: #2e61b3; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 18px; font-weight: bold; line-height: 1;">+</button>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -1009,11 +1019,13 @@
                     <table id="summarySalesTable" class="summary-table">
                         <thead>
                             <tr>
-                                <th>Cod</th>
+                                <th style="white-space: nowrap;">Cod</th>
                                 <th>Vendido</th>
-                                <th>Estado</th>
-                                <th>Modalidad</th>
-                                <th style="text-align: right;">Monto</th>
+                                <th style="text-align: right; white-space: nowrap;">Monto Total</th>
+                                <th style="text-align: right; white-space: nowrap;">A Cuenta</th>
+                                <th style="text-align: right; white-space: nowrap;">Saldo</th>
+                                <th style="white-space: nowrap;">Estado</th>
+                                <th style="white-space: nowrap;">Modalidad</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -1108,11 +1120,13 @@
                         <table id="weeklySalesTable" class="summary-table">
                             <thead>
                                 <tr>
-                                    <th>Cod</th>
+                                    <th style="white-space: nowrap;">Cod</th>
                                     <th>Vendido</th>
-                                    <th>Estado</th>
-                                    <th>Modalidad</th>
-                                    <th style="text-align: right;">Monto</th>
+                                    <th style="text-align: right; white-space: nowrap;">Monto Total</th>
+                                    <th style="text-align: right; white-space: nowrap;">A Cuenta</th>
+                                    <th style="text-align: right; white-space: nowrap;">Saldo</th>
+                                    <th style="white-space: nowrap;">Estado</th>
+                                    <th style="white-space: nowrap;">Modalidad</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
