@@ -2636,7 +2636,8 @@ function populateSummaryData(dateObj, dateStr, config) {
                 }
 
                 totalIn += advance;
-                const status = cells[5].innerHTML; // Get the badge
+                const statusBadgeEl = row.querySelector('.status-badge');
+                const status = statusBadgeEl ? statusBadgeEl.outerHTML : (cells[8] ? cells[8].innerHTML : '-');
 
                 let paymentIcon = '';
                 const pMethodLower = paymentMethod.toLowerCase();
