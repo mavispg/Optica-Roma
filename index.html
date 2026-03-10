@@ -14,10 +14,13 @@
     <!-- jsPDF and AutoTable for PDF Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Icons -->
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <body>
     
@@ -114,12 +117,6 @@
                     <a href="#" class="nav-link" data-target="users">
                         <i class='bx bx-user'></i>
                         <span class="links_name">USUARIOS</span>
-                    </a>
-                </li>
-                 <li>
-                    <a href="#" class="nav-link" data-target="help">
-                        <i class='bx bx-help-circle'></i>
-                        <span class="links_name">AYUDA</span>
                     </a>
                 </li>
                 
@@ -266,55 +263,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Rows will be populated by JS or static initial data -->
-                            <tr>
-                                <td>001</td>
-                                <td>Monofocales</td>
-                                <td>SHINGWA</td>
-                                <td>-2.00 -0.50 x 10</td>
-                                <td>S/.90.00</td>
-                                <td>S/.150.00</td>
-                                <td>2023-11-20</td>
-                                <td class="actions-cell">
-                                    <div class="actions-wrapper">
-                                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    </div>
-                                </td>
-
-                            </tr>
-                            <tr>
-                                <td>002</td>
-                                <td>Bifocales</td>
-                                <td>CRISOL</td>
-                                <td>4.0</td>
-                                <td>S/.120.00</td>
-                                <td>S/.210.00</td>
-                                <td>2023-11-21</td>
-                                <td class="actions-cell">
-                                    <div class="actions-wrapper">
-                                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    </div>
-                                </td>
-
-                            </tr>
-                            <tr>
-                                <td>003</td>
-                                <td>Multifocal</td>
-                                <td>EYES</td>
-                                <td>3.0</td>
-                                <td>S/.210.00</td>
-                                <td>S/.420.00</td>
-                                <td>2023-11-22</td>
-                                <td class="actions-cell">
-                                    <div class="actions-wrapper">
-                                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    </div>
-                                </td>
-
-                            </tr>
+                            <!-- Rows will be populated by JS from Supabase -->
                         </tbody>
                     </table>
                 </div>
@@ -353,42 +302,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                             <tr>
-                                <td>001</td>
-                                <td>Montura completa</td>
-                                <td>15(15)</td>
-                                <td>S/.150.00</td>
-                                <td class="actions-cell">
-                                    <div class="actions-wrapper">
-                                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>002</td>
-                                <td>Montura combinada</td>
-                                <td>10(10)</td>
-                                <td>S/.210.00</td>
-                                <td class="actions-cell">
-                                    <div class="actions-wrapper">
-                                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    </div>
-                                </td>
-                            </tr>
-                             <tr>
-                                <td>003</td>
-                                <td>Aviador</td>
-                                <td>18(18)</td>
-                                <td>S/.420.00</td>
-                                <td class="actions-cell">
-                                    <div class="actions-wrapper">
-                                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    </div>
-                                </td>
-                            </tr>
+                            <!-- Live data will be loaded here from Supabase -->
                         </tbody>
                     </table>
                  </div>
@@ -443,63 +357,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Mock Client 1: Paid -->
-                            <tr>
-                                <td>C001</td>
-                                <td>Jorge Perez</td>
-                                <td><div class="purchase-data"><span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>Resina UV</span><span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>+2.00</span><span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>RayBan Aviator</span></div></td>
-                                <td>987654321</td>
-                                <td>2023-11-20</td>
-                                <td>S/. 450.00</td>
-                                <td>S/. 450.00</td>
-                                <td>S/. 0.00</td>
-                                <td><span class="status-badge status-paid">CANCELADO</span></td>
-                                <td><span class="payment-badge payment-efectivo">Efectivo</span></td>
-                                <td class="actions-cell">
-                                    <div class="actions-wrapper">
-                                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <!-- Mock Client 2: Partial -->
-                            <tr>
-                                <td>C002</td>
-                                <td>Ana Diaz</td>
-                                <td><div class="purchase-data"><span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>Policarbonato AR</span><span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>-1.50</span><span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>Vogue CatEye</span></div></td>
-                                <td>912345678</td>
-                                <td>2023-11-21</td>
-                                <td>S/. 350.00</td>
-                                <td>S/. 200.00</td>
-                                <td>S/. 150.00</td>
-                                <td><span class="status-badge status-partial">ADELANTO</span></td>
-                                <td><span class="payment-badge payment-yape">Yape</span></td>
-                                <td class="actions-cell">
-                                    <div class="actions-wrapper">
-                                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <!-- Mock Client 3: Pending -->
-                            <tr>
-                                <td>C003</td>
-                                <td>Carlos Gomez</td>
-                                <td><span class="purchase-data-item">Consulta</span></td>
-                                <td>998877665</td>
-                                <td>2023-11-22</td>
-                                <td>S/. 50.00</td>
-                                <td>S/. 0.00</td>
-                                <td>S/. 50.00</td>
-                                <td><span class="status-badge status-pending">PENDIENTE</span></td>
-                                <td></td>
-                                <td class="actions-cell">
-                                    <div class="actions-wrapper">
-                                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    </div>
-                                </td>
-                            </tr>
+                            <!-- Live data will be loaded here from Supabase -->
                         </tbody>
                     </table>
                 </div>
@@ -567,44 +425,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Mock Expense 1: Rent -->
-                            <tr>
-                                <td>E001</td>
-                                <td>2023-11-01</td>
-                                <td>Alquiler</td>
-                                <td>Pago local Noviembre</td>
-                                <td>S/. 1200.00</td>
-                                <td class="actions-cell">
-                                    <div class="actions-wrapper">
-                                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <!-- Mock Expense 2: Utilities -->
-                            <tr>
-                                <td>E002</td>
-                                <td>2023-11-05</td>
-                                <td>Servicios</td>
-                                <td>Luz y Agua</td>
-                                <td>S/. 250.00</td>
-                                <td class="actions-cell">
-                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                </td>
-                            </tr>
-                            <!-- Mock Expense 3: Supplies -->
-                            <tr>
-                                <td>E003</td>
-                                <td>2023-11-10</td>
-                                <td>Suministros</td>
-                                <td>Compra de estuches</td>
-                                <td>S/. 180.00</td>
-                                <td class="actions-cell">
-                                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                                </td>
-                            </tr>
+                            <!-- Live data will be loaded here from Supabase -->
                         </tbody>
                     </table>
                 </div>
@@ -653,7 +474,6 @@
                 </div>
             </div>
         </div>
-        <div id="help" class="content-section"><h2 class="page-title">AYUDA</h2></div>
 
     </section>
     </div> <!-- End Main App Container -->
@@ -1194,6 +1014,23 @@
             </div>
         </div>
     </div>
+    <!-- Custom Dialog Modal -->
+    <div id="customDialog" class="custom-dialog-overlay" style="display: none;">
+        <div class="custom-dialog-box">
+            <div class="custom-dialog-header">
+                <i class='bx bx-glasses dialog-icon'></i>
+                <h3 id="customDialogTitle">OPTICA ROMA</h3>
+            </div>
+            <div class="custom-dialog-body">
+                <p id="customDialogMessage">¿Estás seguro de realizar esta acción?</p>
+            </div>
+            <div class="custom-dialog-footer">
+                <button id="customDialogCancel" class="dialog-btn cancel-btn">Cancelar</button>
+                <button id="customDialogConfirm" class="dialog-btn confirm-btn">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

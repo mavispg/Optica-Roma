@@ -1,6 +1,105 @@
+// ==========================================
+// SUPABASE CONFIGURATION
+// ==========================================
+const supabaseUrl = 'https://xiqeltihgqjunvziesdj.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpcWVsdGloZ3FqdW52emllc2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwODcwOTUsImV4cCI6MjA4ODY2MzA5NX0.4pGisTZXFBk8VPIkvcPHqgAtD284fiPd1yJbxJYg0Lw';
+const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
+/* ==========================================
+   CUSTOM NOTIFICATION & DIALOG SYSTEM
+   ========================================== */
 
+const customDialog = document.getElementById('customDialog');
+const dialogMessage = document.getElementById('customDialogMessage');
+const dialogConfirmBtn = document.getElementById('customDialogConfirm');
+const dialogCancelBtn = document.getElementById('customDialogCancel');
 
+/**
+ * Muestra una alerta personalizada (estilo Alert)
+ */
+function showCustomAlert(message, title = 'OPTICA ROMA') {
+    return new Promise((resolve) => {
+        const titleEl = document.getElementById('customDialogTitle');
+        if(titleEl) titleEl.innerText = title;
+        if(dialogMessage) dialogMessage.innerText = message;
+        
+        if(dialogCancelBtn) dialogCancelBtn.style.display = 'none'; 
+        if(dialogConfirmBtn) {
+            dialogConfirmBtn.innerText = 'Entendido';
+            dialogConfirmBtn.classList.remove('danger');
+        }
+        
+        if(customDialog) customDialog.style.display = 'flex';
+        document.body.classList.add('modal-open');
+
+        const handleConfirm = () => {
+            closeCustomDialog();
+            dialogConfirmBtn.removeEventListener('click', handleConfirm);
+            resolve(true);
+        };
+
+        if(dialogConfirmBtn) dialogConfirmBtn.addEventListener('click', handleConfirm);
+    });
+}
+
+/**
+ * Muestra una confirmación personalizada (estilo Confirm)
+ */
+function showCustomConfirm(message, options = {}) {
+    const { 
+        title = 'AVISO DEL SISTEMA', 
+        confirmText = 'Continuar', 
+        cancelText = 'Cancelar', 
+        isDanger = false 
+    } = options;
+
+    return new Promise((resolve) => {
+        const titleEl = document.getElementById('customDialogTitle');
+        if(titleEl) titleEl.innerText = title;
+        if(dialogMessage) dialogMessage.innerText = message;
+        
+        if(dialogCancelBtn) {
+            dialogCancelBtn.style.display = 'block';
+            dialogCancelBtn.innerText = cancelText;
+        }
+        
+        if(dialogConfirmBtn) {
+            dialogConfirmBtn.innerText = confirmText;
+            if (isDanger) {
+                dialogConfirmBtn.classList.add('danger');
+            } else {
+                dialogConfirmBtn.classList.remove('danger');
+            }
+        }
+        
+        if(customDialog) customDialog.style.display = 'flex';
+        document.body.classList.add('modal-open');
+
+        const onConfirm = () => {
+            cleanup();
+            resolve(true);
+        };
+
+        const onCancel = () => {
+            cleanup();
+            resolve(false);
+        };
+
+        const cleanup = () => {
+            closeCustomDialog();
+            if(dialogConfirmBtn) dialogConfirmBtn.removeEventListener('click', onConfirm);
+            if(dialogCancelBtn) dialogCancelBtn.removeEventListener('click', onCancel);
+        };
+
+        if(dialogConfirmBtn) dialogConfirmBtn.addEventListener('click', onConfirm);
+        if(dialogCancelBtn) dialogCancelBtn.addEventListener('click', onCancel);
+    });
+}
+
+function closeCustomDialog() {
+    if(customDialog) customDialog.style.display = 'none';
+    document.body.classList.remove('modal-open');
+}
 
 // Sidebar Toggle
 let sidebar = document.querySelector(".sidebar");
@@ -221,7 +320,7 @@ window.addEventListener('click', (e) => {
 
 // Add New Product (Luna)
 if(addForm) {
-    addForm.addEventListener('submit', (e) => {
+    addForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         // Get values
@@ -229,69 +328,115 @@ if(addForm) {
         const name = document.getElementById('name').value;
         const laboratory = document.getElementById('laboratoryInput').value;
         const measure = document.getElementById('measure').value;
-        const buyPrice = document.getElementById('buyPrice').value;
-        const sellPrice = document.getElementById('sellPrice').value;
+        const buyPrice = parseFloat(document.getElementById('buyPrice').value) || 0;
+        const sellPrice = parseFloat(document.getElementById('sellPrice').value) || 0;
         const date = document.getElementById('l_date').value;
 
-        // Auto-save laboratory if new
-        if (laboratory && !laboratories.includes(laboratory)) {
-            laboratories.push(laboratory);
-            saveLaboratories();
-            updateProviderDropdown();
-        }
+        try {
+            if (isEditing && currentEditRow) {
+                const id = currentEditRow.getAttribute('data-id');
+                const { error } = await _supabase
+                    .from('lunas')
+                    .update({ 
+                        codigo: code, 
+                        nombre: name, 
+                        laboratorio: laboratory, 
+                        medida: measure, 
+                        precio_compra: buyPrice, 
+                        precio_venta: sellPrice, 
+                        fecha: date 
+                    })
+                    .eq('id', id);
 
-        
-        if (isEditing && currentEditRow) {
-            // Update existing row
-            currentEditRow.innerHTML = `
-                <td>${code}</td>
-                <td>${name}</td>
-                <td>${laboratory}</td>
-                <td>${measure}</td>
-                <td>${formatCurrency(buyPrice)}</td>
-                <td>${formatCurrency(sellPrice)}</td>
-                <td>${date}</td>
-                <td class="actions-cell">
-                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                </td>
-            `;
-            isEditing = false;
-            currentEditRow = null;
-        } else {
-            // Create Row
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = `
-                <td>${code}</td>
-                <td>${name}</td>
-                <td>${laboratory}</td>
-                <td>${measure}</td>
-                <td>${formatCurrency(buyPrice)}</td>
-                <td>${formatCurrency(sellPrice)}</td>
-                <td>${date}</td>
-                <td class="actions-cell">
-                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                </td>
-            `;
-            tableBody.appendChild(newRow);
-        }
-        
-        // Clear & Close
-        addForm.reset();
-        modal.style.display = 'none';
+                if (error) throw error;
+            } else {
+                const { error } = await _supabase
+                    .from('lunas')
+                    .insert([{ 
+                        codigo: code, 
+                        nombre: name, 
+                        laboratorio: laboratory, 
+                        medida: measure, 
+                        precio_compra: buyPrice, 
+                        precio_venta: sellPrice, 
+                        fecha: date 
+                    }]);
 
+                if (error) throw error;
+            }
+
+            // Refresh table from DB
+            fetchLunas();
+            
+            // Clear & Close
+            addForm.reset();
+            modal.style.display = 'none';
+        } catch (error) {
+            console.error('Error saving luna:', error);
+            await showCustomAlert('Error al guardar: ' + error.message, 'ERROR DE GUARDADO');
+        }
     });
+}
+
+// Fetch Lunas from Supabase
+async function fetchLunas() {
+    try {
+        const { data, error } = await _supabase
+            .from('lunas')
+            .select('*')
+            .order('codigo', { ascending: true });
+
+        if (error) throw error;
+
+        if (tableBody) {
+            tableBody.innerHTML = '';
+            data.forEach(luna => {
+                const newRow = document.createElement('tr');
+                newRow.setAttribute('data-id', luna.id);
+                newRow.innerHTML = `
+                    <td>${luna.codigo}</td>
+                    <td>${luna.nombre}</td>
+                    <td>${luna.laboratorio || ''}</td>
+                    <td>${luna.medida || ''}</td>
+                    <td>${formatCurrency(luna.precio_compra?.toString() || '0')}</td>
+                    <td>${formatCurrency(luna.precio_venta?.toString() || '0')}</td>
+                    <td>${luna.fecha}</td>
+                    <td class="actions-cell">
+                        <div class="actions-wrapper">
+                            <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                            <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(newRow);
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching lunas:', error);
+    }
 }
 
 // Delete & Edit Logic (Event Delegation)
 if(tableBody) {
-    tableBody.addEventListener('click', (e) => {
+    tableBody.addEventListener('click', async (e) => {
         // Delete
         if(e.target.closest('.delete-btn')) {
-            if(confirm('¿Estás seguro de eliminar este producto?')) {
+            if(await showCustomConfirm('¿Estás seguro de eliminar este producto?', { title: 'ELIMINAR PRODUCTO', confirmText: 'Eliminar', isDanger: true })) {
                 const row = e.target.closest('tr');
-                row.remove();
+                const id = row.getAttribute('data-id');
+                
+                try {
+                    const { error } = await _supabase
+                        .from('lunas')
+                        .delete()
+                        .eq('id', id);
+
+                    if (error) throw error;
+                    row.remove();
+                } catch (error) {
+                    console.error('Error deleting luna:', error);
+                    await showCustomAlert('Error al eliminar');
+                }
             }
         }
         
@@ -422,68 +567,102 @@ window.addEventListener('click', (e) => {
 
 // Add New Montura
 if(addFormMontura) {
-    addFormMontura.addEventListener('submit', (e) => {
+    addFormMontura.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         // Get values
         const code = document.getElementById('m_code').value;
         const name = document.getElementById('m_name').value;
-        const stock = document.getElementById('m_stock').value;
-        const sellPrice = document.getElementById('m_sell_price').value;
+        const stock = parseInt(document.getElementById('m_stock').value);
+        const sellPrice = parseFloat(document.getElementById('m_sell_price').value) || 0;
         
-        if (isEditingMontura && currentEditRowMontura) {
-            // Update existing row
-            // We preserve 'Available' if possible or reset if stock changes
-            const oldStockText = currentEditRowMontura.cells[2].innerText;
-            const match = oldStockText.match(/(\d+)\((\d+)\)/);
-            let available = stock; // default to reset
-            
-            if (match && match[1] === stock) {
-                available = match[2]; // keep available if total didn't change
+        try {
+            if (isEditingMontura && currentEditRowMontura) {
+                const id = currentEditRowMontura.getAttribute('data-id');
+                const { error } = await _supabase
+                    .from('monturas')
+                    .update({
+                        codigo: code,
+                        nombre: name,
+                        stock_total: stock,
+                        stock_disponible: stock, // Resetting available for simplicity in prototype edit
+                        precio_venta: sellPrice
+                    })
+                    .eq('id', id);
+                if (error) throw error;
+            } else {
+                const { error } = await _supabase
+                    .from('monturas')
+                    .insert([{
+                        codigo: code,
+                        nombre: name,
+                        stock_total: stock,
+                        stock_disponible: stock,
+                        precio_venta: sellPrice
+                    }]);
+                if (error) throw error;
             }
-
-            currentEditRowMontura.innerHTML = `
-                <td>${code}</td>
-                <td>${name}</td>
-                <td>${stock}(${available})</td>
-                <td>${formatCurrency(sellPrice)}</td>
-                <td class="actions-cell">
-                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                </td>
-            `;
-            isEditingMontura = false;
-            currentEditRowMontura = null;
-        } else {
-            // Create Row
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = `
-                <td>${code}</td>
-                <td>${name}</td>
-                <td>${stock}(${stock})</td>
-                <td>${formatCurrency(sellPrice)}</td>
-                <td class="actions-cell">
-                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                </td>
-            `;
-            if(tableBodyMonturas) tableBodyMonturas.appendChild(newRow);
+            fetchMonturas();
+            addFormMontura.reset();
+            modalMontura.style.display = 'none';
+        } catch (error) {
+            console.error('Error saving montura:', error);
+            await showCustomAlert('Error al guardar montura', 'ERROR DE GUARDADO');
         }
-        
-        // Clear & Close
-        addFormMontura.reset();
-        modalMontura.style.display = 'none';
-
     });
+}
+
+// Fetch Monturas
+async function fetchMonturas() {
+    try {
+        const { data, error } = await _supabase
+            .from('monturas')
+            .select('*')
+            .order('codigo', { ascending: true });
+        if (error) throw error;
+
+        if (tableBodyMonturas) {
+            tableBodyMonturas.innerHTML = '';
+            data.forEach(m => {
+                const newRow = document.createElement('tr');
+                newRow.setAttribute('data-id', m.id);
+                newRow.innerHTML = `
+                    <td>${m.codigo}</td>
+                    <td>${m.nombre}</td>
+                    <td>${m.stock_total}(${m.stock_disponible})</td>
+                    <td>${formatCurrency(m.precio_venta?.toString())}</td>
+                    <td class="actions-cell">
+                        <div class="actions-wrapper">
+                            <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                            <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                        </div>
+                    </td>
+                `;
+                tableBodyMonturas.appendChild(newRow);
+            });
+            updateDashboard();
+            updateClientProductDropdowns(); // Refresh dropdown in client modal
+        }
+    } catch (error) {
+        console.error('Error fetching monturas:', error);
+    }
 }
 
 // Delete Logic for Monturas
 if(tableBodyMonturas) {
-    tableBodyMonturas.addEventListener('click', (e) => {
+    tableBodyMonturas.addEventListener('click', async (e) => {
         if(e.target.closest('.delete-btn')) {
-            if(confirm('¿Estás seguro de eliminar esta montura?')) {
+            if(await showCustomConfirm('¿Estás seguro de eliminar esta montura?', { title: 'ELIMINAR MONTURA', confirmText: 'Eliminar', isDanger: true })) {
                 const row = e.target.closest('tr');
-                row.remove();
+                const id = row.getAttribute('data-id');
+                try {
+                    const { error } = await _supabase.from('monturas').delete().eq('id', id);
+                    if (error) throw error;
+                    row.remove();
+                } catch (error) {
+                    console.error('Error deleting montura:', error);
+                    await showCustomAlert('Error al eliminar montura');
+                }
             }
         }
         if(e.target.closest('.edit-btn')) {
@@ -658,14 +837,23 @@ const loginError = document.getElementById('loginError');
 const logoutBtn = document.getElementById('logoutBtn');
 
 // Check Session on Load
-function checkSession() {
-    const isLoggedIn = sessionStorage.getItem('isLoggedIn');
-    if (isLoggedIn === 'true') {
+async function checkSession() {
+    const { data: { session } } = await _supabase.auth.getSession();
+    if (session) {
         showApp();
     } else {
         showLogin();
     }
 }
+
+// Listen for Auth changes (Login/Logout)
+_supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN') {
+        showApp();
+    } else if (event === 'SIGNED_OUT') {
+        showLogin();
+    }
+});
 
 function showApp() {
     if(loginContainer) loginContainer.style.display = 'none';
@@ -681,24 +869,33 @@ function showLogin() {
 }
 
 if(loginForm) {
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const user = document.getElementById('username').value;
+        const userInput = document.getElementById('username').value;
         const pass = document.getElementById('password').value;
 
-        // Hardcoded generic credentials for prototype
-        console.log('Login attempt:', user, pass);
-        if(user === 'admin' && pass === 'admin') {
-            sessionStorage.setItem('isLoggedIn', 'true');
-            sessionStorage.setItem('username', user);
-            showApp();
-            loginError.innerText = '';
-        } else {
-            loginError.innerText = 'Usuario o contraseña incorrectos';
-            // Animation shake
-            const box = document.querySelector('.login-box');
-            box.style.animation = 'shake 0.5s';
-            setTimeout(() => box.style.animation = 'none', 500);
+        // Map short username to internal email format for Supabase
+        const email = userInput.includes('@') ? userInput : `${userInput}@optica.com`;
+
+        try {
+            const { data, error } = await _supabase.auth.signInWithPassword({
+                email: email,
+                password: pass,
+            });
+
+            if (error) {
+                loginError.innerText = 'Correo o contraseña incorrectos';
+                // Animation shake
+                const box = document.querySelector('.login-box');
+                box.style.animation = 'shake 0.5s';
+                setTimeout(() => box.style.animation = 'none', 500);
+            } else {
+                loginError.innerText = '';
+                // The onAuthStateChange listener will handle showing the app
+            }
+        } catch (err) {
+            console.error('Error during login:', err);
+            loginError.innerText = 'Error al conectar con el servidor';
         }
     });
 
@@ -717,13 +914,15 @@ if(loginForm) {
 }
 
 if(logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-        if(confirm('¿Cerrar sesión?')) {
-            sessionStorage.removeItem('isLoggedIn');
-            sessionStorage.removeItem('username');
-            showLogin();
-            // Reset form
-            if(loginForm) loginForm.reset();
+    logoutBtn.addEventListener('click', async () => {
+        if(await showCustomConfirm('¿Cerrar sesión?', { title: 'CERRAR SESIÓN', confirmText: 'Salir', cancelText: 'Permanecer' })) {
+            const { error } = await _supabase.auth.signOut();
+            if (error) {
+                console.error('Error signing out:', error);
+            } else {
+                showLogin();
+                if(loginForm) loginForm.reset();
+            }
         }
     });
 }
@@ -766,7 +965,7 @@ function setupExportLunas() {
     });
 }
 
-function generateLunasPDF(startDate, endDate) {
+async function generateLunasPDF(startDate, endDate) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('l'); // Landscape for more columns
 
@@ -807,7 +1006,7 @@ function generateLunasPDF(startDate, endDate) {
         });
         doc.save(`Reporte_Lunas_${startDate}_${endDate}.pdf`);
     } else {
-        alert('No se encontraron lunas en el rango de fechas seleccionado.');
+        await showCustomAlert('No se encontraron lunas en el rango de fechas seleccionado.', 'REPORTE VACÍO');
     }
 }
 
@@ -845,7 +1044,7 @@ function setupExportMonturas() {
     });
 }
 
-function generateMonturasPDF(startDate, endDate) {
+async function generateMonturasPDF(startDate, endDate) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
@@ -884,7 +1083,7 @@ function generateMonturasPDF(startDate, endDate) {
         });
         doc.save(`Reporte_Monturas_${startDate}_${endDate}.pdf`);
     } else {
-        alert('No se encontraron monturas en el rango de fechas seleccionado.');
+        await showCustomAlert('No se encontraron monturas en el rango de fechas seleccionado.', 'REPORTE VACÍO');
     }
 }
 
@@ -898,6 +1097,12 @@ document.addEventListener('DOMContentLoaded', () => {
     updateFinancialDashboards();
     setupSummaryModal();
     setupWeeklySummaryModal();
+
+    // Initial data fetch from Supabase
+    fetchLunas();
+    fetchMonturas();
+    fetchClients();
+    fetchExpenses();
 });
 
 // HELPER: Auto-select numeric inputs on focus for better UX
@@ -923,8 +1128,8 @@ function setupAutoSelectOnFocus() {
 // User Management Logic
 const btnAddUser = document.getElementById('btnAddUser');
 if(btnAddUser) {
-    btnAddUser.addEventListener('click', () => {
-        alert('Funcionalidad de "Crear Nuevo Usuario" disponible en la versión completa con Base de Datos.');
+    btnAddUser.addEventListener('click', async () => {
+        await showCustomAlert('Funcionalidad de "Crear Nuevo Usuario" disponible en la versión completa con Base de Datos.', 'PROXIMAMENTE');
     });
 }
 
@@ -932,7 +1137,7 @@ if(btnAddUser) {
 // HELPER: Decrement Montura Stock
 // ==========================================
 
-function decrementMonturaStock(monturaName, transactionDate) {
+async function decrementMonturaStock(monturaName, transactionDate) {
     if (!monturaName) return true; // No montura selected, proceed normally
     
     const monturasRows = document.querySelectorAll('#monturasTable tbody tr');
@@ -954,7 +1159,7 @@ function decrementMonturaStock(monturaName, transactionDate) {
                     let available = parseInt(match[2]);
                     
                     if (available <= 0) {
-                        alert(`No hay stock disponible para la montura "${monturaName}".`);
+                        await showCustomAlert(`No hay stock disponible para la montura "${monturaName}".`, 'STOCK AGOTADO');
                         return false;
                     }
                     
@@ -966,7 +1171,7 @@ function decrementMonturaStock(monturaName, transactionDate) {
                     // Fallback for old format
                     const currentStock = parseInt(stockText);
                     if (isNaN(currentStock) || currentStock <= 0) {
-                        alert(`No hay stock disponible.`);
+                        await showCustomAlert(`No hay stock disponible.`, 'STOCK AGOTADO');
                         return false;
                     }
                     stockCell.innerText = `${currentStock}(${currentStock - 1})`;
@@ -977,7 +1182,7 @@ function decrementMonturaStock(monturaName, transactionDate) {
     }
     
     // Montura not found in table
-    alert(`No se encontró la montura "${monturaName}" en el inventario.`);
+    await showCustomAlert(`No se encontró la montura "${monturaName}" en el inventario.`, 'MONTAJE NO ENCONTRADO');
     return false;
 }
 
@@ -1114,11 +1319,13 @@ function updateClientProductDropdowns() {
     monturasList = [];
     const monturasRows = document.querySelectorAll('#monturasTable tbody tr');
     monturasRows.forEach(row => {
+        const id = row.getAttribute('data-id');
         const cells = row.getElementsByTagName('td');
         if(cells.length > 1) {
             const name = cells[1].innerText;
-            if (!monturasList.includes(name)) {
-                monturasList.push(name);
+            // Check if this ID+name combo is already in our list
+            if (!monturasList.some(m => m.id === id)) {
+                monturasList.push({ id, name });
             }
         }
     });
@@ -1129,10 +1336,10 @@ function updateClientProductDropdowns() {
 
     // 4. Populate Monturas
     selMontura.innerHTML = '<option value="">Modelo de Montura</option>';
-    monturasList.forEach(name => {
+    monturasList.forEach(m => {
         const option = document.createElement('option');
-        option.value = name;
-        option.text = name;
+        option.value = m.id; // Store ID
+        option.text = m.name; // Show Name
         selMontura.appendChild(option);
     });
     
@@ -1203,7 +1410,8 @@ function updatePurchaseDataString() {
     const consulta = selConsulta ? selConsulta.value : '';
     const lunaName = cLunaName ? cLunaName.value : '';
     const measure = cLunaMeasure ? cLunaMeasure.value : '';
-    const montura = selMontura ? selMontura.value : '';
+    // Get the NAME from the text of the selected option
+    const montura = selMontura && selMontura.selectedIndex > 0 ? selMontura.options[selMontura.selectedIndex].text : '';
     const others = cOthers ? cOthers.value : '';
     const vendedora = selVendedora ? selVendedora.value : '';
     
@@ -1260,376 +1468,286 @@ function findExpenseByLinkedId(clientId) {
 }
 
 // ==========================================
-// CRUD LOGIC FOR CLIENTS
+// CRUD LOGIC FOR CLIENTS & SALES
 // ==========================================
 if(addFormClient) {
-    addFormClient.addEventListener('submit', (e) => {
+    addFormClient.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        let id = document.getElementById('c_id').value.trim();
+        const id_venta = document.getElementById('c_id').value.trim(); // User manually enters Venta ID
         const dateRaw = document.getElementById('c_date').value;
         const name = document.getElementById('c_name').value;
         const phone = document.getElementById('c_phone').value;
         const data = document.getElementById('c_data').value;
-        
-        // Auto-generate code if empty (as a fallback)
-        if (!id) {
-            id = getNextClientID();
-        }
-
-        // --- VALIDATION: Check for duplicate "Código" ---
-        const rows = tableBodyClients.querySelectorAll('tr');
-        let codeExists = false;
-        let isSameRow = false;
-
-        for (let row of rows) {
-            const cells = row.getElementsByTagName('td');
-            if (cells.length > 0) {
-                const existingCode = cells[0].innerText.trim();
-                if (existingCode === id) {
-                    codeExists = true;
-                    // If we are editing, check if it's the SAME row we are editing
-                    if (isEditingClient && currentEditRowClient === row) {
-                        isSameRow = true;
-                    }
-                    break;
-                }
-            }
-        }
-
-        if (codeExists && !isSameRow) {
-            alert(`Error: El código de venta "${id}" ya existe. Por favor, asigne un código diferente.`);
-            return; // Stop saving
-        }
-        // --- END VALIDATION ---
-
-        // Format date to dd/mm/yyyy for display
-        const dateObj = new Date(dateRaw);
-        // Fix timezone issue by using UTC methods or simple string split if YYYY-MM-DD
-        const dateParts = dateRaw.split('-');
-        const dateDisplay = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`; // dd/mm/yyyy
-
         const total = parseFloat(document.getElementById('c_total').value) || 0;
         const advance = parseFloat(document.getElementById('c_advance').value) || 0;
         const balance = total - advance;
-        const statusBadge = getStatusBadge(total, advance);
-        
-        // Handle Payment Method (Single vs Mixed)
-        let paymentMethod = "";
-        const isSplit = document.getElementById('chk_split_payment')?.checked;
-        
-        if (isSplit) {
-            const m1 = document.getElementById('split_method_1').value;
-            const a1 = parseFloat(document.getElementById('split_amount_1').value) || 0;
-            const m2 = document.getElementById('split_method_2').value;
-            const a2 = parseFloat(document.getElementById('split_amount_2').value) || 0;
+        const paymentMethod = document.getElementById('c_payment_method').value; // Simple for now
+        const vendedora = document.getElementById('sel_vendedora').value;
 
-            if (!m1 || !m2 || a1 <= 0 || a2 <= 0) {
-                alert('Por favor complete ambos métodos y montos para el pago mixto.');
-                return;
+        try {
+            let saleId = null;
+            if (isEditingClient && currentEditRowClient) {
+                saleId = currentEditRowClient.getAttribute('data-id');
             }
 
-            if (Math.abs((a1 + a2) - advance) > 0.01) {
-                alert(`La suma de los montos mixtos (S/. ${(a1 + a2).toFixed(2)}) debe coincidir con el adelanto (S/. ${advance.toFixed(2)}).`);
-                return;
-            }
-
-            paymentMethod = `${m1}:${a1}|${m2}:${a2}`;
-        } else {
-            paymentMethod = document.getElementById('c_payment_method').value;
-            if (!paymentMethod && advance > 0) {
-                alert('Seleccione una modalidad de pago.');
-                return;
-            }
-        }
-
-        // ==========================================
-        // STOCK & LUNA AUTOMATION LOGIC
-        // ==========================================
-        const lunaCodeValue = id; // Use main ID as Lens Code
-        const lunaNameValue = cLunaName ? cLunaName.value : '';
-        const lunaMeasureValue = cLunaMeasure ? cLunaMeasure.value : '';
-
-        // Function to ensure Luna product exists or creates it
-        function ensureLunaProduct(code, name, measure, date) {
-            if (!code) return;
-            const lunasRows = document.querySelectorAll('#lunasTable tbody tr');
-            let exists = false;
-            for (let row of lunasRows) {
-                const cells = row.getElementsByTagName('td');
-                if (cells[0] && cells[0].innerText === code) {
-                    exists = true;
-                    // Update date even if exists (sync from transaction)
-                    if (date && cells[6]) cells[6].innerText = date;
-                    break;
-                }
-            }
-            if (!exists) {
-                const tableBodyLunas = document.querySelector('#lunasTable tbody');
-                const newRow = document.createElement('tr');
-                newRow.innerHTML = `
-                    <td>${code}</td>
-                    <td>${name}</td>
-                    <td></td> <!-- Laboratory empty for manual edit -->
-                    <td>${measure}</td>
-                    <td>S/.0.00</td>
-                    <td>S/.0.00</td>
-                    <td>${date || getLocalDateString()}</td>
-                    <td class="actions-cell">
-                        <div class="actions-wrapper">
-                            <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                            <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                        </div>
-                    </td>
-                `;
-                if(tableBodyLunas) tableBodyLunas.appendChild(newRow);
-            }
-        }
-
-        // ==========================================
-        // CONSOLIDATED CONSULTATION EXPENSE LOGIC
-        // ==========================================
-        function syncConsultationExpense(date, newDoctor, oldDoctor = null) {
-            // Helper to extract base name and count from "Consulta Doctor(X)"
-            function parseDoctorCategory(categoryText) {
-                const match = categoryText.match(/^(Consulta [^(]+)(?:\((\d+)\))?$/);
-                if (match) {
-                    return {
-                        baseName: match[1].trim(),
-                        count: match[2] ? parseInt(match[2]) : 1
-                    };
-                }
-                return null;
-            }
-
-            // Decrement old doctor if changed or removed
-            if (oldDoctor && oldDoctor !== newDoctor) {
-                const oldBaseName = `Consulta ${oldDoctor}`;
-                let rowToUpdate = null;
-                const rows = tableBodyExpenses.querySelectorAll('tr');
-                
-                for (let row of rows) {
-                    const cells = row.getElementsByTagName('td');
-                    const rawDateField = row.querySelector('.raw-date');
-                    if (cells.length > 2 && rawDateField && rawDateField.value === date) {
-                        const parsed = parseDoctorCategory(cells[2].innerText);
-                        if (parsed && parsed.baseName === oldBaseName) {
-                            rowToUpdate = { row, count: parsed.count, unitPrice: parseFloat(row.getAttribute('data-unit-price')) || 0 };
-                            break;
-                        }
-                    }
-                }
-
-                if (rowToUpdate) {
-                    const newCount = rowToUpdate.count - 1;
-                    if (newCount <= 0) {
-                        rowToUpdate.row.remove();
-                    } else {
-                        const cells = rowToUpdate.row.getElementsByTagName('td');
-                        cells[2].innerText = `${oldBaseName}(${newCount})`;
-                        // Update total based on unit price
-                        const newTotal = rowToUpdate.unitPrice * newCount;
-                        cells[4].innerText = formatCurrency(newTotal.toString());
-                        const rawAmountField = rowToUpdate.row.querySelector('.raw-amount');
-                        if (rawAmountField) rawAmountField.value = newTotal;
-                    }
-                }
-            }
-
-            // Increment new doctor
-            if (newDoctor) {
-                const newBaseName = `Consulta ${newDoctor}`;
-                let rowToUpdate = null;
-                const rows = tableBodyExpenses.querySelectorAll('tr');
-                
-                for (let row of rows) {
-                    const cells = row.getElementsByTagName('td');
-                    const rawDateField = row.querySelector('.raw-date');
-                    if (cells.length > 2 && rawDateField && rawDateField.value === date) {
-                        const parsed = parseDoctorCategory(cells[2].innerText);
-                        if (parsed && parsed.baseName === newBaseName) {
-                            rowToUpdate = { row, count: parsed.count, unitPrice: parseFloat(row.getAttribute('data-unit-price')) || 0 };
-                            break;
-                        }
-                    }
-                }
-
-                if (rowToUpdate) {
-                    const newCount = rowToUpdate.count + 1;
-                    const cells = rowToUpdate.row.getElementsByTagName('td');
-                    cells[2].innerText = `${newBaseName}(${newCount})`;
-                    // Update total based on unit price
-                    const newTotal = rowToUpdate.unitPrice * newCount;
-                    cells[4].innerText = formatCurrency(newTotal.toString());
-                    const rawAmountField = rowToUpdate.row.querySelector('.raw-amount');
-                    if (rawAmountField) rawAmountField.value = newTotal;
-                } else {
-                    // Create new consolidated row
-                    const expenseId = getNextExpenseID();
-                    const initialTotal = 0; // Starts at 0, user enters unit price later
-                    createNewExpenseRow(expenseId, date, newBaseName, newBaseName, initialTotal, false, null, null);
-                    // Find the newly created row to set the data attribute (it's appended to the end)
-                    const newRow = tableBodyExpenses.lastElementChild;
-                    if (newRow) {
-                        newRow.setAttribute('data-unit-price', '0');
-                    }
-                }
-            }
-        }
-
-
-        if (!isEditingClient) {
-            // Check for Consultation
-            const selectedConsulta = selConsulta ? selConsulta.value : '';
-            if (selectedConsulta !== '') {
-                syncConsultationExpense(dateRaw, selectedConsulta);
-            }
-
-            // Always check for Luna/Montura stock regardless of consultation
-            if (lunaCodeValue) {
-                ensureLunaProduct(lunaCodeValue, lunaNameValue, lunaMeasureValue, dateRaw);
-            }
-            const selectedMontura = selMontura ? selMontura.value : '';
-            if (selectedMontura) {
-                const stockDecremented = decrementMonturaStock(selectedMontura, dateRaw);
-                if (!stockDecremented) return;
-            }
-        } else {
-            // EDITING CLIENT (Sync expenses)
-            const selectedConsulta = selConsulta ? selConsulta.value : '';
+            // 1. Check/Insert Client
+            let cliente_id;
+            const { data: existingClients, error: clientFetchError } = await _supabase
+                .from('clientes')
+                .select('id')
+                .eq('nombre', name)
+                .limit(1);
             
-            // Get original consultation doctor from rawDataValue
-            let originalConsultaDoctor = null;
-            if (currentEditRowClient) {
-                const rawDataField = currentEditRowClient.querySelector('.raw-data');
-                if (rawDataField && rawDataField.value) {
-                    const parts = rawDataField.value.split('|');
-                    if (parts.length >= 4) {
-                        originalConsultaDoctor = parts[3];
-                    }
+            if (clientFetchError) throw clientFetchError;
+
+            if (existingClients.length > 0) {
+                cliente_id = existingClients[0].id;
+                await _supabase.from('clientes').update({ celular: phone }).eq('id', cliente_id);
+            } else {
+                const { data: newClient, error: clientInsertError } = await _supabase
+                    .from('clientes')
+                    .insert([{ nombre: name, celular: phone }])
+                    .select();
+                if (clientInsertError) throw clientInsertError;
+                cliente_id = newClient[0].id;
+            }
+
+            // 2. Consultation to Expense logic (DO THIS BEFORE SALE TO GET ID)
+            let egreso_id = null;
+            const consultaName = data.split('|')[3];
+            if (consultaName) {
+                // Check if expense already exists for this sale description context
+                const { data: existingExp } = await _supabase.from('egresos').select('id').eq('descripcion', `Consulta para ${name} (Venta ${id_venta})`).limit(1);
+                
+                if (!existingExp || existingExp.length === 0) {
+                    const { data: newExp, error: expError } = await _supabase.from('egresos').insert([{
+                        codigo: getNextExpenseID(),
+                        fecha: dateRaw,
+                        categoria: `Consulta ${consultaName}`,
+                        descripcion: `Consulta para ${name} (Venta ${id_venta})`,
+                        monto: 0 
+                    }]).select();
+                    if (!expError && newExp) egreso_id = newExp[0].id;
                 } else {
-                    // Fallback for older data format
-                    const displayData = currentEditRowClient.getElementsByTagName('td')[2].innerText;
-                    if (displayData === 'Consulta') {
-                        // We can't know the exact doctor if it wasn't saved in raw-data in older versions,
-                        // but normally it says "Consulta Pool", etc. Try parsing:
-                        if (displayData.startsWith('Consulta ')) {
-                            originalConsultaDoctor = displayData.replace('Consulta ', '').trim();
-                        }
+                    egreso_id = existingExp[0].id;
+                }
+            }
+
+            // 3. Luna Auto-Generation logic (DO THIS BEFORE SALE TO GET ID)
+            let luna_id = null;
+            const lunaName = data.split('|')[0];
+            const lunaMeasure = data.split('|')[1];
+            if (lunaName && lunaName.trim() !== '') {
+                const { data: existingLuna } = await _supabase.from('lunas').select('id').eq('codigo', id_venta).limit(1);
+                const lunaEntry = {
+                    codigo: id_venta,
+                    nombre: lunaName,
+                    medida: lunaMeasure,
+                    fecha: dateRaw
+                };
+                if (existingLuna && existingLuna.length > 0) {
+                    await _supabase.from('lunas').update(lunaEntry).eq('id', existingLuna[0].id);
+                    luna_id = existingLuna[0].id;
+                } else {
+                    const { data: newLuna, error: lError } = await _supabase.from('lunas').insert([lunaEntry]).select();
+                    if (!lError && newLuna) luna_id = newLuna[0].id;
+                }
+            }
+
+            // 4. Insert/Update Sale
+            const saleData = {
+                codigo_venta: id_venta,
+                cliente_id: cliente_id,
+                montura_id: (selMontura && selMontura.value !== "") ? selMontura.value : null,
+                luna_id: luna_id,   // Formal link OUTGOING
+                egreso_id: egreso_id, // Formal link OUTGOING
+                datos_compra: data,
+                monto_total: total,
+                adelanto: advance,
+                saldo: balance,
+                vendedora: vendedora,
+                fecha: dateRaw,
+                metodo_pago: paymentMethod
+            };
+
+            if (isEditingClient && saleId) {
+                const { error: updateError } = await _supabase.from('ventas').update(saleData).eq('id', saleId);
+                if (updateError) throw updateError;
+            } else {
+                const { data: newSale, error: insertError } = await _supabase.from('ventas').insert([saleData]).select();
+                if (insertError) throw insertError;
+                saleId = newSale[0].id;
+            }
+
+            // 5. Stock Management
+            const currentMonturaId = selMontura ? selMontura.value : null;
+            if (currentMonturaId && currentMonturaId !== '') {
+                if (!isEditingClient || (isEditingClient && originalMonturaName !== data.split('|')[2])) {
+                    const { data: monturaArr } = await _supabase.from('monturas').select('id, stock_disponible').eq('id', currentMonturaId).limit(1);
+                    if (monturaArr && monturaArr.length > 0) {
+                        await _supabase.from('monturas').update({ stock_disponible: monturaArr[0].stock_disponible - 1 }).eq('id', monturaArr[0].id);
                     }
                 }
             }
 
-            // Only sync if there's a consultation value (either originally or newly added)
-            // or if a consultation was removed
-            if (originalConsultaDoctor !== selectedConsulta) {
-                syncConsultationExpense(dateRaw, selectedConsulta, originalConsultaDoctor);
-            }
-
-            // EDITING CLIENT: Check Luna/Stock
-            if (lunaCodeValue) {
-                ensureLunaProduct(lunaCodeValue, lunaNameValue, lunaMeasureValue, dateRaw);
-            }
-
-            const selectedMontura = selMontura ? selMontura.value : '';
-            if (originalMonturaName !== selectedMontura) {
-                if (originalMonturaName && originalMonturaName !== '') {
-                    incrementMonturaStock(originalMonturaName);
-                }
-                if (selectedMontura && selectedMontura !== '') {
-                    const stockDecremented = decrementMonturaStock(selectedMontura, dateRaw);
-                    if (!stockDecremented) {
-                        if (originalMonturaName && originalMonturaName !== '') {
-                            decrementMonturaStock(originalMonturaName);
-                        }
-                        return;
-                    }
-                }
-            } else if (selectedMontura && selectedMontura !== '') {
-                // Same montura, but maybe date changed? Sync date.
-                decrementMonturaStock(selectedMontura, dateRaw);
-            }
-        }
-        // ==========================================
-
-
-        if (isEditingClient && currentEditRowClient) {
-            // Update existing row
-            const formattedData = formatPurchaseDataForDisplay(data);
-            const formattedPayment = formatPaymentMethodBadge(paymentMethod);
-            
-            currentEditRowClient.innerHTML = `
-                <td>${id}</td>
-                <td>${name}</td>
-                <td class="compact-cell">${formattedData}</td>
-                <td>${phone}</td>
-                <td>${dateDisplay}</td>
-                <td>${formatCurrency(total.toString())}</td>
-                <td>${formatCurrency(advance.toString())}</td>
-                <td>${formatCurrency(balance.toString())}</td>
-                <td>${statusBadge}</td>
-                <td>${formattedPayment}</td>
-                <td class="actions-cell">
-                    <div class="actions-wrapper">
-                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                    </div>
-                    <!-- Hidden data for logic -->
-                    <input type="hidden" class="raw-date" value="${dateRaw}">
-                    <input type="hidden" class="raw-total" value="${total}">
-                    <input type="hidden" class="raw-advance" value="${advance}">
-                    <input type="hidden" class="raw-montura" value="${selMontura ? selMontura.value : ''}">
-                    <input type="hidden" class="raw-payment-method" value="${paymentMethod}">
-                    <input type="hidden" class="raw-data" value="${data}">
-                </td>
-            `;
             isEditingClient = false;
             currentEditRowClient = null;
-        } else {
-            // Create Row
-            const formattedData = formatPurchaseDataForDisplay(data);
-            const formattedPayment = formatPaymentMethodBadge(paymentMethod);
-            
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = `
-                <td>${id}</td>
-                <td>${name}</td>
-                <td class="compact-cell">${formattedData}</td>
-                <td>${phone}</td>
-                <td>${dateDisplay}</td>
-                <td>${formatCurrency(total.toString())}</td>
-                <td>${formatCurrency(advance.toString())}</td>
-                <td>${formatCurrency(balance.toString())}</td>
-                <td>${statusBadge}</td>
-                <td>${formattedPayment}</td>
-                <td class="actions-cell">
-                    <div class="actions-wrapper">
-                        <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
-                        <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
-                    </div>
-                    <!-- Hidden data for logic -->
-                    <input type="hidden" class="raw-date" value="${dateRaw}">
-                    <input type="hidden" class="raw-total" value="${total}">
-                    <input type="hidden" class="raw-advance" value="${advance}">
-                    <input type="hidden" class="raw-payment-method" value="${paymentMethod}">
-                    <input type="hidden" class="raw-data" value="${data}">
-                </td>
-            `;
-            if(tableBodyClients) tableBodyClients.appendChild(newRow);
+            document.querySelector('#addClientModal h2').innerText = 'Agregar Nuevo Cliente';
+            fetchClients();
+            fetchMonturas();
+            fetchExpenses();
+            fetchLunas();
+            addFormClient.reset();
+            modalClient.style.display = 'none';
+
+        } catch (error) {
+            console.error('Error saving client/sale:', error);
+            await showCustomAlert('Error al guardar venta: ' + error.message, 'ERROR DE GUARDADO');
         }
-        
-        // Clear & Close
-        addFormClient.reset();
-        modalClient.style.display = 'none';
     });
 }
 
+// Fetch Clients & Sales
+async function fetchClients() {
+    try {
+        const { data, error } = await _supabase
+            .from('ventas')
+            .select(`
+                *,
+                clientes (nombre, celular)
+            `)
+            .order('codigo_venta', { ascending: true });
+
+        if (error) throw error;
+
+        if (tableBodyClients) {
+            tableBodyClients.innerHTML = '';
+            data.forEach(v => {
+                const dateParts = v.fecha.split('-');
+                const dateDisplay = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                const newRow = document.createElement('tr');
+                newRow.setAttribute('data-id', v.id);
+                newRow.innerHTML = `
+                    <td>${v.codigo_venta}</td>
+                    <td>${v.clientes?.nombre || 'N/A'}</td>
+                    <td class="compact-cell">${formatPurchaseDataForDisplay(v.datos_compra)}</td>
+                    <td>${v.clientes?.celular || ''}</td>
+                    <td>${dateDisplay}</td>
+                    <td>${formatCurrency(v.monto_total.toString())}</td>
+                    <td>${formatCurrency(v.adelanto.toString())}</td>
+                    <td>${formatCurrency(v.saldo.toString())}</td>
+                    <td>${getStatusBadge(v.monto_total, v.adelanto)}</td>
+                    <td>${formatPaymentMethodBadge(v.metodo_pago)}</td>
+                    <td class="actions-cell">
+                        <div class="actions-wrapper">
+                            <button class="icon-btn edit-btn" onclick="editSale('${v.id}')"><i class='bx bxs-edit-alt'></i></button>
+                            <button class="icon-btn delete-btn" onclick="deleteSale('${v.id}', '${v.codigo_venta}', '${v.clientes?.nombre}')"><i class='bx bxs-trash'></i></button>
+                        </div>
+                        <!-- Hidden data for summary modals -->
+                        <input type="hidden" class="raw-date" value="${v.fecha}">
+                        <input type="hidden" class="raw-data" value="${v.datos_compra}">
+                        <input type="hidden" class="raw-advance" value="${v.adelanto}">
+                        <input type="hidden" class="raw-total" value="${v.monto_total}">
+                        <input type="hidden" class="raw-payment-method" value="${v.metodo_pago}">
+                    </td>
+                `;
+                tableBodyClients.appendChild(newRow);
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching clients:', error);
+    }
+}
+
+// Global delete for sales
+window.deleteSale = async function(id) {
+    if (await showCustomConfirm('¿Eliminar esta venta?', { title: 'ELIMINAR VENTA', confirmText: 'Eliminar', isDanger: true })) {
+        try {
+            // 1. Get the IDs of the linked Luna and Egreso
+            const { data: sale } = await _supabase.from('ventas').select('luna_id, egreso_id').eq('id', id).single();
+            
+            // 2. Delete children if they exist
+            if (sale) {
+                if (sale.luna_id) await _supabase.from('lunas').delete().eq('id', sale.luna_id);
+                if (sale.egreso_id) await _supabase.from('egresos').delete().eq('id', sale.egreso_id);
+            }
+
+            // 3. Delete the sale itself
+            const { error } = await _supabase.from('ventas').delete().eq('id', id);
+            if (error) throw error;
+            
+            fetchClients();
+            fetchMonturas();
+            fetchExpenses();
+            fetchLunas();
+            updateFinancialDashboards();
+        } catch (error) {
+            console.error('Error deleting sale:', error);
+            await showCustomAlert('Error al eliminar venta');
+        }
+    }
+}
+
+// Edit Sale Helper
+window.editSale = async function(id) {
+    try {
+        const { data: v, error } = await _supabase
+            .from('ventas')
+            .select(`
+                *,
+                clientes (nombre, celular)
+            `)
+            .eq('id', id)
+            .single();
+        
+        if (error) throw error;
+
+        // Reset and show modal
+        isEditingClient = true;
+        currentEditRowClient = document.querySelector(`tr:has(button[onclick*="${id}"])`); 
+        // Note: setting row might be tricky without a data-id, but we'll set it in fetchClients
+        
+        document.getElementById('c_id').value = v.codigo_venta;
+        document.getElementById('c_name').value = v.clientes?.nombre || '';
+        document.getElementById('c_phone').value = v.clientes?.celular || '';
+        document.getElementById('c_date').value = v.fecha;
+        document.getElementById('c_total').value = v.monto_total;
+        document.getElementById('c_advance').value = v.adelanto;
+        document.getElementById('c_payment_method').value = v.metodo_pago;
+        document.getElementById('sel_vendedora').value = v.vendedora;
+        
+        // Deconstruct purchase data
+        const parts = v.datos_compra.split('|');
+        if (parts.length >= 6) {
+            document.getElementById('c_luna_name').value = parts[0] || '';
+            document.getElementById('c_luna_measure').value = parts[1] || '';
+            // Use the actual ID from the DB instead of the name from the string
+            if (v.montura_id) {
+                document.getElementById('sel_montura').value = v.montura_id;
+            } else {
+                document.getElementById('sel_montura').value = '';
+            }
+            document.getElementById('sel_consulta').value = parts[3] || '';
+            document.getElementById('c_others').value = parts[4] || '';
+        }
+
+        document.querySelector('#addClientModal h2').innerText = 'Editar Venta / Cliente';
+        modalClient.style.display = 'block';
+        calculateBalance();
+
+    } catch (error) {
+        console.error('Error fetching sale for edit:', error);
+    }
+}
+// End of Sales Logic
+
 // Delete & Edit Logic for Clients
 if(tableBodyClients) {
-    tableBodyClients.addEventListener('click', (e) => {
+    tableBodyClients.addEventListener('click', async (e) => {
         // Delete
         if(e.target.closest('.delete-btn')) {
-            if(confirm('¿Estás seguro de eliminar este cliente?')) {
+            if(await showCustomConfirm('¿Estás seguro de eliminar este cliente?', { title: 'ELIMINAR CLIENTE', confirmText: 'Eliminar', isDanger: true })) {
                 const row = e.target.closest('tr');
                 const clientId = row.getElementsByTagName('td')[0].innerText;
                 
@@ -1854,12 +1972,12 @@ window.addEventListener('click', (e) => {
 
 // Generate PDF
 if(btnGeneratePDF) {
-    btnGeneratePDF.addEventListener('click', () => {
+    btnGeneratePDF.addEventListener('click', async () => {
         const startDateVal = document.getElementById('exportStartDate').value;
         const endDateVal = document.getElementById('exportEndDate').value;
         
         if(!startDateVal || !endDateVal) {
-            alert('Por favor selecciona ambas fechas.');
+            await showCustomAlert('Por favor selecciona ambas fechas.', 'RANGO INVÁLIDO');
             return;
         }
 
@@ -1871,7 +1989,7 @@ if(btnGeneratePDF) {
 
         // Access jsPDF
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
+        const doc = new jsPDF('l'); // Landscape orientation to fit all columns
         
         // Header
         doc.setFontSize(18);
@@ -1895,50 +2013,53 @@ if(btnGeneratePDF) {
                 const rowDate = new Date(`${year}-${month}-${day}`);
                 
                 if (rowDate >= startDate && rowDate <= endDate) {
-                    // Extract data for PDF
+                    // Extract data for PDF (All columns)
                     const id = cells[0].innerText;
                     const name = cells[1].innerText;
-                    const purchaseData = cells[2].innerText; // "Consulta" or products
+                    const purchaseData = cells[2].innerText;
                     const phone = cells[3].innerText;
-                    const status = cells[5].innerText; // Text inside span
-                    const paidAmount = cells[7].innerText; // Total
-                     // Wait, Logic for income:
-                    // If PAID -> Income = Total
-                    // If ADVANCE -> Income = Advance? Or just show Total amount involved?
-                    // Let's show Total Amount column in PDF.
-                    // If you want "Income" specifically, we might need to parse Advance input hidden?
-                    // For now, let's list the transaction value.
+                    const dateCol = cells[4].innerText;
+                    const totalAmount = cells[5].innerText;
+                    const advance = cells[6].innerText;
+                    const balance = cells[7].innerText;
+                    const status = cells[8].innerText;
+                    const modality = cells[9].innerText;
                     
                     rowsData.push([
                         id, 
                         name, 
                         purchaseData, 
-                        dateText, 
+                        phone,
+                        dateCol, 
+                        totalAmount,
+                        advance,
+                        balance,
                         status, 
-                        paidAmount
+                        modality
                     ]);
                     
-                    // Simple total sum of transaction values for footer
-                    totalIncome += parseFloat(paidAmount.replace('S/. ', '')) || 0;
+                    // Robust sum handling commas
+                    totalIncome += parseFloat(totalAmount.replace('S/. ', '').replace(/,/g, '')) || 0;
                 }
             }
         });
 
         if(rowsData.length === 0) {
-            alert('No se encontraron registros en el rango de fechas seleccionado.');
+            await showCustomAlert('No se encontraron registros en el rango de fechas seleccionado.', 'REPORTE VACÍO');
             return;
         }
 
         // Generate Table
         doc.autoTable({
             startY: 40,
-             head: [['ID', 'Nombre', 'Detalle', 'Fecha', 'Estado', 'Total']],
+            head: [['ID', 'Nombre', 'Detalle', 'Celular', 'Fecha', 'Total', 'A Cuenta', 'Saldo', 'Estado', 'Modalidad']],
             body: rowsData,
             theme: 'grid',
             headStyles: { fillColor: [41, 128, 185] },
-            styles: { fontSize: 8 },
+            styles: { fontSize: 7, cellPadding: 2 }, // Smaller font to fit 10 cols
             columnStyles: {
-                 2: { cellWidth: 40 }, // Detalle
+                 2: { cellWidth: 35 }, // Detalle
+                 1: { cellWidth: 30 }, // Nombre
             }
         });
 
@@ -2050,44 +2171,130 @@ function parseDoctorCategory(categoryText) {
 
 // Add/Edit Expense
 if(addFormExpense) {
-    addFormExpense.addEventListener('submit', (e) => {
+    addFormExpense.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const id = document.getElementById('e_id').value;
+        const id_egreso = document.getElementById('e_id').value;
         const dateRaw = document.getElementById('e_date').value;
         const category = document.getElementById('e_category').value;
         const description = document.getElementById('e_description').value;
         let amount = parseFloat(document.getElementById('e_amount').value) || 0;
-        
-        // --- MULTIPLIER LOGIC FOR CONSULTATIONS ---
-        // If this is an edit of a "Consulta Doctor(X)", apply the multiplier
-        let unitPrice = amount; // Store the unit price before potential multiplication
-        if (isEditingExpense && currentEditRowExpense) {
-            const currentCategoryText = currentEditRowExpense.getElementsByTagName('td')[2].innerText;
-            const parsed = parseDoctorCategory(currentCategoryText);
-            
-            // Only multiply if the category wasn't changed away from the original Consulta category
-            // (If user changed category in dropdown, we don't multiply)
-            if (parsed && category.startsWith("Consulta ")) {
-                amount = unitPrice * parsed.count;
+
+        try {
+            if (isEditingExpense && currentEditRowExpense) {
+                const id = currentEditRowExpense.getAttribute('data-id');
+                const { error } = await _supabase
+                    .from('egresos')
+                    .update({
+                        codigo: id_egreso,
+                        fecha: dateRaw,
+                        categoria: category,
+                        descripcion: description,
+                        monto: amount
+                    })
+                    .eq('id', id);
+                if (error) throw error;
+            } else {
+                const { error } = await _supabase
+                    .from('egresos')
+                    .insert([{
+                        codigo: id_egreso,
+                        fecha: dateRaw,
+                        categoria: category,
+                        descripcion: description,
+                        monto: amount
+                    }]);
+                if (error) throw error;
             }
+            
+            isEditingExpense = false;
+            currentEditRowExpense = null;
+            document.getElementById('expenseModalTitle').innerText = 'Agregar Nuevo Egreso';
+            fetchExpenses();
+            modalExpense.style.display = 'none';
+            addFormExpense.reset();
+            updateFinancialDashboards();
+        } catch (error) {
+            console.error('Error saving expense:', error);
+            await showCustomAlert('Error al guardar egreso', 'ERROR DE GUARDADO');
         }
-        // -------------------------------------------
-
-        if (category === 'Otros' && !description) {
-            alert('Por favor, especifique la descripción para la categoría "Otros".');
-            return;
-        }
-
-        // TargetLintErrorIds: 1
-        createNewExpenseRow(id, dateRaw, category, description, amount, isEditingExpense, currentEditRowExpense, null, unitPrice);
-        
-        // Update dashboards after saving expense
-        updateFinancialDashboards();
-        
-        modalExpense.style.display = 'none';
-        addFormExpense.reset();
     });
+}
+
+// Fetch Expenses
+async function fetchExpenses() {
+    try {
+        const { data, error } = await _supabase
+            .from('egresos')
+            .select('*')
+            .order('codigo', { ascending: true });
+
+        if (error) throw error;
+
+        if (tableBodyExpenses) {
+            tableBodyExpenses.innerHTML = '';
+            data.forEach(eg => {
+                const dateParts = eg.fecha.split('-');
+                const dateDisplay = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                const newRow = document.createElement('tr');
+                newRow.setAttribute('data-id', eg.id);
+                newRow.innerHTML = `
+                    <td>${eg.codigo}</td>
+                    <td>${dateDisplay}</td>
+                    <td>${eg.categoria}</td>
+                    <td>${eg.descripcion}</td>
+                    <td>${formatCurrency(eg.monto.toString())}</td>
+                    <td class="actions-cell">
+                        <div class="actions-wrapper">
+                            <button class="icon-btn edit-btn" onclick="editExpense('${eg.id}')"><i class='bx bxs-edit-alt'></i></button>
+                            <button class="icon-btn delete-btn" onclick="deleteExpense('${eg.id}')"><i class='bx bxs-trash'></i></button>
+                        </div>
+                        <!-- Hidden data for summary modals -->
+                        <input type="hidden" class="raw-date" value="${eg.fecha}">
+                        <input type="hidden" class="raw-amount" value="${eg.monto}">
+                    </td>
+                `;
+                tableBodyExpenses.appendChild(newRow);
+            });
+            updateFinancialDashboards();
+        }
+    } catch (error) {
+        console.error('Error fetching expenses:', error);
+    }
+}
+
+// Global delete for expenses
+window.deleteExpense = async function(id) {
+    if (await showCustomConfirm('¿Eliminar este egreso?', { title: 'ELIMINAR EGRESO', confirmText: 'Eliminar', isDanger: true })) {
+        const { error } = await _supabase.from('egresos').delete().eq('id', id);
+        if (error) await showCustomAlert('Error al eliminar');
+        else {
+            fetchExpenses();
+            updateFinancialDashboards();
+        }
+    }
+}
+
+// Edit Expense Helper
+window.editExpense = async function(id) {
+    try {
+        const { data: eg, error } = await _supabase.from('egresos').select('*').eq('id', id).single();
+        if (error) throw error;
+
+        isEditingExpense = true;
+        currentEditRowExpense = document.querySelector(`tr[data-id="${id}"]`);
+        
+        document.getElementById('e_id').value = eg.codigo;
+        document.getElementById('e_date').value = eg.fecha;
+        document.getElementById('e_category').value = eg.categoria;
+        document.getElementById('e_description').value = eg.descripcion;
+        document.getElementById('e_amount').value = eg.monto;
+        
+        document.getElementById('expenseModalTitle').innerText = 'Editar Egreso';
+        modalExpense.style.display = 'block';
+    } catch (error) {
+        console.error('Error fetching expense for edit:', error);
+    }
 }
 
 // Reusable function to create/update an expense row
@@ -2150,10 +2357,10 @@ function createNewExpenseRow(id, dateRaw, category, description, amount, isEdit 
 
 // Table actions (Edit / Delete)
 if(tableBodyExpenses) {
-    tableBodyExpenses.addEventListener('click', (e) => {
+    tableBodyExpenses.addEventListener('click', async (e) => {
         // Delete
         if(e.target.closest('.delete-btn')) {
-            if(confirm('¿Estás seguro de eliminar este egreso?')) {
+            if(await showCustomConfirm('¿Estás seguro de eliminar este egreso?', { title: 'ELIMINAR EGRESO', confirmText: 'Eliminar', isDanger: true })) {
                 const row = e.target.closest('tr');
                 row.remove();
             }
@@ -2258,7 +2465,7 @@ function updateTaxSummary() {
 }
 const btnEditTaxGoal = document.getElementById('btnEditTaxGoal');
 if (btnEditTaxGoal) {
-    btnEditTaxGoal.addEventListener('click', () => {
+    btnEditTaxGoal.addEventListener('click', async () => {
         const newGoal = prompt('Ingrese el monto de la meta/deuda mensual de SUNAT:', sunatGoal);
         if (newGoal !== null) {
             const parsedGoal = parseFloat(newGoal);
@@ -2266,7 +2473,7 @@ if (btnEditTaxGoal) {
                 sunatGoal = parsedGoal;
                 updateTaxSummary();
             } else {
-                alert('Por favor, ingrese un monto válido.');
+                await showCustomAlert('Por favor, ingrese un monto válido.', 'DEUDA SUNAT');
             }
         }
     });
@@ -2283,6 +2490,8 @@ if (tableBodyExpenses) {
 // Initial call
 document.addEventListener('DOMContentLoaded', () => {
     updateTaxSummary();
+    setupSummaryModal();
+    setupWeeklySummaryModal();
 });
 
 // ==========================================
@@ -2309,12 +2518,12 @@ if (closeBtnExpExport) {
 }
 
 if (btnGenerateExpPDF) {
-    btnGenerateExpPDF.addEventListener('click', () => {
+    btnGenerateExpPDF.addEventListener('click', async () => {
         const startDateVal = document.getElementById('exportExpStartDate').value;
         const endDateVal = document.getElementById('exportExpEndDate').value;
 
         if (!startDateVal || !endDateVal) {
-            alert('Por favor, selecciona un rango de fechas completo.');
+            await showCustomAlert('Por favor, selecciona un rango de fechas completo.', 'RANGO INVÁLIDO');
             return;
         }
 
@@ -2356,7 +2565,7 @@ if (btnGenerateExpPDF) {
         });
 
         if (rowsData.length === 0) {
-            alert('No se encontraron registros en el rango de fechas seleccionado.');
+            await showCustomAlert('No se encontraron registros en el rango de fechas seleccionado.', 'REPORTE VACÍO');
             return;
         }
 
@@ -2387,96 +2596,52 @@ if (btnGenerateExpPDF) {
 // ==========================================
 const NEGOSY_GOAL = 50;
 
-function updateFinancialDashboards() {
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    
-    // For weekly sales (last 7 days including today)
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(today.getDate() - 6);
-    sevenDaysAgo.setHours(0,0,0,0);
+async function updateFinancialDashboards() {
+    try {
+        const today = new Date();
+        const todayStr = getLocalDateString(today); // Usar la función helper existente
+        
+        // Start of week (Monday)
+        const day = today.getDay();
+        const diff = today.getDate() - (day === 0 ? 6 : day - 1); // Monday
+        const monday = new Date(today);
+        monday.setDate(diff);
+        const mondayStr = getLocalDateString(monday);
 
-    let salesToday = 0;
-    let salesWeek = 0;
+        // 1. Fetch Sales (Advances)
+        const { data: salesDataToday } = await _supabase.from('ventas').select('adelanto').eq('fecha', todayStr);
+        const { data: salesDataWeek } = await _supabase.from('ventas').select('adelanto').gte('fecha', mondayStr);
 
-    // 1. Calculate Sales from Clients Table
-    if (tableBodyClients) {
-        const rows = tableBodyClients.querySelectorAll('tr');
-        rows.forEach(row => {
-            const dateRawInput = row.querySelector('.raw-date');
-            const advanceInput = row.querySelector('.raw-advance');
-            
-            if (dateRawInput && advanceInput) {
-                const advance = parseFloat(advanceInput.value) || 0;
-                
-                const parts = dateRawInput.value.split('-');
-                const rowYear = parseInt(parts[0]);
-                const rowMonth = parseInt(parts[1]) - 1;
-                const rowDay = parseInt(parts[2]);
-                const rowDate = new Date(rowYear, rowMonth, rowDay);
-                rowDate.setHours(0,0,0,0);
+        const salesToday = salesDataToday ? salesDataToday.reduce((sum, s) => sum + s.adelanto, 0) : 0;
+        const salesWeek = salesDataWeek ? salesDataWeek.reduce((sum, s) => sum + s.adelanto, 0) : 0;
 
-                const isToday = rowYear === today.getFullYear() && 
-                                rowMonth === today.getMonth() && 
-                                rowDay === today.getDate();
+        // 2. Fetch Expenses for Today
+        const { data: expensesDataToday } = await _supabase.from('egresos').select('monto').eq('fecha', todayStr);
+        const expensesToday = expensesDataToday ? expensesDataToday.reduce((sum, e) => sum + e.monto, 0) : 0;
 
-                if (isToday) {
-                    salesToday += advance;
-                }
+        const netSalesToday = salesToday - expensesToday;
 
-                if (rowDate >= sevenDaysAgo && rowDate <= today) {
-                    salesWeek += advance;
-                }
-            }
-        });
-    }
+        // 3. Update UI Elements
+        const todayEl = document.getElementById('sales-today');
+        const weekEl = document.getElementById('sales-week');
+        const dashVentasHoy = document.getElementById('dash-ventas-hoy');
+        const dashVentasSemana = document.getElementById('dash-ventas-semana');
+        const clientSalesVal = document.getElementById('client-sales-today');
+        const bannerToday = document.querySelector('.info-card.blue h3');
 
-    // 2. Calculate Expenses
-    let expensesToday = 0;
+        if (todayEl) todayEl.innerText = formatCurrency(salesToday.toString());
+        if (weekEl) weekEl.innerText = formatCurrency(salesWeek.toString());
+        if (dashVentasHoy) dashVentasHoy.innerText = formatCurrency(netSalesToday.toString());
+        if (dashVentasSemana) dashVentasSemana.innerText = formatCurrency(salesWeek.toString());
+        if (clientSalesVal) clientSalesVal.innerText = formatCurrency(salesToday.toString());
+        if (bannerToday) bannerToday.innerText = formatCurrency(salesToday.toString());
 
-    if (tableBodyExpenses) {
-        const rows = tableBodyExpenses.querySelectorAll('tr');
-        rows.forEach(row => {
-            const dateRawInput = row.querySelector('.raw-date');
-            const amountInput = row.querySelector('.raw-amount');
-            
-            if (dateRawInput && amountInput) {
-                const amount = parseFloat(amountInput.value) || 0;
-                
-                const parts = dateRawInput.value.split('-');
-                const rowYear = parseInt(parts[0]);
-                const rowMonth = parseInt(parts[1]) - 1;
-                const rowDay = parseInt(parts[2]);
+        // Update summaries
+        if (typeof updateTaxSummary === 'function') updateTaxSummary();
+        if (typeof updateGastosPendientes === 'function') updateGastosPendientes();
 
-                // For Today
-                if (rowYear === today.getFullYear() && 
-                    rowMonth === today.getMonth() && 
-                    rowDay === today.getDate()) {
-                    expensesToday += amount;
-                }
-            }
-        });
-    }
-
-    const netSalesToday = salesToday - expensesToday;
-
-    // 3. Update UI Elements
-    const dashVentasHoy = document.getElementById('dash-ventas-hoy');
-    const dashVentasSemana = document.getElementById('dash-ventas-semana');
-
-    if (dashVentasHoy) dashVentasHoy.innerText = formatCurrency(netSalesToday.toString());
-    if (dashVentasSemana) dashVentasSemana.innerText = formatCurrency(salesWeek.toString());
-
-    // Clientes Summary
-    const clientSalesVal = document.getElementById('client-sales-today');
-    if (clientSalesVal) clientSalesVal.innerText = formatCurrency(netSalesToday.toString());
-    
-    // Trigger existing SUNAT/Gastos Pendientes summary update
-    if (typeof updateTaxSummary === 'function') {
-        updateTaxSummary();
-    }
-    if (typeof updateGastosPendientes === 'function') {
-        updateGastosPendientes();
+    } catch (error) {
+        console.error('Error updating dashboards:', error);
     }
 }
 
@@ -2976,10 +3141,10 @@ function setupExportLunas() {
         }
 
         if (btnGenerate) {
-            btnGenerate.addEventListener('click', () => {
+            btnGenerate.addEventListener('click', async () => {
                 const start = document.getElementById('exportLunasStartDate').value;
                 const end = document.getElementById('exportLunasEndDate').value;
-                generateLunasPDF(start, end);
+                await generateLunasPDF(start, end);
                 modal.style.display = 'none';
             });
         }
@@ -3014,7 +3179,7 @@ function setupExportMonturas() {
     }
 }
 
-function generateLunasPDF(startDate, endDate) {
+async function generateLunasPDF(startDate, endDate) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     
@@ -3065,7 +3230,7 @@ function generateLunasPDF(startDate, endDate) {
     doc.save(`Reporte_Lunas_${startDate}_${endDate}.pdf`);
 }
 
-function generateMonturasPDF(startDate, endDate) {
+async function generateMonturasPDF(startDate, endDate) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     
