@@ -609,7 +609,7 @@ if(addFormMontura) {
             modalMontura.style.display = 'none';
         } catch (error) {
             console.error('Error saving montura:', error);
-            await showCustomAlert('Error al guardar montura', 'ERROR DE GUARDADO');
+            await showCustomAlert('Error al guardar montura: ' + (error.message || JSON.stringify(error)), 'ERROR DE GUARDADO');
         }
     });
 }
