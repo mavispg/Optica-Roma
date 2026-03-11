@@ -518,33 +518,32 @@ const tableBodyMonturas = document.querySelector('#monturasTable tbody');
 let isEditingMontura = false;
 let currentEditRowMontura = null;
 
-// Helper: Get Next Montura Code
-function getNextMonturaCode() {
-    const rows = document.querySelectorAll('#monturasTable tbody tr');
-    let maxId = 0;
-    
-    rows.forEach(row => {
-        const codeText = row.cells[0].innerText;
-        const codeNum = parseInt(codeText);
-        if (!isNaN(codeNum) && codeNum > maxId) {
-            maxId = codeNum;
-        }
-    });
-    
-    const nextId = maxId + 1;
-    return nextId.toString().padStart(3, '0');
+// Helper: Get Next Montura Code (queries Supabase directly)
+async function getNextMonturaCode() {
+    try {
+        const { data, error } = await _supabase
+            .from('monturas')
+            .select('codigo')
+            .order('codigo', { ascending: false })
+            .limit(1);
+        if (error || !data || data.length === 0) return '001';
+        const maxNum = parseInt(data[0].codigo) || 0;
+        return (maxNum + 1).toString().padStart(3, '0');
+    } catch {
+        return '001';
+    }
 }
 
 
 // Open Modal Montura
 if(btnAddMontura) {
-    btnAddMontura.addEventListener('click', () => {
+    btnAddMontura.addEventListener('click', async () => {
         isEditingMontura = false;
         currentEditRowMontura = null;
         addFormMontura.reset();
         
-        // Auto-generate Code
-        document.getElementById('m_code').value = getNextMonturaCode();
+        // Auto-generate Code from Supabase
+        document.getElementById('m_code').value = await getNextMonturaCode();
         
         document.querySelector('#addMonturaModal h2').innerText = 'Agregar Nueva Montura';
         modalMontura.style.display = 'block';
@@ -586,8 +585,7 @@ if(addFormMontura) {
                         nombre: name,
                         stock_total: stock,
                         stock_disponible: stock, // Resetting available for simplicity in prototype edit
-                        precio_venta: sellPrice,
-                        precio_compra: 0 // Satisfy Supabase NOT NULL constraint
+                        precio_venta: sellPrice
                     })
                     .eq('id', id);
                 if (error) throw error;
@@ -599,8 +597,7 @@ if(addFormMontura) {
                         nombre: name,
                         stock_total: stock,
                         stock_disponible: stock,
-                        precio_venta: sellPrice,
-                        precio_compra: 0 // Satisfy Supabase NOT NULL constraint
+                        precio_venta: sellPrice
                     }]);
                 if (error) throw error;
             }
