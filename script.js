@@ -586,7 +586,8 @@ if(addFormMontura) {
                         nombre: name,
                         stock_total: stock,
                         stock_disponible: stock, // Resetting available for simplicity in prototype edit
-                        precio_venta: sellPrice
+                        precio_venta: sellPrice,
+                        precio_compra: 0 // Satisfy Supabase NOT NULL constraint
                     })
                     .eq('id', id);
                 if (error) throw error;
@@ -598,7 +599,8 @@ if(addFormMontura) {
                         nombre: name,
                         stock_total: stock,
                         stock_disponible: stock,
-                        precio_venta: sellPrice
+                        precio_venta: sellPrice,
+                        precio_compra: 0 // Satisfy Supabase NOT NULL constraint
                     }]);
                 if (error) throw error;
             }
