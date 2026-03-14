@@ -158,6 +158,14 @@
                         <div class="card-details">
                             <div class="card-number" id="kpi-monturas">0</div>
                             <div class="card-name">Total Monturas</div>
+                            <div class="card-breakdown" style="display: flex; gap: 8px; margin-top: 10px;">
+                                <span class="badge-green-vibrant" id="dash-monturas-hoy-link" title="Ver detalle de hoy">
+                                    Hoy: <b id="dash-monturas-hoy">0</b>
+                                </span>
+                                <span class="badge-green-vibrant" id="dash-monturas-semana-link" title="Ver detalle semanal">
+                                    Semana: <b id="dash-monturas-semana">0</b>
+                                </span>
+                            </div>
                         </div>
                         <div class="card-icon">
                             <i class='bx bx-show'></i>
@@ -687,6 +695,28 @@
     </div>
 
     <!-- Modal for Adding Expense -->
+    <!-- MODAL NUEVA VENDEDORA -->
+    <div id="addVendedoraModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn vendedora-close">&times;</span>
+            <h2>Nueva Vendedora</h2>
+            <form id="addVendedoraForm">
+                <div class="form-group">
+                    <label>Nombre de la Vendedora</label>
+                    <input type="text" id="v_name" required>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px;">Guardar Vendedora</button>
+            </form>
+            <div class="vendedoras-manage-section">
+                <h3>Gestionar Vendedoras</h3>
+                <div id="vendedorasListContainer" class="vendedoras-list">
+                    <!-- List populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL AGREGAR GASTO -->
     <div id="addExpenseModal" class="modal">
         <div class="modal-content">
             <span class="close-btn expense-close">&times;</span>
@@ -1027,6 +1057,35 @@
             <div class="custom-dialog-footer">
                 <button id="customDialogCancel" class="dialog-btn cancel-btn">Cancelar</button>
                 <button id="customDialogConfirm" class="dialog-btn confirm-btn">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Detailed Frame Sales Report -->
+    <div id="monturaDetailReportModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="report-modal-header">
+                <h2 id="monturaReportTitle">Reporte de Monturas</h2>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button id="btnExportMonturaPDF" class="action-btn" style="background-color: #ffffff; color: #2f855a; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <i class='bx bxs-file-pdf' style="font-size: 18px;"></i> PDF
+                    </button>
+                    <span class="report-modal-close">&times;</span>
+                </div>
+            </div>
+            <div class="white-box" style="max-height: 400px; overflow-y: auto;">
+                <table class="custom-table" id="monturaReportTable">
+                    <thead>
+                        <tr>
+                            <th>ID Venta</th>
+                            <th>Nombre de Montura</th>
+                            <th>Cant.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Content via JS -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

@@ -988,6 +988,96 @@ body {
 .card-red { border-left-color: #e53e3e; }
 .card-red .card-icon { color: #e53e3e; opacity: 0.15; }
 
+.card-teal { border-left-color: #319795; }
+.card-teal .card-icon { color: #319795; opacity: 0.15; }
+
+.badge-green-vibrant {
+    background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(56, 161, 105, 0.2);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.badge-green-vibrant:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(56, 161, 105, 0.3);
+    filter: brightness(1.1);
+}
+
+.day-header {
+    background-color: #f7fafc;
+    font-weight: 700;
+    color: #2d3748;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    padding: 12px 15px !important;
+    border-top: 1px solid #edf2f7;
+    border-bottom: 1px solid #edf2f7;
+}
+
+/* Vibrant Report Modal Styling */
+.report-modal-header {
+    background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+    color: white;
+    padding: 20px 25px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: -20px -20px 20px -20px; /* Offset modal-content padding */
+}
+
+.report-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.report-modal-close {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.report-modal-close:hover {
+    color: white;
+}
+
+#monturaReportTable {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+#monturaReportTable th {
+    background-color: #f8fafc;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    padding: 12px 15px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+#monturaReportTable td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 14px;
+}
+
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -1648,4 +1738,108 @@ body {
 
 body.modal-open {
     overflow: hidden;
+}
+
+/* Modal Nueva Vendedora Styles */
+#addVendedoraModal .modal-content {
+    animation: slideIn 0.3s ease-out;
+}
+
+#addVendedoraModal h2 {
+    color: var(--blue-card);
+    margin-bottom: 20px;
+    font-weight: 700;
+}
+
+#addVendedoraForm button {
+    background: linear-gradient(135deg, #2e61b3, #4a90e2);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(46, 97, 179, 0.2);
+    letter-spacing: 0.5px;
+}
+
+#addVendedoraForm button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(46, 97, 179, 0.3);
+    background: linear-gradient(135deg, #244d8f, #357abd);
+}
+
+#addVendedoraForm button:active {
+    transform: translateY(0);
+}
+
+.vendedoras-manage-section {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.vendedoras-manage-section h3 {
+    font-size: 16px;
+    color: #444;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.vendedoras-list {
+    max-height: 200px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 5px;
+}
+
+.vendedora-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+
+.vendedora-item:hover {
+    background: #f0f2f5;
+}
+
+.vendedora-item span {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+}
+
+.btn-delete-v {
+    background: #ff4d4d;
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-delete-v:hover {
+    background: #e60000;
+    transform: scale(1.1);
+}
+
+.vendedoras-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.vendedoras-list::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
 }
