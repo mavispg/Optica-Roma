@@ -221,8 +221,14 @@ function formatPaymentMethodBadge(method) {
             const [name, amount] = part.split(':');
             const type = name.toLowerCase();
             const colorClass = (type === 'efectivo') ? 'efectivo' : (type === 'yape' ? 'yape' : 'visa');
-            const displayAmount = amount ? ` S/. ${parseFloat(amount).toFixed(2)}` : '';
-            return `<span class="payment-badge payment-${colorClass}" style="margin-bottom: 4px; display: flex; align-items: center; width: fit-content; white-space: nowrap;">${getIcon(name)}${name}${displayAmount}</span>`;
+            const displayAmount = amount ? `S/. ${parseFloat(amount).toFixed(2)}` : '';
+            return `
+                <span class="payment-badge payment-${colorClass}" style="margin-bottom: 4px; display: flex; flex-direction: column; align-items: flex-start; width: fit-content; padding: 4px 8px; line-height: 1;">
+                    <div style="display: flex; align-items: center; gap: 4px; font-weight: 600;">
+                        ${getIcon(name)}<span>${name}</span>
+                    </div>
+                    <span style="font-size: 10px; font-weight: 700; opacity: 0.9; margin-top: 2px; margin-left: 18px;">${displayAmount}</span>
+                </span>`;
         }).join('');
         return `<div class="payment-stack" style="display: flex; flex-direction: column; align-items: flex-start;">${badgesHtml}</div>`;
     }
