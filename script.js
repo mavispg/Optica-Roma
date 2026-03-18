@@ -2632,6 +2632,7 @@ if(addFormExpense) {
         const id_egreso = document.getElementById('e_id').value;
         const dateRaw = document.getElementById('e_date').value;
         const category = document.getElementById('e_category').value;
+        const method = document.getElementById('e_payment_method').value;
         const description = document.getElementById('e_description').value;
         let amount = parseFloat(document.getElementById('e_amount').value) || 0;
 
@@ -2661,7 +2662,8 @@ if(addFormExpense) {
                         fecha: dateRaw,
                         categoria: finalCategory,
                         descripcion: description,
-                        monto: amount
+                        monto: amount,
+                        metodo_pago: method
                     })
                     .eq('id', id);
                 if (error) throw error;
@@ -2673,7 +2675,8 @@ if(addFormExpense) {
                         fecha: dateRaw,
                         categoria: finalCategory,
                         descripcion: description,
-                        monto: amount
+                        monto: amount,
+                        metodo_pago: method
                     }]);
                 if (error) throw error;
             }
@@ -2716,12 +2719,14 @@ async function fetchExpenses() {
                 newRow.setAttribute('data-count', count);
                 newRow.setAttribute('data-unit-price', unitPrice);
 
+                const amountDisplay = (eg.metodo_pago === 'Yape') ? `${formatCurrency(eg.monto.toString())} (Yape)` : formatCurrency(eg.monto.toString());
+
                 newRow.innerHTML = `
                     <td>${eg.codigo}</td>
                     <td>${dateDisplay}</td>
                     <td>${eg.categoria}</td>
                     <td>${eg.descripcion}</td>
-                    <td>${formatCurrency(eg.monto.toString())}</td>
+                    <td>${amountDisplay}</td>
                     <td class="actions-cell">
                         <div class="actions-wrapper">
                             <button class="icon-btn edit-btn" onclick="editExpense('${eg.id}')"><i class='bx bxs-edit-alt'></i></button>
@@ -2731,6 +2736,7 @@ async function fetchExpenses() {
                         <input type="hidden" class="raw-date" value="${eg.fecha}">
                         <input type="hidden" class="raw-amount" value="${eg.monto}">
                         <input type="hidden" class="raw-category" value="${eg.categoria}">
+                        <input type="hidden" class="raw-method" value="${eg.metodo_pago || 'Efectivo'}">
                     </td>
                 `;
                 tableBodyExpenses.appendChild(newRow);
@@ -2783,6 +2789,7 @@ window.editExpense = async function(id) {
         }
         
         document.getElementById('e_description').value = eg.descripcion;
+        document.getElementById('e_payment_method').value = eg.metodo_pago || 'Efectivo';
         
         document.getElementById('expenseModalTitle').innerText = 'Editar Egreso';
         modalExpense.style.display = 'block';
@@ -3340,9 +3347,20 @@ function populateSummaryData(dateObj, dateStr, config) {
                 const amount = amountInput ? parseFloat(amountInput.value) : 0;
 
                 totalOut += amount;
+
+                // Subtract from correct bucket
+                const methodRaw = row.querySelector('.raw-method');
+                const method = methodRaw ? methodRaw.value : 'Efectivo';
+                
+                if (method === 'Yape') {
+                    totalYape -= amount;
+                } else {
+                    totalCash -= amount;
+                }
+
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid #eee';
-                tr.innerHTML = `<td style="padding: 8px;">${displayLabel}</td><td style="padding: 8px; text-align: right;">${formatCurrency(amount.toString())}</td>`;
+                tr.innerHTML = `<td style="padding: 8px;">${displayLabel} ${method === 'Yape' ? '<span style="color:#777; font-size:0.8em;">(Yape)</span>' : ''}</td><td style="padding: 8px; text-align: right;">${formatCurrency(amount.toString())}</td>`;
                 expensesTbody.appendChild(tr);
             }
         });
@@ -3352,13 +3370,10 @@ function populateSummaryData(dateObj, dateStr, config) {
     if (salesTbody.innerHTML === '') salesTbody.innerHTML = `<tr><td colspan="7" style="padding: 8px; color: #999; text-align: center;">No hay ingresos este día</td></tr>`;
     if (expensesTbody.innerHTML === '') expensesTbody.innerHTML = `<tr><td colspan="2" style="padding: 8px; color: #999; text-align: center;">No hay egresos este día</td></tr>`;
 
-    // Subtract Expenses from Cash
-    const netCash = totalCash - totalOut;
-
     // 3. Update Footer
     if (config.totalVisaId) document.getElementById(config.totalVisaId).innerText = formatCurrency(totalVisa.toString());
     if (config.totalYapeId) document.getElementById(config.totalYapeId).innerText = formatCurrency(totalYape.toString());
-    if (config.totalCashId) document.getElementById(config.totalCashId).innerText = formatCurrency(netCash.toString());
+    if (config.totalCashId) document.getElementById(config.totalCashId).innerText = formatCurrency(totalCash.toString());
 
     document.getElementById(config.totalInId).innerText = formatCurrency(totalIn.toString());
     document.getElementById(config.totalOutId).innerText = formatCurrency(totalOut.toString());
