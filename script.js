@@ -1534,31 +1534,40 @@ if(document.getElementById('c_total') && document.getElementById('c_advance')) {
 
 
 // Open Modal Client
-if(btnAddClient) {
-    btnAddClient.addEventListener('click', () => {
+const bAddCl = getEl('btnAddClient');
+if(bAddCl) {
+    bAddCl.addEventListener('click', () => {
         isEditingClient = false;
         currentEditRowClient = null;
-        addFormClient.reset();
-        document.querySelector('#addClientModal h2').innerText = 'Agregar Nuevo Cliente';
+        const afCl = getEl('addClientForm');
+        if (afCl) afCl.reset();
         
-        // Código is now manual, default date
-        document.getElementById('c_id').value = '';
-        document.getElementById('c_date').value = getLocalDateString();
-        document.getElementById('c_balance').value = 'S/. 0.00';
+        const h2 = document.querySelector('#addClientModal h2');
+        if (h2) h2.innerText = 'Agregar Nuevo Cliente';
+        
+        const cidInput = getEl('c_id');
+        const cdateInput = getEl('c_date');
+        const cbalInput = getEl('c_balance');
+        
+        if (cidInput) cidInput.value = '';
+        if (cdateInput) cdateInput.value = getLocalDateString();
+        if (cbalInput) cbalInput.value = 'S/. 0.00';
         
         // Reset and Populate Dropdowns
         updateClientProductDropdowns();
 
         // Reset split payment UI
-        const chkSplitPayment = document.getElementById('chk_split_payment');
-        const splitPaymentContainer = document.getElementById('split_payment_container');
-        const singlePaymentContainer = document.getElementById('single_payment_container');
-        if (chkSplitPayment) chkSplitPayment.checked = false;
-        if (splitPaymentContainer) splitPaymentContainer.style.display = 'none';
-        if (singlePaymentContainer) singlePaymentContainer.style.display = 'block';
-        if (document.getElementById('c_payment_method')) document.getElementById('c_payment_method').required = true;
+        const chkSP = getEl('chk_split_payment');
+        const spCont = getEl('split_payment_container');
+        const snCont = getEl('single_payment_container');
+        if (chkSP) chkSP.checked = false;
+        if (spCont) spCont.style.display = 'none';
+        if (snCont) snCont.style.display = 'block';
+        const cPM = getEl('c_payment_method');
+        if (cPM) cPM.required = true;
         
-        modalClient.style.display = 'block';
+        const mCl = getEl('addClientModal');
+        if (mCl) mCl.style.display = 'block';
     });
 }
 
@@ -1566,23 +1575,19 @@ if(btnAddClient) {
 // DYNAMIC PRODUCT SELECTION LOGIC
 // ==========================================
 
-const cLunaName = document.getElementById('c_luna_name');
-const cLunaMeasure = document.getElementById('c_luna_measure');
-const monturasTagsContainer = document.getElementById('selected_monturas_tags');
-const selMonturaPivot = document.getElementById('sel_montura_pivot');
-const cDataInput = document.getElementById('c_data');
-const selConsulta = document.getElementById('sel_consulta');
-const cOthers = document.getElementById('c_others');
-const selVendedora = document.getElementById('sel_vendedora');
-const btnAddVendedora = document.getElementById('btnAddVendedora');
-const modalVendedora = document.getElementById('addVendedoraModal');
-const closeBtnVendedora = document.querySelector('.vendedora-close');
-const addFormVendedora = document.getElementById('addVendedoraForm');
-const vListContainer = document.getElementById('vendedorasListContainer');
+// Helper for robust element acquisition
+function getEl(id) {
+    return document.getElementById(id);
+}
+
 
 // Fetch and populate vendedoras from Supabase
 async function fetchVendedoras() {
-    if (!selVendedora) return;
+    const el = document.getElementById('sel_vendedora');
+    const container = document.getElementById('vendedorasListContainer');
+    
+    if (!el) return;
+
     try {
         const { data, error } = await _supabase
             .from('vendedoras')
@@ -1592,20 +1597,22 @@ async function fetchVendedoras() {
         if (error) throw error;
 
         // Populate Main Dropdown
-        selVendedora.innerHTML = '<option value="">Vendedora</option>';
+        el.innerHTML = '<option value="">Vendedora</option>';
         
         // Populate Management List
-        if (vListContainer) vListContainer.innerHTML = '';
+        if (container) container.innerHTML = '';
+
+        if (!data || data.length === 0) return;
 
         data.forEach(v => {
             // Dropdown option
             const opt = document.createElement('option');
             opt.value = v.nombre;
             opt.text = v.nombre;
-            selVendedora.appendChild(opt);
+            el.appendChild(opt);
 
             // Management item
-            if (vListContainer) {
+            if (container) {
                 const item = document.createElement('div');
                 item.className = 'vendedora-item';
                 item.innerHTML = `
@@ -1614,11 +1621,11 @@ async function fetchVendedoras() {
                         <i class='bx bx-trash'></i>
                     </button>
                 `;
-                vListContainer.appendChild(item);
+                container.appendChild(item);
             }
         });
     } catch (err) {
-        console.error('Error fetching vendedoras:', err);
+        console.error('Error in fetchVendedoras:', err);
     }
 }
 
@@ -1649,27 +1656,33 @@ async function deleteVendedora(name) {
 }
 
 // Open stylized modal for new seller
-if (btnAddVendedora) {
-    btnAddVendedora.addEventListener('click', () => {
-        if (modalVendedora) {
-            modalVendedora.style.display = 'block';
+const bAddVend = getEl('btnAddVendedora');
+if (bAddVend) {
+    bAddVend.addEventListener('click', () => {
+        const mVend = getEl('addVendedoraModal');
+        if (mVend) {
+            mVend.style.display = 'block';
             fetchVendedoras(); // Refresh list when opening
         }
     });
 }
 
 // Close seller modal
-if (closeBtnVendedora) {
-    closeBtnVendedora.addEventListener('click', () => {
-        modalVendedora.style.display = 'none';
+const cBtnVend = document.querySelector('.vendedora-close');
+if (cBtnVend) {
+    cBtnVend.addEventListener('click', () => {
+        const mVend = getEl('addVendedoraModal');
+        if (mVend) mVend.style.display = 'none';
     });
 }
 
 // Submit new seller to Supabase and update dropdown
-if (addFormVendedora) {
-    addFormVendedora.addEventListener('submit', async (e) => {
+const afVendedora = getEl('addVendedoraForm');
+if (afVendedora) {
+    afVendedora.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const vName = document.getElementById('v_name').value.trim();
+        const vInput = getEl('v_name');
+        const vName = vInput ? vInput.value.trim() : '';
         if (!vName) return;
 
         try {
@@ -1680,10 +1693,14 @@ if (addFormVendedora) {
             if (error) throw error;
 
             await fetchVendedoras();
-            selVendedora.value = vName;
+            
+            const sVendedora = getEl('sel_vendedora');
+            if (sVendedora) sVendedora.value = vName;
+            
             updatePurchaseDataString();
-            modalVendedora.style.display = 'none';
-            addFormVendedora.reset();
+            const mVendedora = getEl('addVendedoraModal');
+            if (mVendedora) mVendedora.style.display = 'none';
+            afVendedora.reset();
             await showCustomAlert(`Vendedora ${vName} agregada correctamente`, 'EXITO');
         } catch (err) {
             console.error('Error adding vendedora:', err);
@@ -1701,19 +1718,24 @@ function updateClientProductDropdowns() {
 
     // 2. Harvest Monturas Data
     monturasList = [];
-    const monturasRows = document.querySelectorAll('#monturasTable tbody tr');
-    monturasRows.forEach(row => {
-        const id = row.getAttribute('data-id');
-        const cells = row.getElementsByTagName('td');
-        if(cells.length > 1) {
-            const name = cells[1].innerText;
-            if (!monturasList.some(m => m.id === id)) {
-                monturasList.push({ id, name });
+    const tableMont = getEl('monturasTable');
+    if (tableMont) {
+        const monturasRows = tableMont.querySelectorAll('tbody tr');
+        monturasRows.forEach(row => {
+            const id = row.getAttribute('data-id');
+            const cells = row.getElementsByTagName('td');
+            if(cells.length > 1) {
+                const name = cells[1].innerText;
+                if (!monturasList.some(m => m.id === id)) {
+                    monturasList.push({ id, name });
+                }
             }
-        }
-    });
+        });
+    }
 
     // 3. Reset Luna Inputs
+    const cLunaName = getEl('c_luna_name');
+    const cLunaMeasure = getEl('c_luna_measure');
     if(cLunaName) cLunaName.value = '';
     if(cLunaMeasure) cLunaMeasure.value = '';
 
@@ -1721,30 +1743,36 @@ function updateClientProductDropdowns() {
     selectedMonturas = [];
     renderMonturaTags();
     
-    if (selMonturaPivot) {
-        selMonturaPivot.innerHTML = '<option value="">Seleccionar Montura</option>';
+    // 3. Populate Monturas Pivot Dropdown
+    const smPivot = getEl('sel_montura_pivot');
+    if (smPivot) {
+        smPivot.innerHTML = '<option value="">Seleccionar Montura</option>';
         monturasList.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.id;
             opt.text = m.name;
-            selMonturaPivot.appendChild(opt);
+            smPivot.appendChild(opt);
         });
     }
     
     // Reset Result
-    cDataInput.value = '';
+    const cDataInput = getEl('c_data');
+    if (cDataInput) cDataInput.value = '';
     
     // Reset Otros
+    const cOthers = getEl('c_others');
     if(cOthers) {
         cOthers.value = '';
     }
     // Reset Vendedora
+    const selVendedora = getEl('sel_vendedora');
     if(selVendedora) {
         selVendedora.value = '';
     }
 }
 
 function renderMonturaTags() {
+    const monturasTagsContainer = getEl('selected_monturas_tags');
     if (!monturasTagsContainer) return;
     monturasTagsContainer.innerHTML = '';
     
@@ -1768,13 +1796,14 @@ window.removeMonturaTag = function(index) {
     renderMonturaTags();
 };
 
-if (selMonturaPivot) {
-    selMonturaPivot.addEventListener('change', function() {
+const smPivotEl = getEl('sel_montura_pivot');
+if(smPivotEl) {
+    smPivotEl.addEventListener('change', function() {
         if (this.selectedIndex > 0) {
             const id = this.value;
             const name = this.options[this.selectedIndex].text;
             
-            // Avoid duplicates in tag list? Optional, but good practice
+            // Avoid duplicates in tag list
             if (!selectedMonturas.some(m => m.id === id)) {
                 selectedMonturas.push({ id, name });
                 renderMonturaTags();
@@ -1785,16 +1814,21 @@ if (selMonturaPivot) {
     });
 }
 
-// Helper to toggle dropdowns (Simplified as it no longer blocks based on Vendedor)
+// Helper to toggle dropdowns
 function toggleProductSelection(enable) {
-    if(cLunaName) cLunaName.disabled = !enable;
-    if(cLunaMeasure) cLunaMeasure.disabled = !enable;
-    if(selMonturaPivot) selMonturaPivot.disabled = !enable;
+    const clName = getEl('c_luna_name');
+    const clMeas = getEl('c_luna_measure');
+    const smPiv = getEl('sel_montura_pivot');
+    const mtTagsCont = getEl('selected_monturas_tags');
+
+    if(clName) clName.disabled = !enable;
+    if(clMeas) clMeas.disabled = !enable;
+    if(smPiv) smPiv.disabled = !enable;
     
     // Tags can still be removed if enabled
-    if (monturasTagsContainer) {
-        monturasTagsContainer.style.pointerEvents = enable ? 'auto' : 'none';
-        monturasTagsContainer.style.opacity = enable ? '1' : '0.6';
+    if (mtTagsCont) {
+        mtTagsCont.style.pointerEvents = enable ? 'auto' : 'none';
+        mtTagsCont.style.opacity = enable ? '1' : '0.6';
     }
     
     if(enable) {
@@ -1802,58 +1836,69 @@ function toggleProductSelection(enable) {
     }
 }
 
-// Listener for Consulta changed - just update string if needed
-if(selConsulta) {
-    selConsulta.addEventListener('change', updatePurchaseDataString);
-}
-if(cOthers) {
-    cOthers.addEventListener('input', updatePurchaseDataString);
-}
-if(selVendedora) {
-    selVendedora.addEventListener('change', updatePurchaseDataString);
-}
+// Listeners for other inputs
+const sCons = getEl('sel_consulta');
+if(sCons) sCons.addEventListener('change', updatePurchaseDataString);
+const cOth = getEl('c_others');
+if(cOth) cOth.addEventListener('input', updatePurchaseDataString);
+const sVend = getEl('sel_vendedora');
+if(sVend) sVend.addEventListener('change', updatePurchaseDataString);
     
 // Split Payment Toggle Logic
 const chkSplitPayment = document.getElementById('chk_split_payment');
 const splitPaymentContainer = document.getElementById('split_payment_container');
 const singlePaymentContainer = document.getElementById('single_payment_container');
-const cPaymentMethod = document.getElementById('c_payment_method');
-
-if (chkSplitPayment) {
-    chkSplitPayment.addEventListener('change', function() {
+// Split Payment Toggle Logic
+const ckSplitPayment = getEl('chk_split_payment');
+if (ckSplitPayment) {
+    ckSplitPayment.addEventListener('change', function() {
+        const spPContainer = getEl('split_payment_container');
+        const snPContainer = getEl('single_payment_container');
+        const cpMethod = getEl('c_payment_method');
         if (this.checked) {
-            if (splitPaymentContainer) splitPaymentContainer.style.display = 'block';
-            if (singlePaymentContainer) singlePaymentContainer.style.display = 'none';
-            if (cPaymentMethod) cPaymentMethod.required = false;
+            if (spPContainer) spPContainer.style.display = 'block';
+            if (snPContainer) snPContainer.style.display = 'none';
+            if (cpMethod) cpMethod.required = false;
         } else {
-            if (splitPaymentContainer) splitPaymentContainer.style.display = 'none';
-            if (singlePaymentContainer) singlePaymentContainer.style.display = 'block';
-            if (cPaymentMethod) cPaymentMethod.required = true;
+            if (spPContainer) spPContainer.style.display = 'none';
+            if (snPContainer) snPContainer.style.display = 'block';
+            if (cpMethod) cpMethod.required = true;
         }
     });
 }
 
 
 // Listeners for Luna inputs
-const cIdInput = document.getElementById('c_id');
-if(cIdInput) cIdInput.addEventListener('input', updatePurchaseDataString);
-if(cLunaName) cLunaName.addEventListener('input', updatePurchaseDataString);
-if(cLunaMeasure) cLunaMeasure.addEventListener('input', updatePurchaseDataString);
+const cIdInp = getEl('c_id');
+if(cIdInp) cIdInp.addEventListener('input', updatePurchaseDataString);
+const cLNameInp = getEl('c_luna_name');
+if(cLNameInp) cLNameInp.addEventListener('input', updatePurchaseDataString);
+const cLMInp = getEl('c_luna_measure');
+if(cLMInp) cLMInp.addEventListener('input', updatePurchaseDataString);
 
 
 function updatePurchaseDataString() {
-    const consulta = selConsulta ? selConsulta.value : '';
-    const lunaName = cLunaName ? cLunaName.value : '';
-    const measure = cLunaMeasure ? cLunaMeasure.value : '';
+    const sConsulta = getEl('sel_consulta');
+    const clnName = getEl('c_luna_name');
+    const clnMeasure = getEl('c_luna_measure');
+    const cOtherFields = getEl('c_others');
+    const sVendedora = getEl('sel_vendedora');
+    const cDI = getEl('c_data');
+
+    const consulta = sConsulta ? sConsulta.value : '';
+    const lunaName = clnName ? clnName.value : '';
+    const measure = clnMeasure ? clnMeasure.value : '';
     
-    // Get ALL monturas selected from the tags array
+    // Tag-based monturas (selectedMonturas is a global array)
     const monturasText = selectedMonturas.length > 0 ? selectedMonturas.map(m => m.name).join(', ') : '';
     
-    const others = cOthers ? cOthers.value : '';
-    const vendedora = selVendedora ? selVendedora.value : '';
+    const others = cOtherFields ? cOtherFields.value : '';
+    const vendedora = sVendedora ? sVendedora.value : '';
     
     // Use structured format Luna|Measure|MonturaText|Consulta|Otros|Vendedora
-    cDataInput.value = `${lunaName}|${measure}|${monturasText}|${consulta}|${others}|${vendedora}`;
+    if (cDI) {
+        cDI.value = `${lunaName}|${measure}|${monturasText}|${consulta}|${others}|${vendedora}`;
+    }
 }
 
 // Edit Mode - Load existing data string back into dropdowns (Best Effort)
@@ -1866,16 +1911,19 @@ function updatePurchaseDataString() {
 
 
 // Close Modal Client
-if(closeBtnClient) {
-    closeBtnClient.addEventListener('click', () => {
-        modalClient.style.display = 'none';
+const cBClnt = document.querySelector('.client-close');
+if(cBClnt) {
+    cBClnt.addEventListener('click', () => {
+        const mClnt = getEl('addClientModal');
+        if (mClnt) mClnt.style.display = 'none';
     });
 }
 
 // Close outside click
 window.addEventListener('click', (e) => {
-    if (e.target == modalClient) {
-        modalClient.style.display = 'none';
+    const mClntModal = getEl('addClientModal');
+    if (mClntModal && e.target == mClntModal) {
+        mClntModal.style.display = 'none';
     }
 });
 
@@ -3911,4 +3959,5 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchMonturas();
     fetchClients();
     fetchExpenses();
+    fetchVendedoras();
 });
