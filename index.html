@@ -593,9 +593,12 @@
                         <input type="text" id="c_luna_name" placeholder="Tipo de Luna" style="flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 180px;">
                         <input type="text" id="c_luna_measure" placeholder="Medida" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 120px;">
                     </div>
-                    <div style="margin-bottom: 10px;">
-                        <select id="sel_montura" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                            <option value="">Modelo de Montura</option>
+                    <div id="selected_monturas_tags" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                        <!-- Tags will appear here -->
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <select id="sel_montura_pivot" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8fafc;">
+                            <option value="">Seleccionar Montura</option>
                         </select>
                     </div>
                     <div style="margin-bottom: 10px;">
@@ -744,6 +747,12 @@
                         <option value="Consulta Cesar">Consulta Cesar</option>
                         <option value="Consulta Willy">Consulta Willy</option>
                         <option value="Consulta Cesar Breña">Consulta Cesar Breña</option>
+                        <option value="Expert Lab">Expert Lab</option>
+                        <option value="Boldo">Boldo</option>
+                        <option value="Soldadura">Soldadura</option>
+                        <option value="Flex">Flex</option>
+                        <option value="Medicamento">Medicamento</option>
+                        <option value="Envío">Envío</option>
                         <option value="Almuerzo">Almuerzo</option>
                         <option value="Trimax">Trimax</option>
                         <option value="Negosy">Negosy</option>

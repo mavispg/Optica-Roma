@@ -927,16 +927,19 @@ async function showMonturaDetailReport(period) {
             let dailyTotal = 0;
             data.forEach(sale => {
                 const parts = sale.datos_compra.split('|');
-                const monturaName = parts[2] || 'Sin nombre';
-                const qty = 1; // Each record is 1 mount sold
-                dailyTotal += qty;
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${sale.codigo_venta}</td>
-                    <td>${monturaName}</td>
-                    <td style="text-align: center;">${qty}</td>
-                `;
-                tableBody.appendChild(row);
+                const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
+                
+                monturasNames.forEach(mName => {
+                    const qty = 1;
+                    dailyTotal += qty;
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${sale.codigo_venta}</td>
+                        <td>${mName}</td>
+                        <td style="text-align: center;">${qty}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
             });
             // Add total row for today
             const totalRow = document.createElement('tr');
@@ -972,16 +975,19 @@ async function showMonturaDetailReport(period) {
                     let dayTotal = 0;
                     grouped[i].forEach(sale => {
                         const parts = sale.datos_compra.split('|');
-                        const monturaName = parts[2] || 'Sin nombre';
-                        const qty = 1;
-                        dayTotal += qty;
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td style="padding-left: 20px;">${sale.codigo_venta}</td>
-                            <td>${monturaName}</td>
-                            <td style="text-align: center;">${qty}</td>
-                        `;
-                        tableBody.appendChild(row);
+                        const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
+                        
+                        monturasNames.forEach(mName => {
+                            const qty = 1;
+                            dayTotal += qty;
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td style="padding-left: 20px;">${sale.codigo_venta}</td>
+                                <td>${mName}</td>
+                                <td style="text-align: center;">${qty}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
                     });
 
                     // Add total row for the day
@@ -1027,10 +1033,12 @@ function exportMonturaReportPDF(period, data) {
         let totalHoy = 0;
         data.forEach(sale => {
             const parts = sale.datos_compra.split('|');
-            const monturaName = parts[2] || 'Sin nombre';
-            const qty = 1;
-            totalHoy += qty;
-            tableData.push([sale.codigo_venta, monturaName, qty]);
+            const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
+            monturasNames.forEach(mName => {
+                const qty = 1;
+                totalHoy += qty;
+                tableData.push([sale.codigo_venta, mName, qty]);
+            });
         });
         tableData.push([
             { content: 'TOTAL HOY:', colSpan: 2, styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 255, 244] } },
@@ -1054,10 +1062,12 @@ function exportMonturaReportPDF(period, data) {
                 let daySum = 0;
                 grouped[i].forEach(sale => {
                     const parts = sale.datos_compra.split('|');
-                    const monturaName = parts[2] || 'Sin nombre';
-                    const qty = 1;
-                    daySum += qty;
-                    tableData.push([sale.codigo_venta, monturaName, qty]);
+                    const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
+                    monturasNames.forEach(mName => {
+                        const qty = 1;
+                        daySum += qty;
+                        tableData.push([sale.codigo_venta, mName, qty]);
+                    });
                 });
                 tableData.push([
                     { content: `SUBTOTAL ${daysNames[i].toUpperCase()}:`, colSpan: 2, styles: { halign: 'right', fontStyle: 'bold', fillColor: [245, 245, 245] } },
@@ -1370,23 +1380,7 @@ async function generateMonturasPDF(startDate, endDate) {
     }
 }
 
-// Initial Check & UX Improvements
-document.addEventListener('DOMContentLoaded', () => {
-    checkSession();
-    setupAutoSelectOnFocus();
-    setupExportLunas();
-    setupExportMonturas();
-    // setupDoctorSettlement(); // REMOVED
-    updateFinancialDashboards();
-    setupSummaryModal();
-    setupWeeklySummaryModal();
 
-    // Initial data fetch from Supabase
-    fetchLunas();
-    fetchMonturas();
-    fetchClients();
-    fetchExpenses();
-});
 
 // HELPER: Auto-select numeric inputs on focus for better UX
 function setupAutoSelectOnFocus() {
@@ -1519,7 +1513,10 @@ const tableBodyClients = document.querySelector('#clientsTable tbody');
 let isEditingClient = false;
 let currentEditRowClient = null;
 let originalMonturaId = null; // Track original montura ID when editing
+let originalMonturaIds = null; // Track multiple original IDs
 let originalMonturaName = null; // Track original montura name when editing
+let selectedMonturas = []; // Array of {id, name} for current form
+
 
 // Helper: Calculate Balance
 function calculateBalance() {
@@ -1571,7 +1568,8 @@ if(btnAddClient) {
 
 const cLunaName = document.getElementById('c_luna_name');
 const cLunaMeasure = document.getElementById('c_luna_measure');
-const selMontura = document.getElementById('sel_montura');
+const monturasTagsContainer = document.getElementById('selected_monturas_tags');
+const selMonturaPivot = document.getElementById('sel_montura_pivot');
 const cDataInput = document.getElementById('c_data');
 const selConsulta = document.getElementById('sel_consulta');
 const cOthers = document.getElementById('c_others');
@@ -1588,7 +1586,7 @@ async function fetchVendedoras() {
     try {
         const { data, error } = await _supabase
             .from('vendedoras')
-            .select('nombre')
+            .select('*')
             .order('nombre', { ascending: true });
         
         if (error) throw error;
@@ -1709,7 +1707,6 @@ function updateClientProductDropdowns() {
         const cells = row.getElementsByTagName('td');
         if(cells.length > 1) {
             const name = cells[1].innerText;
-            // Check if this ID+name combo is already in our list
             if (!monturasList.some(m => m.id === id)) {
                 monturasList.push({ id, name });
             }
@@ -1720,14 +1717,19 @@ function updateClientProductDropdowns() {
     if(cLunaName) cLunaName.value = '';
     if(cLunaMeasure) cLunaMeasure.value = '';
 
-    // 4. Populate Monturas
-    selMontura.innerHTML = '<option value="">Modelo de Montura</option>';
-    monturasList.forEach(m => {
-        const option = document.createElement('option');
-        option.value = m.id; // Store ID
-        option.text = m.name; // Show Name
-        selMontura.appendChild(option);
-    });
+    // 4. Reset Tags & Pivot
+    selectedMonturas = [];
+    renderMonturaTags();
+    
+    if (selMonturaPivot) {
+        selMonturaPivot.innerHTML = '<option value="">Seleccionar Montura</option>';
+        monturasList.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.text = m.name;
+            selMonturaPivot.appendChild(opt);
+        });
+    }
     
     // Reset Result
     cDataInput.value = '';
@@ -1742,11 +1744,58 @@ function updateClientProductDropdowns() {
     }
 }
 
+function renderMonturaTags() {
+    if (!monturasTagsContainer) return;
+    monturasTagsContainer.innerHTML = '';
+    
+    selectedMonturas.forEach((m, index) => {
+        const tag = document.createElement('div');
+        tag.className = 'montura-tag';
+        tag.style.cssText = 'background: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; padding: 4px 10px; border-radius: 20px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; border-bottom: 2px solid #90cdf4;';
+        
+        tag.innerHTML = `
+            <i class='bx bx-glasses' style='font-size: 16px;'></i>
+            <span>${m.name}</span>
+            <i class='bx bx-x' style='cursor: pointer; font-size: 18px; color: #c53030; background: #fff5f5; border-radius: 50%;' onclick="removeMonturaTag(${index})"></i>
+        `;
+        monturasTagsContainer.appendChild(tag);
+    });
+    updatePurchaseDataString();
+}
+
+window.removeMonturaTag = function(index) {
+    selectedMonturas.splice(index, 1);
+    renderMonturaTags();
+};
+
+if (selMonturaPivot) {
+    selMonturaPivot.addEventListener('change', function() {
+        if (this.selectedIndex > 0) {
+            const id = this.value;
+            const name = this.options[this.selectedIndex].text;
+            
+            // Avoid duplicates in tag list? Optional, but good practice
+            if (!selectedMonturas.some(m => m.id === id)) {
+                selectedMonturas.push({ id, name });
+                renderMonturaTags();
+            }
+            
+            this.selectedIndex = 0; // Reset pivot
+        }
+    });
+}
+
 // Helper to toggle dropdowns (Simplified as it no longer blocks based on Vendedor)
 function toggleProductSelection(enable) {
     if(cLunaName) cLunaName.disabled = !enable;
     if(cLunaMeasure) cLunaMeasure.disabled = !enable;
-    if(selMontura) selMontura.disabled = !enable;
+    if(selMonturaPivot) selMonturaPivot.disabled = !enable;
+    
+    // Tags can still be removed if enabled
+    if (monturasTagsContainer) {
+        monturasTagsContainer.style.pointerEvents = enable ? 'auto' : 'none';
+        monturasTagsContainer.style.opacity = enable ? '1' : '0.6';
+    }
     
     if(enable) {
         updatePurchaseDataString();
@@ -1790,19 +1839,21 @@ const cIdInput = document.getElementById('c_id');
 if(cIdInput) cIdInput.addEventListener('input', updatePurchaseDataString);
 if(cLunaName) cLunaName.addEventListener('input', updatePurchaseDataString);
 if(cLunaMeasure) cLunaMeasure.addEventListener('input', updatePurchaseDataString);
-if(selMontura) selMontura.addEventListener('change', updatePurchaseDataString);
+
 
 function updatePurchaseDataString() {
     const consulta = selConsulta ? selConsulta.value : '';
     const lunaName = cLunaName ? cLunaName.value : '';
     const measure = cLunaMeasure ? cLunaMeasure.value : '';
-    // Get the NAME from the text of the selected option
-    const montura = selMontura && selMontura.selectedIndex > 0 ? selMontura.options[selMontura.selectedIndex].text : '';
+    
+    // Get ALL monturas selected from the tags array
+    const monturasText = selectedMonturas.length > 0 ? selectedMonturas.map(m => m.name).join(', ') : '';
+    
     const others = cOthers ? cOthers.value : '';
     const vendedora = selVendedora ? selVendedora.value : '';
     
-    // Use structured format Luna|Measure|Montura|Consulta|Otros|Vendedora
-    cDataInput.value = `${lunaName}|${measure}|${montura}|${consulta}|${others}|${vendedora}`;
+    // Use structured format Luna|Measure|MonturaText|Consulta|Otros|Vendedora
+    cDataInput.value = `${lunaName}|${measure}|${monturasText}|${consulta}|${others}|${vendedora}`;
 }
 
 // Edit Mode - Load existing data string back into dropdowns (Best Effort)
@@ -1974,17 +2025,22 @@ if(addFormClient) {
             }
 
             // 4. Insert/Update Sale
+            // Collect ALL Montura IDs from the tags
+            const monturaIdsArr = selectedMonturas.map(m => m.id);
+            const currentMonturaIds = monturaIdsArr.join(',');
+
             const saleData = {
                 codigo_venta: id_venta,
                 cliente_id: cliente_id,
-                montura_id: (selMontura && selMontura.value !== "") ? selMontura.value : null,
-                luna_id: luna_id,   // Formal link OUTGOING
-                egreso_id: egreso_id, // Formal link OUTGOING
+                montura_id: monturaIdsArr.length > 0 ? monturaIdsArr[0] : null, // Primary ID
+                montura_ids: currentMonturaIds, // ALL IDs
+                luna_id: luna_id,
+                egreso_id: egreso_id,
                 datos_compra: data,
                 monto_total: total,
                 adelanto: advance,
                 saldo: balance,
-                vendedora: vendedora,
+                vendedora: vendedora || null,
                 fecha: dateRaw,
                 metodo_pago: paymentMethod
             };
@@ -1999,32 +2055,37 @@ if(addFormClient) {
             }
 
             // 5. Stock Management
-            const currentMonturaId = (selMontura && selMontura.value !== "") ? selMontura.value : null;
-
             if (isEditingClient) {
-                // If frame changed during edit
-                if (originalMonturaId !== currentMonturaId) {
-                    // Restore stock to old frame
-                    if (originalMonturaId) {
-                        const { data: oldM } = await _supabase.from('monturas').select('stock_disponible').eq('id', originalMonturaId).single();
+                // Restore stock for OLD monturas list
+                if (originalMonturaIds) {
+                    const oldIds = originalMonturaIds.split(',').filter(id => id);
+                    for (const oid of oldIds) {
+                        const { data: oldM } = await _supabase.from('monturas').select('stock_disponible').eq('id', oid).single();
                         if (oldM) {
-                            await _supabase.from('monturas').update({ stock_disponible: oldM.stock_disponible + 1 }).eq('id', originalMonturaId);
+                            await _supabase.from('monturas').update({ stock_disponible: oldM.stock_disponible + 1 }).eq('id', oid);
                         }
                     }
-                    // Deduct stock from new frame
-                    if (currentMonturaId) {
-                        const { data: newM } = await _supabase.from('monturas').select('stock_disponible').eq('id', currentMonturaId).single();
-                        if (newM) {
-                            await _supabase.from('monturas').update({ stock_disponible: newM.stock_disponible - 1 }).eq('id', currentMonturaId);
-                        }
+                } else if (originalMonturaId) {
+                    // Fallback for legacy records
+                    const { data: oldM } = await _supabase.from('monturas').select('stock_disponible').eq('id', originalMonturaId).single();
+                    if (oldM) {
+                        await _supabase.from('monturas').update({ stock_disponible: oldM.stock_disponible + 1 }).eq('id', originalMonturaId);
+                    }
+                }
+
+                // Deduct stock for NEW monturas list
+                for (const nid of monturaIdsArr) {
+                    const { data: newM } = await _supabase.from('monturas').select('stock_disponible').eq('id', nid).single();
+                    if (newM) {
+                        await _supabase.from('monturas').update({ stock_disponible: newM.stock_disponible - 1 }).eq('id', nid);
                     }
                 }
             } else {
-                // New sale: deduct from current frame
-                if (currentMonturaId) {
-                    const { data: newM } = await _supabase.from('monturas').select('stock_disponible').eq('id', currentMonturaId).single();
+                // New sale: deduct from all current frames
+                for (const nid of monturaIdsArr) {
+                    const { data: newM } = await _supabase.from('monturas').select('stock_disponible').eq('id', nid).single();
                     if (newM) {
-                        await _supabase.from('monturas').update({ stock_disponible: newM.stock_disponible - 1 }).eq('id', currentMonturaId);
+                        await _supabase.from('monturas').update({ stock_disponible: newM.stock_disponible - 1 }).eq('id', nid);
                     }
                 }
             }
@@ -2032,7 +2093,10 @@ if(addFormClient) {
             isEditingClient = false;
             currentEditRowClient = null;
             originalMonturaId = null;
+            originalMonturaIds = null;
             originalMonturaName = null;
+            selectedMonturas = []; // CLEAR TAGS
+
             document.querySelector('#addClientModal h2').innerText = 'Agregar Nuevo Cliente';
             fetchClients();
             fetchMonturas();
@@ -2105,15 +2169,21 @@ window.deleteSale = async function(id) {
     if (await showCustomConfirm('¿Eliminar esta venta?', { title: 'ELIMINAR VENTA', confirmText: 'Eliminar', isDanger: true })) {
         try {
             // 1. Get the IDs of the linked Luna, Egreso, and Montura
-            const { data: sale } = await _supabase.from('ventas').select('luna_id, egreso_id, montura_id').eq('id', id).single();
+            const { data: sale } = await _supabase.from('ventas').select('luna_id, egreso_id, montura_id, montura_ids').eq('id', id).single();
             
             // 2. Restore Montura Stock if it exists
-            if (sale && sale.montura_id) {
-                const { data: montura } = await _supabase.from('monturas').select('stock_disponible').eq('id', sale.montura_id).single();
-                if (montura) {
-                    await _supabase.from('monturas').update({
-                        stock_disponible: montura.stock_disponible + 1
-                    }).eq('id', sale.montura_id);
+            // 2. Restore Montura Stock if it exists
+            if (sale) {
+                const idsToRestore = sale.montura_ids ? sale.montura_ids.split(',') : (sale.montura_id ? [sale.montura_id] : []);
+                for (const mid of idsToRestore) {
+                    if (mid) {
+                        const { data: montura } = await _supabase.from('monturas').select('stock_disponible').eq('id', mid).single();
+                        if (montura) {
+                            await _supabase.from('monturas').update({
+                                stock_disponible: montura.stock_disponible + 1
+                            }).eq('id', mid);
+                        }
+                    }
                 }
             }
 
@@ -2166,19 +2236,29 @@ window.editSale = async function(id) {
         document.getElementById('c_advance').value = v.adelanto;
         document.getElementById('c_payment_method').value = v.metodo_pago;
         document.getElementById('sel_vendedora').value = v.vendedora;
-        originalMonturaId = v.montura_id; // Capture original ID for stock balance logic
+        originalMonturaId = v.montura_id; 
+        originalMonturaIds = v.montura_ids; // Capture original IDs list
         
         // Deconstruct purchase data
         const parts = v.datos_compra.split('|');
         if (parts.length >= 6) {
             document.getElementById('c_luna_name').value = parts[0] || '';
             document.getElementById('c_luna_measure').value = parts[1] || '';
-            // Use the actual ID from the DB instead of the name from the string
-            if (v.montura_id) {
-                document.getElementById('sel_montura').value = v.montura_id;
-            } else {
-                document.getElementById('sel_montura').value = '';
+            
+            // Reconstruct monturas tags
+            selectedMonturas = [];
+            if (v.montura_ids) {
+                const ids = v.montura_ids.split(',');
+                ids.forEach(mid => {
+                    const match = monturasList.find(m => m.id == mid);
+                    if (match) selectedMonturas.push(match);
+                });
+            } else if (v.montura_id) {
+                const match = monturasList.find(m => m.id == v.montura_id);
+                if (match) selectedMonturas.push(match);
             }
+            renderMonturaTags();
+
             document.getElementById('sel_consulta').value = parts[3] || '';
             document.getElementById('c_others').value = parts[4] || '';
         }
@@ -3813,7 +3893,22 @@ async function generateMonturasPDF(startDate, endDate) {
     doc.save(`Reporte_Ventas_Monturas_${startDate}_${endDate}.pdf`);
 }
 
-// Call setups
-// setupExportLunas();
-// setupExportMonturas(); 
 // ==========================================
+
+// Initial Check & UX Improvements
+document.addEventListener('DOMContentLoaded', () => {
+    checkSession();
+    setupAutoSelectOnFocus();
+    setupExportLunas();
+    setupExportMonturas();
+    // setupDoctorSettlement(); // REMOVED
+    updateFinancialDashboards();
+    setupSummaryModal();
+    setupWeeklySummaryModal();
+
+    // Initial data fetch from Supabase
+    fetchLunas();
+    fetchMonturas();
+    fetchClients();
+    fetchExpenses();
+});
