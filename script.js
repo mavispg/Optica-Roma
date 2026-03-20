@@ -5,9 +5,9 @@ const supabaseUrl = 'https://xiqeltihgqjunvziesdj.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpcWVsdGloZ3FqdW52emllc2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwODcwOTUsImV4cCI6MjA4ODY2MzA5NX0.4pGisTZXFBk8VPIkvcPHqgAtD284fiPd1yJbxJYg0Lw';
 const _supabase = supabase.createClient(supabaseUrl, supabaseKey, {
     auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
     }
 });
 
@@ -1137,10 +1137,19 @@ const logoutBtn = document.getElementById('logoutBtn');
 
 // Check Session on Load
 async function checkSession() {
-    const { data: { session } } = await _supabase.auth.getSession();
-    if (session) {
-        showApp();
-    } else {
+    try {
+        const { data: { session }, error } = await _supabase.auth.getSession();
+        if (error) throw error;
+        
+        if (session) {
+            console.log('Session found, showing app');
+            showApp();
+        } else {
+            console.log('No session found, showing login');
+            showLogin();
+        }
+    } catch (err) {
+        console.warn('Session check warning (normal on some browsers):', err);
         showLogin();
     }
 }
