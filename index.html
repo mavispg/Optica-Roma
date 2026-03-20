@@ -216,6 +216,20 @@
                         </ul>
                     </div>
 
+                    <!-- Historical Sales Consulta -->
+                    <div class="dashboard-panel">
+                        <h3><i class='bx bx-history'></i> Consulta Histórica</h3>
+                        <div style="display: flex; flex-direction: column; gap: 15px; padding: 10px;">
+                            <p style="font-size: 0.9rem; color: #666; margin: 0;">Explorar ventas y gastos de cualquier fecha anterior.</p>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="date" id="dash-history-date" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit;">
+                                <button id="btn-dash-history-go" class="btn-primary" style="padding: 10px 20px; border-radius: 6px; white-space: nowrap;">
+                                    <i class='bx bx-search-alt'></i> Consultar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Quick Actions -->
                     <div class="dashboard-panel">
                         <h3>Acceso Rápido</h3>
@@ -605,7 +619,7 @@
                         <input type="text" id="c_others" placeholder="Otros (opcional)" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     </div>
                     <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-                        <select id="sel_vendedora" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <select id="sel_vendedora" required style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                             <option value="">Vendedora</option>
                         </select>
                         <button type="button" id="btnAddVendedora" title="Agregar nueva vendedora" style="padding: 8px 12px; background: #2e61b3; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 18px; font-weight: bold; line-height: 1;">+</button>

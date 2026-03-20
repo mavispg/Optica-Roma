@@ -1530,6 +1530,7 @@ let currentEditRowClient = null;
 let originalMonturaId = null; // Track original montura ID when editing
 let originalMonturaIds = null; // Track multiple original IDs
 let originalMonturaName = null; // Track original montura name when editing
+let initialAdvanceOnEdit = 0; // TRACK INITIAL ADVANCE
 let selectedMonturas = []; // Array of {id, name} for current form
 
 
@@ -2111,10 +2112,33 @@ if(addFormClient) {
             if (isEditingClient && saleId) {
                 const { error: updateError } = await _supabase.from('ventas').update(saleData).eq('id', saleId);
                 if (updateError) throw updateError;
+
+                // Record NEW payment only if advance increased
+                if (advance > initialAdvanceOnEdit) {
+                    const paymentDiff = advance - initialAdvanceOnEdit;
+                    const { error: paymentError } = await _supabase.from('ventas_pagos').insert([{
+                        venta_id: saleId,
+                        monto: paymentDiff,
+                        fecha: getLocalDateString(), // Recorded TODAY
+                        metodo_pago: paymentMethod
+                    }]);
+                    if (paymentError) console.error('Error recording payment history:', paymentError);
+                }
             } else {
                 const { data: newSale, error: insertError } = await _supabase.from('ventas').insert([saleData]).select();
                 if (insertError) throw insertError;
                 saleId = newSale[0].id;
+
+                // Record initial payment in history
+                if (advance > 0) {
+                    const { error: paymentError } = await _supabase.from('ventas_pagos').insert([{
+                        venta_id: saleId,
+                        monto: advance,
+                        fecha: dateRaw, // Original sale date
+                        metodo_pago: paymentMethod
+                    }]);
+                    if (paymentError) console.error('Error recording initial payment history:', paymentError);
+                }
             }
 
             // 5. Stock Management
@@ -2297,6 +2321,7 @@ window.editSale = async function(id) {
         document.getElementById('c_date').value = v.fecha;
         document.getElementById('c_total').value = v.monto_total;
         document.getElementById('c_advance').value = v.adelanto;
+        initialAdvanceOnEdit = parseFloat(v.adelanto) || 0; // STORE INITIAL
         document.getElementById('c_payment_method').value = v.metodo_pago;
         document.getElementById('sel_vendedora').value = v.vendedora;
         originalMonturaId = v.montura_id; 
@@ -3252,12 +3277,12 @@ async function updateFinancialDashboards() {
         monday.setDate(diff);
         const mondayStr = getLocalDateString(monday);
 
-        // 1. Fetch Sales (Advances)
-        const { data: salesDataToday } = await _supabase.from('ventas').select('adelanto').eq('fecha', todayStr);
-        const { data: salesDataWeek } = await _supabase.from('ventas').select('adelanto').gte('fecha', mondayStr);
+        // 1. Fetch Income (Payments)
+        const { data: paymentsToday } = await _supabase.from('ventas_pagos').select('monto').eq('fecha', todayStr);
+        const { data: paymentsWeek } = await _supabase.from('ventas_pagos').select('monto').gte('fecha', mondayStr);
 
-        const salesToday = salesDataToday ? salesDataToday.reduce((sum, s) => sum + s.adelanto, 0) : 0;
-        const salesWeek = salesDataWeek ? salesDataWeek.reduce((sum, s) => sum + s.adelanto, 0) : 0;
+        const salesToday = paymentsToday ? paymentsToday.reduce((sum, p) => sum + p.monto, 0) : 0;
+        const salesWeek = paymentsWeek ? paymentsWeek.reduce((sum, p) => sum + p.monto, 0) : 0;
 
         // 2. Fetch Expenses for Today
         const { data: expensesDataToday } = await _supabase.from('egresos').select('monto').eq('fecha', todayStr);
@@ -3396,14 +3421,14 @@ function showDaySummary() {
     populateSummaryData(today, dateStr, config);
 }
 
-function populateSummaryData(dateObj, dateStr, config) {
+async function populateSummaryData(dateObj, dateStr, config) {
     const dateDisplay = dateObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     document.getElementById(config.dateDisplayId).innerText = dateDisplay.charAt(0).toUpperCase() + dateDisplay.slice(1);
 
     const salesTbody = document.querySelector(config.salesTbodyId);
     const expensesTbody = document.querySelector(config.expensesTbodyId);
-    salesTbody.innerHTML = '';
-    expensesTbody.innerHTML = '';
+    salesTbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px;">Cargando ingresos...</td></tr>';
+    expensesTbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding: 20px;">Cargando egresos...</td></tr>';
 
     let totalIn = 0;
     let totalOut = 0;
@@ -3411,119 +3436,107 @@ function populateSummaryData(dateObj, dateStr, config) {
     let totalYape = 0;
     let totalCash = 0;
 
-    // 1. Process Sales (Clients)
-    if (tableBodyClients) {
-        const rows = tableBodyClients.querySelectorAll('tr');
-        rows.forEach(row => {
-            const dateInput = row.querySelector('.raw-date');
-            if (dateInput && dateInput.value === dateStr) {
-                const cells = row.getElementsByTagName('td');
-                const id = cells[0].innerText;
-                const purchaseDataRaw = row.querySelector('.raw-data')?.value || '';
-                const advanceRaw = row.querySelector('.raw-advance');
-                const paymentMethod = row.querySelector('.raw-payment-method') ? row.querySelector('.raw-payment-method').value : '';
-                const advance = parseFloat(advanceRaw?.value) || 0;
-                const totalRaw = row.querySelector('.raw-total');
-                const totalAmount = parseFloat(totalRaw?.value) || 0;
-                const balanceAmount = totalAmount - advance;
+    try {
+        // 1. Process Payments (Real income source)
+        const { data: payments, error: pError } = await _supabase
+            .from('ventas_pagos')
+            .select(`
+                *,
+                ventas (
+                    codigo_venta,
+                    datos_compra,
+                    monto_total,
+                    adelanto,
+                    saldo,
+                    metodo_pago,
+                    clientes (nombre)
+                )
+            `)
+            .eq('fecha', dateStr);
 
-                if (paymentMethod && paymentMethod.includes('|')) {
-                    // Mixed payment breakdown (Efectivo:50|Visa:30)
-                    const splitParts = paymentMethod.split('|');
-                    splitParts.forEach(part => {
-                        const colonIndex = part.indexOf(':');
-                        if (colonIndex > -1) {
-                            const method = part.substring(0, colonIndex).trim();
-                            const amountStr = part.substring(colonIndex + 1).trim();
-                            const amount = parseFloat(amountStr) || 0;
-                            
-                            // Case-insensitive matching just in case
-                            const mLower = method.toLowerCase();
-                            if (mLower === 'visa') totalVisa += amount;
-                            else if (mLower === 'yape') totalYape += amount;
-                            else if (mLower === 'efectivo') totalCash += amount;
-                        }
-                    });
-                } else if (paymentMethod) {
-                    // Single payment
-                    const mLower = paymentMethod.toLowerCase();
-                    if (mLower === 'visa') totalVisa += advance;
-                    else if (mLower === 'yape') totalYape += advance;
-                    else if (mLower === 'efectivo') totalCash += advance;
-                }
+        if (pError) throw pError;
 
-                totalIn += advance;
-                const statusBadgeEl = row.querySelector('.status-badge');
-                const status = statusBadgeEl ? statusBadgeEl.outerHTML : (cells[8] ? cells[8].innerHTML : '-');
+        salesTbody.innerHTML = '';
+        if (payments && payments.length > 0) {
+            payments.forEach(p => {
+                const amount = p.monto;
+                const v = p.ventas;
+                if (!v) return;
 
-                const name = cells[1].innerText;
+                const mLower = p.metodo_pago.toLowerCase();
+                if (mLower === 'visa') totalVisa += amount;
+                else if (mLower === 'yape') totalYape += amount;
+                else if (mLower === 'efectivo') totalCash += amount;
+                
+                totalIn += amount;
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="font-weight:600; color:#555; white-space: nowrap;">${id}</td>
+                    <td style="font-weight:600; color:#555; white-space: nowrap;">${v.codigo_venta}</td>
                     <td>
-                        <div style="font-weight:700; color:#333; margin-bottom:4px;">${name}</div>
-                        ${formatPurchaseDataForDisplay(purchaseDataRaw)}
+                        <div style="font-weight:700; color:#333; margin-bottom:4px;">${v.clientes?.nombre || 'N/A'}</div>
+                        ${formatPurchaseDataForDisplay(v.datos_compra)}
                     </td>
-                    <td style="text-align: right; color:#333; white-space: nowrap;">${formatCurrency(totalAmount.toString())}</td>
-                    <td style="text-align: right; font-weight:700; color:#333; white-space: nowrap;">${formatCurrency(advance.toString())}</td>
-                    <td style="text-align: right; color:#333; white-space: nowrap;">${formatCurrency(balanceAmount.toString())}</td>
-                    <td style="white-space: nowrap;">${status}</td>
-                    <td style="white-space: nowrap;">${formatPaymentMethodBadge(paymentMethod)}</td>
+                    <td style="text-align: right; color:#333; white-space: nowrap;">${formatCurrency(v.monto_total.toString())}</td>
+                    <td style="text-align: right; font-weight:700; color:#27ae60; white-space: nowrap;">+ ${formatCurrency(amount.toString())}</td>
+                    <td style="text-align: right; color:#333; white-space: nowrap;">${formatCurrency(v.saldo.toString())}</td>
+                    <td style="white-space: nowrap;">${getStatusBadge(v.monto_total, v.adelanto)}</td>
+                    <td style="white-space: nowrap;">${formatPaymentMethodBadge(p.metodo_pago)}</td>
                 `;
                 salesTbody.appendChild(tr);
-            }
-        });
-    }
+            });
+        }
 
-    // 2. Process Expenses
-    if (tableBodyExpenses) {
-        const rows = tableBodyExpenses.querySelectorAll('tr');
-        rows.forEach(row => {
-            const dateInput = row.querySelector('.raw-date');
-            if (dateInput && dateInput.value === dateStr) {
-                const category = row.getElementsByTagName('td')[2].innerText;
-                const descriptionRaw = row.getElementsByTagName('td')[3].innerText;
-                // Show category as the label, unless "Otros" — then show the custom description
-                const displayLabel = (category === 'Otros') ? descriptionRaw : category;
-                const amountInput = row.querySelector('.raw-amount');
-                const amount = amountInput ? parseFloat(amountInput.value) : 0;
+        // 2. Process Expenses
+        const { data: expenses, error: eError } = await _supabase
+            .from('egresos')
+            .select('*')
+            .eq('fecha', dateStr);
+        
+        if (eError) throw eError;
 
+        expensesTbody.innerHTML = '';
+        if (expenses && expenses.length > 0) {
+            expenses.forEach(e => {
+                const amount = e.monto;
                 totalOut += amount;
 
-                // Subtract from correct bucket
-                const methodRaw = row.querySelector('.raw-method');
-                const method = methodRaw ? methodRaw.value : 'Efectivo';
+                const displayLabel = (e.categoria === 'Otros') ? e.descripcion : e.categoria;
+                const method = e.metodo_pago || 'Efectivo';
                 
-                if (method === 'Yape') {
-                    totalYape -= amount;
-                } else {
-                    totalCash -= amount;
-                }
+                if (method === 'Yape') totalYape -= amount;
+                else totalCash -= amount;
 
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid #eee';
-                tr.innerHTML = `<td style="padding: 8px;">${displayLabel} ${method === 'Yape' ? '<span style="color:#777; font-size:0.8em;">(Yape)</span>' : ''}</td><td style="padding: 8px; text-align: right;">${formatCurrency(amount.toString())}</td>`;
+                tr.innerHTML = `
+                    <td style="padding: 8px;">${displayLabel} ${method === 'Yape' ? '<span style="color:#777; font-size:0.8em;">(Yape)</span>' : ''}</td>
+                    <td style="padding: 8px; text-align: right; color:#e74c3c;">- ${formatCurrency(amount.toString())}</td>
+                `;
                 expensesTbody.appendChild(tr);
-            }
-        });
+            });
+        }
+
+        // Empty states
+        if (salesTbody.innerHTML === '') salesTbody.innerHTML = `<tr><td colspan="7" style="padding: 20px; color: #999; text-align: center;">No hay ingresos este día</td></tr>`;
+        if (expensesTbody.innerHTML === '') expensesTbody.innerHTML = `<tr><td colspan="2" style="padding: 20px; color: #999; text-align: center;">No hay egresos este día</td></tr>`;
+
+        // 3. Update Footer
+        if (config.totalVisaId) document.getElementById(config.totalVisaId).innerText = formatCurrency(totalVisa.toString());
+        if (config.totalYapeId) document.getElementById(config.totalYapeId).innerText = formatCurrency(totalYape.toString());
+        if (config.totalCashId) document.getElementById(config.totalCashId).innerText = formatCurrency(totalCash.toString());
+
+        document.getElementById(config.totalInId).innerText = formatCurrency(totalIn.toString());
+        document.getElementById(config.totalOutId).innerText = formatCurrency(totalOut.toString());
+        const balance = totalIn - totalOut;
+        const balanceEl = document.getElementById(config.balanceId);
+        balanceEl.innerText = formatCurrency(balance.toString());
+        balanceEl.style.color = balance >= 0 ? 'var(--green-card)' : 'var(--red-card)';
+
+    } catch (err) {
+        console.error('Error populating summary:', err);
+        salesTbody.innerHTML = `<tr><td colspan="7" style="color:red; text-align:center;">Error al cargar datos</td></tr>`;
     }
-
-    // Handle empty states
-    if (salesTbody.innerHTML === '') salesTbody.innerHTML = `<tr><td colspan="7" style="padding: 8px; color: #999; text-align: center;">No hay ingresos este día</td></tr>`;
-    if (expensesTbody.innerHTML === '') expensesTbody.innerHTML = `<tr><td colspan="2" style="padding: 8px; color: #999; text-align: center;">No hay egresos este día</td></tr>`;
-
-    // 3. Update Footer
-    if (config.totalVisaId) document.getElementById(config.totalVisaId).innerText = formatCurrency(totalVisa.toString());
-    if (config.totalYapeId) document.getElementById(config.totalYapeId).innerText = formatCurrency(totalYape.toString());
-    if (config.totalCashId) document.getElementById(config.totalCashId).innerText = formatCurrency(totalCash.toString());
-
-    document.getElementById(config.totalInId).innerText = formatCurrency(totalIn.toString());
-    document.getElementById(config.totalOutId).innerText = formatCurrency(totalOut.toString());
-    const balance = totalIn - totalOut;
-    const balanceEl = document.getElementById(config.balanceId);
-    balanceEl.innerText = formatCurrency(balance.toString());
-    balanceEl.style.color = balance >= 0 ? 'var(--green-card)' : 'var(--red-card)';
 }
 
 // ==========================================
@@ -3775,6 +3788,54 @@ function exportDaySummaryToPDF() {
 }
 
 // ==========================================
+// DASHBOARD HISTORICAL CONSULTA
+// ==========================================
+function setupDashboardHistory() {
+    const historyDateInput = document.getElementById('dash-history-date');
+    const btnHistoryGo = document.getElementById('btn-dash-history-go');
+    const modalSummary = document.getElementById('daySummaryModal');
+
+    if (historyDateInput) {
+        // Set default to today
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = (today.getMonth() + 1).toString().padStart(2, '0');
+        const d = today.getDate().toString().padStart(2, '0');
+        historyDateInput.value = `${y}-${m}-${d}`;
+    }
+
+    if (btnHistoryGo && historyDateInput && modalSummary) {
+        btnHistoryGo.addEventListener('click', () => {
+            const selectedDateVal = historyDateInput.value;
+            if (!selectedDateVal) {
+                showCustomAlert('Por favor selecciona una fecha');
+                return;
+            }
+
+            // Create date object from YYYY-MM-DD (local time)
+            const parts = selectedDateVal.split('-');
+            const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            
+            const config = {
+                dateDisplayId: 'summaryModalDate',
+                salesTbodyId: '#summarySalesTable tbody',
+                expensesTbodyId: '#summaryExpensesTable tbody',
+                totalInId: 'sum-total-in',
+                totalOutId: 'sum-total-out',
+                balanceId: 'sum-balance',
+                totalVisaId: 'sum-total-visa',
+                totalYapeId: 'sum-total-yape',
+                totalCashId: 'sum-total-efectivo'
+            };
+
+            populateSummaryData(dateObj, selectedDateVal, config);
+            modalSummary.style.display = 'block';
+        });
+    }
+}
+
+
+// ==========================================
 // EXPORT LUNAS & MONTURAS PDF LOGIC
 // ==========================================
 
@@ -3968,6 +4029,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateFinancialDashboards();
     setupSummaryModal();
     setupWeeklySummaryModal();
+    setupDashboardHistory();
 
     // Initial data fetch from Supabase
     fetchLunas();
