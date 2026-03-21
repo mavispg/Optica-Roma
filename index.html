@@ -1122,6 +1122,37 @@
         </div>
     </div>
 
+    <!-- Modal Historial de Pagos -->
+    <div id="paymentHistoryModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="summary-header">
+                <span class="history-close">&times;</span>
+                <h2>Historial de Pagos</h2>
+                <p id="historyClientName" style="color: #64748b; font-weight: 600; margin-bottom: 10px;"></p>
+            </div>
+            <div class="white-box">
+                <table class="custom-table" id="paymentHistoryTable">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Referencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Via JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="historySummary" style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; display: flex; justify-content: space-between;">
+                <div>Total Venta: <span id="histTotalSale" style="font-weight: 700;">S/. 0.00</span></div>
+                <div>Total Pagado: <span id="histTotalPaid" style="font-weight: 700; color: #27ae60;">S/. 0.00</span></div>
+                <div>Saldo: <span id="histBalance" style="font-weight: 700; color: #e74c3c;">S/. 0.00</span></div>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

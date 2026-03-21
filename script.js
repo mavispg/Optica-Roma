@@ -1531,6 +1531,10 @@ let originalMonturaId = null; // Track original montura ID when editing
 let originalMonturaIds = null; // Track multiple original IDs
 let originalMonturaName = null; // Track original montura name when editing
 let initialAdvanceOnEdit = 0; // TRACK INITIAL ADVANCE
+let initialTotalOnEdit = 0; // TRACK INITIAL TOTAL
+let originalConsultaName = null; // TRACK ORIGINAL DOCTOR FOR CLEANUP
+let originalSaleDate = null; // TRACK ORIGINAL DATE FOR CLEANUP
+let originalEgresoId = null; // TRACK ORIGINAL EGRESO LINK
 let selectedMonturas = []; // Array of {id, name} for current form
 
 
@@ -1553,10 +1557,17 @@ if(document.getElementById('c_total') && document.getElementById('c_advance')) {
 const bAddCl = getEl('btnAddClient');
 if(bAddCl) {
     bAddCl.addEventListener('click', () => {
-        isEditingClient = false;
-        currentEditRowClient = null;
         const afCl = getEl('addClientForm');
         if (afCl) afCl.reset();
+        
+        // RESET TRACKING VARIABLES FOR NEW SALE
+        isEditingClient = false;
+        currentEditRowClient = null;
+        originalConsultaName = null;
+        originalSaleDate = null;
+        originalEgresoId = null;
+        initialAdvanceOnEdit = 0;
+        selectedMonturas = [];
         
         const h2 = document.querySelector('#addClientModal h2');
         if (h2) h2.innerText = 'Agregar Nuevo Cliente';
@@ -1782,9 +1793,14 @@ function updateClientProductDropdowns() {
     }
     // Reset Vendedora
     const selVendedora = getEl('sel_vendedora');
-    if(selVendedora) {
-        selVendedora.value = '';
-    }
+    if(selVendedora) selVendedora.value = '';
+    
+    // Reset Consulta
+    const selConsulta = getEl('sel_consulta');
+    if(selConsulta) selConsulta.value = '';
+
+    // FINAL SYNC
+    updatePurchaseDataString();
 }
 
 function renderMonturaTags() {
@@ -2029,41 +2045,93 @@ if(addFormClient) {
             }
 
             // 2. Consultation to Expense logic (DO THIS BEFORE SALE TO GET ID)
-            let egreso_id = null;
-            const consultaName = data.split('|')[3];
-            if (consultaName && consultaName.trim() !== '') {
-                const baseCat = `Consulta ${consultaName}`;
-                // Search for an existing consultation expense for this doctor TODAY
-                const { data: existingExp } = await _supabase
-                    .from('egresos')
-                    .select('id, categoria, monto')
-                    .eq('fecha', dateRaw)
-                    .ilike('categoria', `${baseCat}%`)
-                    .limit(1);
-                
-                if (existingExp && existingExp.length > 0) {
-                    const exp = existingExp[0];
-                    const parsed = parseDoctorCategory(exp.categoria);
-                    const newCount = (parsed ? parsed.count : 1) + 1;
-                    const newCategory = `${baseCat} (${newCount})`;
+            let egreso_id = isEditingClient ? originalEgresoId : null;
+            const consultationPart = data.split('|')[3];
+            const consultaName = consultationPart ? consultationPart.trim() : '';
+
+            const doctorChanged = originalConsultaName !== consultaName;
+            const isAmountChanged = isEditingClient && (initialAdvanceOnEdit !== advance || initialTotalOnEdit !== total);
+            const dateChanged = originalSaleDate !== dateRaw;
+
+            // REFINED LOGIC:
+            // - If it's a PAYMENT (Amount changed), anchor the consultation to the originalSaleDate.
+            // - If it's a CORRECTION (Amount NOT changed, but date changed), move it to dateRaw.
+            // - If it's a NEW sale, use dateRaw.
+            const targetConsultaDate = (isEditingClient && isAmountChanged) ? originalSaleDate : dateRaw;
+            
+            // Determine if we need to do any consultation logic (re-linking, cleanup, adding)
+            const shouldWorkConsultation = !isEditingClient || doctorChanged || (dateChanged && !isAmountChanged);
+
+            if (shouldWorkConsultation) {
+                // CLEANUP OLD CONSULTATION IF (Doctor Changed OR (Date Changed AND NO Amount Change))
+                if (isEditingClient && originalConsultaName && (doctorChanged || (dateChanged && !isAmountChanged))) {
+                    const oldBaseCat = `Consulta ${originalConsultaName}`;
+                    const { data: oldExp } = await _supabase
+                        .from('egresos')
+                        .select('id, categoria')
+                        .eq('fecha', originalSaleDate)
+                        .ilike('categoria', `${oldBaseCat}%`)
+                        .limit(1);
                     
-                    // We don't automatically multiply here because we don't know the unit price yet
-                    // The user will set it later in the expenses section
-                    await _supabase.from('egresos').update({
-                        categoria: newCategory,
-                        descripcion: `Consultas agrupadas para ${consultaName}`
-                    }).eq('id', exp.id);
+                    if (oldExp && oldExp.length > 0) {
+                        const exp = oldExp[0];
+                        const parsed = parseDoctorCategory(exp.categoria);
+                        if (parsed && parsed.count > 1) {
+                            const newCount = parsed.count - 1;
+                            const unitPrice = (exp.monto || 0) / parsed.count;
+                            await _supabase.from('egresos').update({
+                                categoria: `${parsed.baseName} (${newCount})`,
+                                monto: unitPrice * newCount
+                            }).eq('id', exp.id);
+                        } else {
+                            await _supabase.from('egresos').delete().eq('id', exp.id);
+                        }
+                    }
+                }
+
+                // ADD NEW CONSULTATION
+                if (consultaName && consultaName !== '') {
+                    const baseCat = `Consulta ${consultaName}`;
+                    // Search for an existing consultation expense for this doctor on the target date
+                    const { data: existingExp } = await _supabase
+                        .from('egresos')
+                        .select('id, categoria')
+                        .eq('fecha', targetConsultaDate)
+                        .ilike('categoria', `${baseCat}%`)
+                        .limit(1);
                     
-                    egreso_id = exp.id;
+                    if (existingExp && existingExp.length > 0) {
+                        const exp = existingExp[0];
+                        const parsed = parseDoctorCategory(exp.categoria);
+                        const currentCount = parsed ? parsed.count : 1;
+                        const newCount = currentCount + 1;
+                        const unitPrice = (exp.monto || 0) / currentCount;
+                        await _supabase.from('egresos').update({
+                            categoria: `${baseCat} (${newCount})`,
+                            descripcion: `Consultas agrupadas para ${consultaName}`,
+                            monto: unitPrice * newCount
+                        }).eq('id', exp.id);
+                        egreso_id = exp.id;
+                    } else {
+                        // Create new
+                        const { data: newExpRecord, error: expError } = await _supabase
+                            .from('egresos')
+                            .insert([{
+                                codigo: getNextExpenseID(),
+                                fecha: targetConsultaDate,
+                                categoria: `${baseCat} (1)`,
+                                descripcion: `Consultas agrupadas para ${consultaName}`,
+                                monto: 0,
+                                metodo_pago: 'Efectivo'
+                            }]).select();
+                        if (expError) throw expError;
+                        if (newExpRecord && newExpRecord.length > 0) {
+                            egreso_id = newExpRecord[0].id;
+                        }
+                    }
                 } else {
-                    const { data: newExp, error: expError } = await _supabase.from('egresos').insert([{
-                        codigo: getNextExpenseID(),
-                        fecha: dateRaw,
-                        categoria: `${baseCat} (1)`,
-                        descripcion: `Consultas agrupadas para ${consultaName}`,
-                        monto: 0 
-                    }]).select();
-                    if (!expError && newExp) egreso_id = newExp[0].id;
+                    // Doctor was removed
+                    egreso_id = null;
                 }
             }
 
@@ -2182,6 +2250,9 @@ if(addFormClient) {
             originalMonturaId = null;
             originalMonturaIds = null;
             originalMonturaName = null;
+            originalConsultaName = null;
+            originalSaleDate = null;
+            originalEgresoId = null;
             selectedMonturas = []; // CLEAR TAGS
 
             document.querySelector('#addClientModal h2').innerText = 'Agregar Nuevo Cliente';
@@ -2232,8 +2303,9 @@ async function fetchClients() {
                     <td>${formatPaymentMethodBadge(v.metodo_pago)}</td>
                     <td class="actions-cell">
                         <div class="actions-wrapper">
-                            <button class="icon-btn edit-btn" onclick="editSale('${v.id}')"><i class='bx bxs-edit-alt'></i></button>
-                            <button class="icon-btn delete-btn" onclick="deleteSale('${v.id}', '${v.codigo_venta}', '${v.clientes?.nombre}')"><i class='bx bxs-trash'></i></button>
+                            <button class="icon-btn history-btn" title="Historial de Pagos" onclick="showPaymentHistory('${v.id}')"><i class='bx bx-history'></i></button>
+                            <button class="icon-btn edit-btn" title="Editar" onclick="editSale('${v.id}')"><i class='bx bxs-edit-alt'></i></button>
+                            <button class="icon-btn delete-btn" title="Eliminar" onclick="deleteSale('${v.id}', '${v.codigo_venta}', '${v.clientes?.nombre}')"><i class='bx bxs-trash'></i></button>
                         </div>
                         <!-- Hidden data for summary modals -->
                         <input type="hidden" class="raw-date" value="${v.fecha}">
@@ -2250,6 +2322,65 @@ async function fetchClients() {
         console.error('Error fetching clients:', error);
     }
 }
+
+// Payment History Modal Logic
+const modalHistory = document.getElementById('paymentHistoryModal');
+const closeBtnHistory = document.querySelector('.history-close');
+
+if (closeBtnHistory) {
+    closeBtnHistory.addEventListener('click', () => {
+        modalHistory.style.display = 'none';
+    });
+}
+
+window.showPaymentHistory = async function(ventaId) {
+    try {
+        // Fetch Sale Info
+        const { data: sale, error: sError } = await _supabase
+            .from('ventas')
+            .select('*, clientes(nombre)')
+            .eq('id', ventaId)
+            .single();
+        if (sError) throw sError;
+
+        // Fetch Payments
+        const { data: payments, error: pError } = await _supabase
+            .from('ventas_pagos')
+            .select('*')
+            .eq('venta_id', ventaId)
+            .order('fecha', { ascending: true });
+        if (pError) throw pError;
+
+        document.getElementById('historyClientName').innerText = `${sale.clientes.nombre} (Venta #${sale.codigo_venta})`;
+        const tbody = document.querySelector('#paymentHistoryTable tbody');
+        tbody.innerHTML = '';
+        
+        let totalPaid = 0;
+        payments.forEach(p => {
+            totalPaid += p.monto;
+            const dateParts = p.fecha.split('-');
+            const dateDisplay = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${dateDisplay}</td>
+                <td>${formatCurrency(p.monto.toString())}</td>
+                <td>${formatPaymentMethodBadge(p.metodo_pago)}</td>
+                <td>${p.es_adelanto ? 'Adelanto Inicial' : 'Abono / Saldo'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('histTotalSale').innerText = formatCurrency(sale.monto_total.toString());
+        document.getElementById('histTotalPaid').innerText = formatCurrency(totalPaid.toString());
+        document.getElementById('histBalance').innerText = formatCurrency(sale.saldo.toString());
+
+        modalHistory.style.display = 'block';
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        await showCustomAlert('Error al cargar historial: ' + error.message, 'ERROR');
+    }
+};
 
 // Global delete for sales
 window.deleteSale = async function(id) {
@@ -2319,7 +2450,10 @@ window.editSale = async function(id) {
         document.getElementById('c_name').value = v.clientes?.nombre || '';
         document.getElementById('c_phone').value = v.clientes?.celular || '';
         document.getElementById('c_date').value = v.fecha;
+        originalSaleDate = v.fecha; // STORE ORIGINAL
+        originalEgresoId = v.egreso_id; // STORE ORIGINAL LINK
         document.getElementById('c_total').value = v.monto_total;
+        initialTotalOnEdit = parseFloat(v.monto_total) || 0; // STORE INITIAL
         document.getElementById('c_advance').value = v.adelanto;
         initialAdvanceOnEdit = parseFloat(v.adelanto) || 0; // STORE INITIAL
         document.getElementById('c_payment_method').value = v.metodo_pago;
@@ -2329,10 +2463,14 @@ window.editSale = async function(id) {
         
         // Deconstruct purchase data
         const parts = v.datos_compra.split('|');
-        if (parts.length >= 6) {
+        if (parts.length >= 1) { // MORE ROBUST
             document.getElementById('c_luna_name').value = parts[0] || '';
             document.getElementById('c_luna_measure').value = parts[1] || '';
             
+            document.getElementById('sel_consulta').value = parts[3] || '';
+            originalConsultaName = parts[3] || ''; // STORE ORIGINAL
+            document.getElementById('c_others').value = parts[4] || '';
+
             // Reconstruct monturas tags
             selectedMonturas = [];
             if (v.montura_ids) {
@@ -2345,11 +2483,11 @@ window.editSale = async function(id) {
                 const match = monturasList.find(m => m.id == v.montura_id);
                 if (match) selectedMonturas.push(match);
             }
-            renderMonturaTags();
-
-            document.getElementById('sel_consulta').value = parts[3] || '';
-            document.getElementById('c_others').value = parts[4] || '';
+            renderMonturaTags(); // This triggers sync, will now have correct doctor
         }
+        
+        // FINAL FORCED SYNC
+        updatePurchaseDataString();
 
         document.querySelector('#addClientModal h2').innerText = 'Editar Venta / Cliente';
         modalClient.style.display = 'block';
@@ -2618,50 +2756,60 @@ if(btnGeneratePDF) {
         doc.text(`Desde: ${startDateVal}  Hasta: ${endDateVal}`, 14, 28);
         doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 34);
 
-        // Collect Data
+        // Collect Data from DB instead of DOM for accuracy
         let rowsData = [];
         let totalIncome = 0;
-        
-        const rows = tableBodyClients.querySelectorAll('tr');
-        rows.forEach(row => {
-            const cells = row.getElementsByTagName('td');
-            if(cells.length > 0) {
-                 // Date is in index 4 (dd/mm/yyyy)
-                const dateText = cells[4].innerText; 
-                const [day, month, year] = dateText.split('/');
-                const rowDate = new Date(`${year}-${month}-${day}`);
-                
-                if (rowDate >= startDate && rowDate <= endDate) {
-                    // Extract data for PDF (All columns)
-                    const id = cells[0].innerText;
-                    const name = cells[1].innerText;
-                    const purchaseData = cells[2].innerText;
-                    const phone = cells[3].innerText;
-                    const dateCol = cells[4].innerText;
-                    const totalAmount = cells[5].innerText;
-                    const advance = cells[6].innerText;
-                    const balance = cells[7].innerText;
-                    const status = cells[8].innerText;
-                    const modality = cells[9].innerText;
+
+        try {
+            const { data: reportPayments, error: rError } = await _supabase
+                .from('ventas_pagos')
+                .select(`
+                    *,
+                    ventas (
+                        codigo_venta,
+                        datos_compra,
+                        monto_total,
+                        adelanto,
+                        saldo,
+                        clientes (nombre, celular)
+                    )
+                `)
+                .gte('fecha', startDateVal)
+                .lte('fecha', endDateVal)
+                .order('fecha', { ascending: true });
+
+            if (rError) throw rError;
+
+            if (reportPayments && reportPayments.length > 0) {
+                reportPayments.forEach(p => {
+                    const v = p.ventas;
+                    if (!v) return;
+
+                    const dateParts = p.fecha.split('-');
+                    const dateDisplay = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
                     
+                    const amount = p.monto;
+                    totalIncome += amount;
+
                     rowsData.push([
-                        id, 
-                        name, 
-                        purchaseData, 
-                        phone,
-                        dateCol, 
-                        totalAmount,
-                        advance,
-                        balance,
-                        status, 
-                        modality
+                        v.codigo_venta,
+                        v.clientes?.nombre || 'N/A',
+                        formatPurchaseDataForDisplay(v.datos_compra).replace(/<[^>]*>/g, '').trim(), // Strip HTML if any
+                        v.clientes?.celular || '',
+                        dateDisplay,
+                        formatCurrency(v.monto_total.toString()),
+                        formatCurrency(amount.toString()), // This payment
+                        formatCurrency(v.saldo.toString()),
+                        getStatusBadge(v.monto_total, v.adelanto).replace(/<[^>]*>/g, ''), // Strip HTML
+                        p.metodo_pago
                     ]);
-                    
-                    // Robust sum handling commas
-                    totalIncome += parseFloat(totalAmount.replace('S/. ', '').replace(/,/g, '')) || 0;
-                }
+                });
             }
-        });
+        } catch (dbErr) {
+            console.error('Error fetching report data:', dbErr);
+            await showCustomAlert('Error al generar reporte: ' + dbErr.message, 'ERROR');
+            return;
+        }
 
         if(rowsData.length === 0) {
             await showCustomAlert('No se encontraron registros en el rango de fechas seleccionado.', 'REPORTE VACÍO');
@@ -3443,6 +3591,7 @@ async function populateSummaryData(dateObj, dateStr, config) {
             .select(`
                 *,
                 ventas (
+                    id,
                     codigo_venta,
                     datos_compra,
                     monto_total,
@@ -3472,7 +3621,12 @@ async function populateSummaryData(dateObj, dateStr, config) {
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="font-weight:600; color:#555; white-space: nowrap;">${v.codigo_venta}</td>
+                    <td style="font-weight:600; color:#555; white-space: nowrap;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            ${v.codigo_venta}
+                            <i class='bx bx-history' style="cursor:pointer; color:#3b82f6; font-size:1.1rem;" onclick="showPaymentHistory('${v.id}')" title="Ver Historial"></i>
+                        </div>
+                    </td>
                     <td>
                         <div style="font-weight:700; color:#333; margin-bottom:4px;">${v.clientes?.nombre || 'N/A'}</div>
                         ${formatPurchaseDataForDisplay(v.datos_compra)}
