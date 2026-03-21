@@ -2181,16 +2181,45 @@ if(addFormClient) {
                 const { error: updateError } = await _supabase.from('ventas').update(saleData).eq('id', saleId);
                 if (updateError) throw updateError;
 
-                // Record NEW payment only if advance increased
-                if (advance > initialAdvanceOnEdit) {
-                    const paymentDiff = advance - initialAdvanceOnEdit;
-                    const { error: paymentError } = await _supabase.from('ventas_pagos').insert([{
-                        venta_id: saleId,
-                        monto: paymentDiff,
-                        fecha: getLocalDateString(), // Recorded TODAY
-                        metodo_pago: paymentMethod
-                    }]);
-                    if (paymentError) console.error('Error recording payment history:', paymentError);
+                // Reconcile ventas_pagos with new advance value
+                // Sum all existing payments for this sale
+                const { data: existingPayments, error: epErr } = await _supabase
+                    .from('ventas_pagos')
+                    .select('id, monto')
+                    .eq('venta_id', saleId)
+                    .order('id', { ascending: true });
+
+                if (epErr) {
+                    console.error('Error fetching existing payments for reconciliation:', epErr);
+                } else {
+                    const totalAlreadyPaid = existingPayments ? existingPayments.reduce((s, p) => s + p.monto, 0) : 0;
+                    const paymentDiff = Math.round((advance - totalAlreadyPaid) * 100) / 100; // Round to avoid float issues
+
+                    if (paymentDiff > 0.009) {
+                        // New money added — record as new payment today
+                        const { error: paymentError } = await _supabase.from('ventas_pagos').insert([{
+                            venta_id: saleId,
+                            monto: paymentDiff,
+                            fecha: getLocalDateString(),
+                            metodo_pago: paymentMethod
+                        }]);
+                        if (paymentError) console.error('Error recording payment history:', paymentError);
+                    } else if (paymentDiff < -0.009) {
+                        // Total was reduced — trim from the most recent payment record
+                        let amountToRemove = Math.abs(paymentDiff);
+                        const payments = existingPayments ? [...existingPayments].reverse() : [];
+                        for (const p of payments) {
+                            if (amountToRemove <= 0.009) break;
+                            if (p.monto <= amountToRemove) {
+                                await _supabase.from('ventas_pagos').delete().eq('id', p.id);
+                                amountToRemove -= p.monto;
+                            } else {
+                                await _supabase.from('ventas_pagos').update({ monto: parseFloat((p.monto - amountToRemove).toFixed(2)) }).eq('id', p.id);
+                                amountToRemove = 0;
+                            }
+                        }
+                    }
+                    // If paymentDiff ≈ 0, nothing to do
                 }
             } else {
                 const { data: newSale, error: insertError } = await _supabase.from('ventas').insert([saleData]).select();
@@ -3612,10 +3641,15 @@ async function populateSummaryData(dateObj, dateStr, config) {
                 const v = p.ventas;
                 if (!v) return;
 
-                const mLower = p.metodo_pago.toLowerCase();
-                if (mLower === 'visa') totalVisa += amount;
-                else if (mLower === 'yape') totalYape += amount;
-                else if (mLower === 'efectivo') totalCash += amount;
+                const mParts = p.metodo_pago.split('|');
+                mParts.forEach(part => {
+                    const [mName, mAmount] = part.split(':');
+                    const subAmount = mAmount ? parseFloat(mAmount) : amount;
+                    const mLower = mName.toLowerCase();
+                    if (mLower.includes('visa')) totalVisa += subAmount;
+                    else if (mLower.includes('yape')) totalYape += subAmount;
+                    else if (mLower.includes('efectivo')) totalCash += subAmount;
+                });
                 
                 totalIn += amount;
 

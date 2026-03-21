@@ -625,7 +625,7 @@ body {
 
 /* Action Buttons */
 .actions-cell {
-    width: 80px; /* Tighten width */
+    width: 110px; /* Widened to fit 3 icon buttons */
     text-align: right;
 }
 .actions-wrapper {
@@ -662,6 +662,12 @@ body {
 }
 .pay-btn:hover {
     color: #219150;
+}
+.history-btn {
+    color: #3b82f6;
+}
+.history-btn:hover {
+    color: #1d4ed8;
 }
 
 /* Status Badges */
