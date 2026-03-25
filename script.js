@@ -1850,12 +1850,16 @@ if(smPivotEl) {
 function toggleProductSelection(enable) {
     const clName = getEl('c_luna_name');
     const clMeas = getEl('c_luna_measure');
+    const clPrice = getEl('c_luna_price');
     const smPiv = getEl('sel_montura_pivot');
+    const cmPrice = getEl('c_montura_price');
     const mtTagsCont = getEl('selected_monturas_tags');
 
     if(clName) clName.disabled = !enable;
     if(clMeas) clMeas.disabled = !enable;
+    if(clPrice) clPrice.disabled = !enable;
     if(smPiv) smPiv.disabled = !enable;
+    if(cmPrice) cmPrice.disabled = !enable;
     
     // Tags can still be removed if enabled
     if (mtTagsCont) {
@@ -1907,22 +1911,36 @@ const cLNameInp = getEl('c_luna_name');
 if(cLNameInp) cLNameInp.addEventListener('input', updatePurchaseDataString);
 const cLMInp = getEl('c_luna_measure');
 if(cLMInp) cLMInp.addEventListener('input', updatePurchaseDataString);
+const cLPriceInp = getEl('c_luna_price');
+if(cLPriceInp) cLPriceInp.addEventListener('input', updatePurchaseDataString);
+const cMPriceInp = getEl('c_montura_price');
+if(cMPriceInp) cMPriceInp.addEventListener('input', updatePurchaseDataString);
 
 
 function updatePurchaseDataString() {
     const sConsulta = getEl('sel_consulta');
     const clnName = getEl('c_luna_name');
     const clnMeasure = getEl('c_luna_measure');
+    const clnPrice = getEl('c_luna_price');
+    const cmPrice = getEl('c_montura_price');
     const cOtherFields = getEl('c_others');
     const sVendedora = getEl('sel_vendedora');
     const cDI = getEl('c_data');
 
     const consulta = sConsulta ? sConsulta.value : '';
-    const lunaName = clnName ? clnName.value : '';
+    
+    let lunaName = clnName ? clnName.value.trim() : '';
+    if (lunaName && clnPrice && clnPrice.value) {
+        lunaName += ` (S/. ${parseFloat(clnPrice.value).toFixed(2)})`;
+    }
+    
     const measure = clnMeasure ? clnMeasure.value : '';
     
     // Tag-based monturas (selectedMonturas is a global array)
-    const monturasText = selectedMonturas.length > 0 ? selectedMonturas.map(m => m.name).join(', ') : '';
+    let monturasText = selectedMonturas.length > 0 ? selectedMonturas.map(m => m.name).join(', ') : '';
+    if (monturasText && cmPrice && cmPrice.value) {
+        monturasText += ` (S/. ${parseFloat(cmPrice.value).toFixed(2)})`;
+    }
     
     const others = cOtherFields ? cOtherFields.value : '';
     const vendedora = sVendedora ? sVendedora.value : '';
@@ -2332,7 +2350,7 @@ async function fetchClients() {
                     <td>${formatPaymentMethodBadge(v.metodo_pago)}</td>
                     <td class="actions-cell">
                         <div class="actions-wrapper">
-                            <button class="icon-btn history-btn" title="Historial de Pagos" onclick="showPaymentHistory('${v.id}')"><i class='bx bx-history'></i></button>
+                            ${v.saldo > 0 ? `<button class="icon-btn history-btn" title="Historial de Pagos" onclick="showPaymentHistory('${v.id}')"><i class='bx bx-history'></i></button>` : ''}
                             <button class="icon-btn edit-btn" title="Editar" onclick="editSale('${v.id}')"><i class='bx bxs-edit-alt'></i></button>
                             <button class="icon-btn delete-btn" title="Eliminar" onclick="deleteSale('${v.id}', '${v.codigo_venta}', '${v.clientes?.nombre}')"><i class='bx bxs-trash'></i></button>
                         </div>
@@ -3441,6 +3459,7 @@ if (btnGenerateExpPDF) {
 // FINANCIAL DASHBOARD & SUMMARIES LOGIC
 // ==========================================
 const NEGOSY_GOAL = 50;
+const SISTEMA_ROMA_GOAL = 80; // S/.80 every 10 clients/sales
 
 async function updateFinancialDashboards() {
     try {
@@ -3507,6 +3526,7 @@ function updateGastosPendientes() {
     
     let totalSunatPaid = 0;
     let totalNegosyPaid = 0;
+    let totalRomaPaid = 0;
 
     const rows = tableBodyExpenses.querySelectorAll('tr');
     
@@ -3521,6 +3541,8 @@ function updateGastosPendientes() {
                 totalSunatPaid += amount;
             } else if (category === 'NEGOSY') {
                 totalNegosyPaid += amount;
+            } else if (category === 'SISTEMA ROMA') {
+                totalRomaPaid += amount;
             }
         }
     });
@@ -3528,17 +3550,20 @@ function updateGastosPendientes() {
     // Calculate pending based on goals
     const pendingSunat = Math.max(0, sunatGoal - totalSunatPaid);
     const pendingNegosy = Math.max(0, NEGOSY_GOAL - totalNegosyPaid);
+    const pendingRoma = Math.max(0, SISTEMA_ROMA_GOAL - totalRomaPaid);
 
-    const totalPending = pendingSunat + pendingNegosy;
+    const totalPending = pendingSunat + pendingNegosy + pendingRoma;
 
     // Update Dashboard UI
     const dashGastosPend = document.getElementById('dash-gastos-pend');
     const dashPendSunat = document.getElementById('dash-pend-sunat');
     const dashPendNegosy = document.getElementById('dash-pend-negosy');
+    const dashPendRoma = document.getElementById('dash-pend-roma');
 
     if (dashGastosPend) dashGastosPend.innerText = formatCurrency(totalPending.toString());
     if (dashPendSunat) dashPendSunat.innerText = formatCurrency(pendingSunat.toString());
     if (dashPendNegosy) dashPendNegosy.innerText = formatCurrency(pendingNegosy.toString());
+    if (dashPendRoma) dashPendRoma.innerText = formatCurrency(pendingRoma.toString());
 }
 
 // setupDoctorSettlement(); 

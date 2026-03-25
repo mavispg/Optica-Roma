@@ -197,6 +197,10 @@
                             <div class="card-breakdown">
                                 <span>SUNAT: <b id="dash-pend-sunat">S/. 0.00</b></span>
                                 <span>NEGOSY: <b id="dash-pend-negosy">S/. 0.00</b></span>
+                                <span style="color:#e74c3c; font-size:11px; margin-top:2px;">
+                                    SIST. ROMA: <b id="dash-pend-roma">S/. 0.00</b>
+                                    <span style="color:#999; font-weight:400;"> &nbsp;(S/.80/10)</span>
+                                </span>
                             </div>
                         </div>
                         <div class="card-icon">
@@ -207,14 +211,6 @@
 
                 <!-- Dashboard Grid: Alerts & Quick Actions -->
                 <div class="dashboard-grid">
-                    <!-- Low Stock Alerts -->
-                    <div class="dashboard-panel">
-                        <h3><i class='bx bx-error-circle'></i> Alertas de Stock Bajo (< 5)</h3>
-                        <ul class="stock-alert-list" id="stockAlerts">
-                            <!-- Populated by JS -->
-                            <li class="empty-alert">Todo el stock está en niveles óptimos.</li>
-                        </ul>
-                    </div>
 
                     <!-- Historical Sales Consulta -->
                     <div class="dashboard-panel">
@@ -607,13 +603,19 @@
                         <input type="text" id="c_luna_name" placeholder="Tipo de Luna" style="flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 180px;">
                         <input type="text" id="c_luna_measure" placeholder="Medida" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 120px;">
                     </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="number" step="0.01" id="c_luna_price" placeholder="Precio de Luna (S/.)" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
                     <div id="selected_monturas_tags" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
                         <!-- Tags will appear here -->
                     </div>
-                    <div style="margin-bottom: 15px;">
+                    <div style="margin-bottom: 10px;">
                         <select id="sel_montura_pivot" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8fafc;">
                             <option value="">Seleccionar Montura</option>
                         </select>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="number" step="0.01" id="c_montura_price" placeholder="Precio de Montura (S/.)" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     </div>
                     <div style="margin-bottom: 10px;">
                         <input type="text" id="c_others" placeholder="Otros (opcional)" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
@@ -782,6 +784,7 @@
                         <option value="Luz">Luz</option>
                         <option value="Internet">Internet</option>
                         <option value="Otros">Otros</option>
+                        <option value="Sistema Roma">Sistema Roma</option>
                     </select>
                 </div>
                 <div class="form-group">
