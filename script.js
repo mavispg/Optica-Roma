@@ -791,47 +791,48 @@ function updateDashboard() {
 
     // 2. Update Low Stock Alerts
     const alertList = document.getElementById('stockAlerts');
-    if(!alertList) return;
     
-    alertList.innerHTML = ''; // Clear existing
-    let lowStockFound = false;
+    if (alertList) {
+        alertList.innerHTML = ''; // Clear existing
+        let lowStockFound = false;
 
-    // Helper to check table for low stock
-    function checkTableStock(tableId, type) {
-        // Skip Lunas for stock alert
-        if (type === 'Luna') return;
+        // Helper to check table for low stock
+        function checkTableStock(tableId, type) {
+            // Skip Lunas for stock alert
+            if (type === 'Luna') return;
 
-        const rows = document.querySelectorAll(`#${tableId} tbody tr`);
+            const rows = document.querySelectorAll(`#${tableId} tbody tr`);
 
-        rows.forEach(row => {
-            const cells = row.getElementsByTagName('td');
-            
-            let stockIndex = 5; // Default (Old)
-            if (type === 'Montura') stockIndex = 2; // New Index for Monturas
-
-            if(cells.length > stockIndex) {
-                const stockVal = parseInt(cells[stockIndex].innerText);
-                const code = cells[0].innerText;
-                const name = cells[1].innerText;
+            rows.forEach(row => {
+                const cells = row.getElementsByTagName('td');
                 
-                if(!isNaN(stockVal) && stockVal < 5) {
-                    lowStockFound = true;
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span>${type}: ${name} (Cod: ${code})</span> <span>Stock: ${stockVal}</span>`;
-                    alertList.appendChild(li);
+                let stockIndex = 5; // Default (Old)
+                if (type === 'Montura') stockIndex = 2; // New Index for Monturas
+
+                if(cells.length > stockIndex) {
+                    const stockVal = parseInt(cells[stockIndex].innerText);
+                    const code = cells[0].innerText;
+                    const name = cells[1].innerText;
+                    
+                    if(!isNaN(stockVal) && stockVal < 5) {
+                        lowStockFound = true;
+                        const li = document.createElement('li');
+                        li.innerHTML = `<span>${type}: ${name} (Cod: ${code})</span> <span>Stock: ${stockVal}</span>`;
+                        alertList.appendChild(li);
+                    }
                 }
-            }
-        });
+            });
+        }
+
+        checkTableStock('lunasTable', 'Luna');
+        checkTableStock('monturasTable', 'Montura');
+
+        if(!lowStockFound) {
+            alertList.innerHTML = '<li class="empty-alert">Todo el stock está en niveles óptimos.</li>';
+        }
     }
 
-    checkTableStock('lunasTable', 'Luna');
-    checkTableStock('monturasTable', 'Montura');
-
-    if(!lowStockFound) {
-        alertList.innerHTML = '<li class="empty-alert">Todo el stock está en niveles óptimos.</li>';
-    }
-
-    // 3. Update Frame Sales Stats (New)
+    // 3. Update Frame Sales Stats
     fetchMonturasSalesStats();
 }
 
