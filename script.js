@@ -3527,7 +3527,6 @@ function updateGastosPendientes() {
     
     let totalSunatPaid = 0;
     let totalNegosyPaid = 0;
-    let totalRomaPaid = 0;
 
     const rows = tableBodyExpenses.querySelectorAll('tr');
     
@@ -3542,8 +3541,6 @@ function updateGastosPendientes() {
                 totalSunatPaid += amount;
             } else if (category === 'NEGOSY') {
                 totalNegosyPaid += amount;
-            } else if (category === 'SISTEMA ROMA') {
-                totalRomaPaid += amount;
             }
         }
     });
@@ -3551,20 +3548,17 @@ function updateGastosPendientes() {
     // Calculate pending based on goals
     const pendingSunat = Math.max(0, sunatGoal - totalSunatPaid);
     const pendingNegosy = Math.max(0, NEGOSY_GOAL - totalNegosyPaid);
-    const pendingRoma = Math.max(0, SISTEMA_ROMA_GOAL - totalRomaPaid);
 
-    const totalPending = pendingSunat + pendingNegosy + pendingRoma;
+    const totalPending = pendingSunat + pendingNegosy;
 
     // Update Dashboard UI
     const dashGastosPend = document.getElementById('dash-gastos-pend');
     const dashPendSunat = document.getElementById('dash-pend-sunat');
     const dashPendNegosy = document.getElementById('dash-pend-negosy');
-    const dashPendRoma = document.getElementById('dash-pend-roma');
 
     if (dashGastosPend) dashGastosPend.innerText = formatCurrency(totalPending.toString());
     if (dashPendSunat) dashPendSunat.innerText = formatCurrency(pendingSunat.toString());
     if (dashPendNegosy) dashPendNegosy.innerText = formatCurrency(pendingNegosy.toString());
-    if (dashPendRoma) dashPendRoma.innerText = formatCurrency(pendingRoma.toString());
 }
 
 // setupDoctorSettlement(); 
