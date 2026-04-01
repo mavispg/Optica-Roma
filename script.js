@@ -3674,11 +3674,16 @@ async function populateSummaryData(dateObj, dateStr, config) {
                 totalIn += amount;
 
                 const tr = document.createElement('tr');
+                
+                const historyIconHtml = v.saldo > 0 
+                    ? `<i class='bx bx-history' style="cursor:pointer; color:#3b82f6; font-size:1.1rem;" onclick="showPaymentHistory('${v.id}')" title="Ver Historial"></i>`
+                    : '';
+
                 tr.innerHTML = `
                     <td style="font-weight:600; color:#555; white-space: nowrap;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             ${v.codigo_venta}
-                            <i class='bx bx-history' style="cursor:pointer; color:#3b82f6; font-size:1.1rem;" onclick="showPaymentHistory('${v.id}')" title="Ver Historial"></i>
+                            ${historyIconHtml}
                         </div>
                     </td>
                     <td>
