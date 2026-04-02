@@ -2325,7 +2325,8 @@ async function fetchClients() {
             .from('ventas')
             .select(`
                 *,
-                clientes (nombre, celular)
+                clientes (nombre, celular),
+                ventas_pagos (id)
             `)
             .order('codigo_venta', { ascending: true });
 
@@ -2351,7 +2352,7 @@ async function fetchClients() {
                     <td>${formatPaymentMethodBadge(v.metodo_pago)}</td>
                     <td class="actions-cell">
                         <div class="actions-wrapper">
-                            ${v.saldo > 0 ? `<button class="icon-btn history-btn" title="Historial de Pagos" onclick="showPaymentHistory('${v.id}')"><i class='bx bx-history'></i></button>` : ''}
+                            ${(v.saldo > 0 || (v.ventas_pagos && v.ventas_pagos.length > 1)) ? `<button class="icon-btn history-btn" title="Historial de Pagos" onclick="showPaymentHistory('${v.id}')"><i class='bx bx-history'></i></button>` : ''}
                             <button class="icon-btn edit-btn" title="Editar" onclick="editSale('${v.id}')"><i class='bx bxs-edit-alt'></i></button>
                             <button class="icon-btn delete-btn" title="Eliminar" onclick="deleteSale('${v.id}', '${v.codigo_venta}', '${v.clientes?.nombre}')"><i class='bx bxs-trash'></i></button>
                         </div>
@@ -3647,7 +3648,8 @@ async function populateSummaryData(dateObj, dateStr, config) {
                     adelanto,
                     saldo,
                     metodo_pago,
-                    clientes (nombre)
+                    clientes (nombre),
+                    ventas_pagos (id)
                 )
             `)
             .eq('fecha', dateStr);
@@ -3675,7 +3677,8 @@ async function populateSummaryData(dateObj, dateStr, config) {
 
                 const tr = document.createElement('tr');
                 
-                const historyIconHtml = v.saldo > 0 
+                const hasHistory = v.saldo > 0 || (v.ventas_pagos && v.ventas_pagos.length > 1);
+                const historyIconHtml = hasHistory 
                     ? `<i class='bx bx-history' style="cursor:pointer; color:#3b82f6; font-size:1.1rem;" onclick="showPaymentHistory('${v.id}')" title="Ver Historial"></i>`
                     : '';
 
