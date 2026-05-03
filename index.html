@@ -3,15 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Óptica Roma - Sistema de Gestión</title>
-    <!-- BoxIcons -->
+    <title>OPTICA ROMA - Gestión de Stock</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF and AutoTable for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Icons -->
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" href="img/favicon.png">
+    <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <body>
     
-    <!-- Login Container (HU10) -->
+    <!-- Login Container -->
     <div class="login-container" id="loginContainer">
         <div class="login-bg-overlay"></div>
         <div class="login-box">
@@ -41,7 +54,7 @@
         </div>
     </div>
 
-    <!-- Main App Container -->
+    <!-- Main App Container (Hidden by default) -->
     <div id="mainApp" style="display: none;">
         <div class="menu-overlay"></div>
         <!-- Sidebar -->
@@ -64,17 +77,46 @@
                     </a>
                 </li>
                 
-                <li>
-                    <a href="#" class="nav-link" data-target="monturas">
-                        <i class='bx bx-glasses-alt'></i>
-                        <span class="links_name">MONTURAS</span>
-                    </a>
+                <!-- Products Group -->
+                <li class="">
+                     <div class="iocn-link">
+                        <a href="#">
+                            <i class='bx bx-layer'></i>
+                            <span class="links_name">PRODUCTOS</span>
+                        </a>
+                        <i class='bx bxs-chevron-down arrow'></i>
+                    </div>
+                    <ul class="sub-menu">
+                        <li><a class="nav-link" href="#" data-target="lunas">Lunas</a></li>
+                        <li><a class="nav-link" href="#" data-target="monturas">Monturas</a></li>
+                    </ul>
                 </li>
     
                 <li>
                     <a href="#" class="nav-link" data-target="clients">
                         <i class='bx bx-id-card'></i>
-                        <span class="links_name">VENTAS</span>
+                        <span class="links_name">CLIENTES</span>
+                    </a>
+                </li>
+                
+                <!-- Finanzas Group -->
+                <li class="">
+                     <div class="iocn-link">
+                        <a href="#">
+                            <i class='bx bx-dollar-circle'></i>
+                            <span class="links_name">FINANZAS</span>
+                        </a>
+                        <i class='bx bxs-chevron-down arrow'></i>
+                    </div>
+                    <ul class="sub-menu">
+                        <li><a class="nav-link" href="#" data-target="expenses">Egresos</a></li>
+                    </ul>
+                </li>
+                
+                <li>
+                    <a href="#" class="nav-link" data-target="users">
+                        <i class='bx bx-user'></i>
+                        <span class="links_name">USUARIOS</span>
                     </a>
                 </li>
                 
@@ -86,186 +128,954 @@
                 </li>
             </ul>
         </aside>
-
+    
         <!-- Main Content -->
         <section class="home-section">
-            <div class="top-nav">
-                <div class="sidebar-button">
-                    <i class='bx bx-menu sidebarBtn'></i>
+        <!-- Top Nav -->
+        <div class="top-nav">
+             <div class="sidebar-button">
+                <i class='bx bx-menu sidebarBtn'></i>
+            </div>
+            <div class="profile-details-top">
+                 <div class="user-icon">
+                    <i class='bx bxs-user'></i>
+                 </div>
+                <span class="admin_name">Administrador</span>
+            </div>
+        </div>
+
+        <!-- SECTIONS -->
+        
+        <!-- HOME -->
+        <div id="home" class="content-section active">
+            <div class="home-content">
+                <h2>Panel de Control</h2>
+                <p>Resumen del estado actual del inventario.</p>
+
+                <!-- KPI Cards -->
+                <div class="dashboard-cards">
+                    <div class="card card-green">
+                        <div class="card-details">
+                            <div class="card-number" id="kpi-monturas">0</div>
+                            <div class="card-name">Total Monturas</div>
+                            <div class="card-breakdown" style="display: flex; gap: 8px; margin-top: 10px;">
+                                <span class="badge-green-vibrant" id="dash-monturas-hoy-link" title="Ver detalle de hoy">
+                                    Hoy: <b id="dash-monturas-hoy">0</b>
+                                </span>
+                                <span class="badge-green-vibrant" id="dash-monturas-semana-link" title="Ver detalle semanal">
+                                    Semana: <b id="dash-monturas-semana">0</b>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-icon">
+                            <i class='bx bx-show'></i>
+                        </div>
+                    </div>
+                    <!-- Financial KPIs -->
+                    <div class="card card-orange clickable-card" id="card-ventas-hoy" style="cursor: pointer;">
+                        <div class="card-details">
+                            <div class="card-number" id="dash-ventas-hoy">S/. 0.00</div>
+                            <div class="card-name">Ventas Hoy</div>
+                        </div>
+                        <div class="card-icon">
+                            <i class='bx bx-trending-up'></i>
+                        </div>
+                    </div>
+                    <div class="card card-purple clickable-card" id="card-ventas-semana" style="cursor: pointer;">
+                        <div class="card-details">
+                            <div class="card-number" id="dash-ventas-semana">S/. 0.00</div>
+                            <div class="card-name">Ventas Semana</div>
+                        </div>
+                        <div class="card-icon">
+                            <i class='bx bx-calendar'></i>
+                        </div>
+                    </div>
+                    <div class="card card-red">
+                        <div class="card-details">
+                            <div class="card-number" id="dash-gastos-pend">S/. 0.00</div>
+                            <div class="card-name">Gastos Pendientes</div>
+                            <div class="card-breakdown">
+                                <span>SUNAT: <b id="dash-pend-sunat">S/. 0.00</b></span>
+                                <span>NEGOSY: <b id="dash-pend-negosy">S/. 0.00</b></span>
+                            </div>
+                        </div>
+                        <div class="card-icon">
+                            <i class='bx bx-error-alt'></i>
+                        </div>
+                    </div>
                 </div>
-                <div class="profile-details-top">
-                    <i class='bx bxs-user-circle'></i>
-                    <span class="admin_name">Administrador</span>
+
+                <!-- Dashboard Grid: Alerts & Quick Actions -->
+                <div class="dashboard-grid">
+
+                    <!-- Historical Sales Consulta -->
+                    <div class="dashboard-panel">
+                        <h3><i class='bx bx-history'></i> Consulta Histórica</h3>
+                        <div style="display: flex; flex-direction: column; gap: 15px; padding: 10px;">
+                            <p style="font-size: 0.9rem; color: #666; margin: 0;">Explorar ventas y gastos de cualquier fecha anterior.</p>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="date" id="dash-history-date" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit;">
+                                <button id="btn-dash-history-go" class="btn-primary" style="padding: 10px 20px; border-radius: 6px; white-space: nowrap;">
+                                    <i class='bx bx-search-alt'></i> Consultar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="dashboard-panel">
+                        <h3>Acceso Rápido</h3>
+                        <div class="quick-actions">
+                            <button class="action-btn" onclick="document.querySelector('[data-target=\'clients\']').click(); setTimeout(() => document.getElementById('btnAddClient').click(), 100);">
+                                <i class='bx bx-plus-circle'></i> Nuevo Cliente
+                            </button>
+                            <button class="action-btn" onclick="document.querySelector('[data-target=\'lunas\']').click(); setTimeout(() => document.getElementById('btnAddLunal').click(), 100);">
+                                <i class='bx bx-plus-circle'></i> Nueva Luna
+                            </button>
+                            <button class="action-btn" onclick="document.querySelector('[data-target=\'monturas\']').click(); setTimeout(() => document.getElementById('btnAddMontura').click(), 100);">
+                                <i class='bx bx-plus-circle'></i> Nueva Montura
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- DASHBOARD BÁSICO -->
-            <div id="home" class="content-section active">
-                <h1 class="page-title">Bienvenido</h1>
-                <h2 class="page-subtitle">Sistema en Desarrollo</h2>
-                <p style="margin-top: 20px; color: #666;">Selecciona una opción del menú lateral para comenzar.</p>
-            </div>
+        <!-- LUNAS -->
+        <div id="lunas" class="content-section">
+            <div class="page-container">
+                <h2 class="page-title">PRODUCTOS</h2>
+                <h3 class="page-subtitle">LUNAS</h3>
 
-            <!-- MÓDULO DE MONTURAS (HU05) -->
-            <div id="monturas" class="content-section">
-                <h1 class="page-title">Catálogo</h1>
-                <h2 class="page-subtitle">MONTURAS</h2>
                 <div class="controls-bar">
                     <div class="search-input-wrapper">
                         <i class='bx bx-search'></i>
-                        <input type="text" id="searchMonturasInput" placeholder="Buscar montura...">
+                        <input type="text" id="searchInput" placeholder="search">
                     </div>
                     <div class="actions-group">
-                        <button class="btn-green" id="btnAddMontura"><i class='bx bx-plus'></i> Nueva Montura</button>
+                        <button class="btn-green" id="btnAddLunal">
+                            <i class='bx bx-plus'></i> Agregar
+                        </button>
+                        <button class="btn-red" id="btnOpenExportLunas">
+                            <i class='bx bxs-file-pdf'></i> Exportar PDF
+                        </button>
                     </div>
                 </div>
+
                 <div class="white-box">
-                    <table class="custom-table" id="monturasTable">
+                    <table class="custom-table" id="lunasTable">
                         <thead>
                             <tr>
-                                <th style="width: 15%;">Cód. Interno</th>
-                                <th>Modelo de la Montura</th>
-                                <th style="width: 15%;">Stock(Disp)</th>
-                                <th style="width: 15%;">P. Venta</th>
-                                <th style="width: 15%; text-align: right;">Acciones</th>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Laboratorio</th>
+                                <th>Medida</th>
+                                <th>Precio Compra</th>
+                                <th>Precio Venta</th>
+                                <th>Fecha</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Se llena por MVC -->
+                            <!-- Rows will be populated by JS from Supabase -->
                         </tbody>
                     </table>
                 </div>
             </div>
+        </div>
 
-            <!-- MÓDULO DE VENTAS (HU02) -->
-            <div id="clients" class="content-section">
-                <h1 class="page-title">Gestión</h1>
-                <h2 class="page-subtitle">ÓRDENES DE VENTA</h2>
+        <!-- MONTURAS -->
+        <div id="monturas" class="content-section">
+             <div class="page-container">
+                <h2 class="page-title">PRODUCTOS</h2>
+                <h3 class="page-subtitle">MONTURAS</h3>
                 <div class="controls-bar">
                     <div class="search-input-wrapper">
                         <i class='bx bx-search'></i>
-                        <input type="text" id="searchClientsInput" placeholder="Buscar venta por cliente o código...">
+                        <input type="text" id="searchMonturasInput" placeholder="search">
                     </div>
                     <div class="actions-group">
-                        <button class="btn-green" id="btnAddClient"><i class='bx bx-plus'></i> Nueva Venta</button>
+                        <button class="btn-green" id="btnAddMontura">
+                            <i class='bx bx-plus'></i> Agregar
+                        </button>
+                        <button class="btn-red" id="btnOpenExportMonturas">
+                            <i class='bx bxs-file-pdf'></i> Exportar PDF
+                        </button>
                     </div>
                 </div>
+
+                 <div class="white-box">
+                    <table class="custom-table" id="monturasTable">
+                        <thead>
+                             <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Stock</th>
+                                <th>Precio Venta</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Live data will be loaded here from Supabase -->
+                        </tbody>
+                    </table>
+                 </div>
+            </div>
+        </div>
+
+        <!-- Other sections placeholders -->
+        <div id="clients" class="content-section">
+            <div class="page-container">
+                <h2 class="page-title">CLIENTES</h2>
+                <h3 class="page-subtitle">HISTORIAL DE VENTAS</h3>
+
+                <!-- Daily Summary Clientes -->
+                <div class="daily-summary-bar">
+                    <div class="summary-item">
+                        <i class='bx bx-wallet'></i>
+                        <span class="label">Ventas Hoy:</span>
+                        <span class="value" id="client-sales-today">S/. 0.00</span>
+                    </div>
+                </div>
+
+                <div class="controls-bar">
+                    <div class="search-input-wrapper">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="searchClientInput" placeholder="Buscar cliente...">
+                    </div>
+                    <div class="actions-group">
+                        <button class="btn-green" id="btnAddClient">
+                            <i class='bx bx-plus'></i> Nuevo Cliente
+                        </button>
+                        <button class="btn-red" id="btnOpenExportModal">
+                            <i class='bx bxs-file-pdf'></i> Exportar PDF
+                        </button>
+                    </div>
+                </div>
+
                 <div class="white-box">
                     <table class="custom-table" id="clientsTable">
                         <thead>
                             <tr>
-                                <th style="width: 12%;">Cod Venta</th>
-                                <th style="width: 15%;">Cliente</th>
-                                <th style="width: 25%;">Datos Compra</th>
-                                <th style="width: 12%;">Fecha</th>
-                                <th style="width: 12%;">Total</th>
-                                <th style="width: 12%;">Estado</th>
-                                <th style="width: 12%; text-align: right;">Acciones</th>
+                                <th style="width: 5%;">Código</th>
+                                <th style="width: 8%;">Nombre</th>
+                                <th style="width: 22%;">Datos de Compra</th>
+                                <th style="width: 8%;">Celular</th>
+                                <th style="width: 8%;">Fecha</th>
+                                <th style="width: 8%;">Monto Total</th>
+                                <th style="width: 8%;">A Cuenta</th>
+                                <th style="width: 8%;">Saldo</th>
+                                <th style="width: 10%;">Estado</th>
+                                <th style="width: 10%;">Modalidad</th>
+                                <th class="actions-cell" style="width: 6%;"></th>
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Se llena por MVC -->
+                            <!-- Live data will be loaded here from Supabase -->
                         </tbody>
                     </table>
                 </div>
             </div>
-        </section>
+        </div>
+        
+        <!-- EXPENSES (EGRESOS) -->
+        <div id="expenses" class="content-section">
+            <div class="page-container">
+                <h2 class="page-title">FINANZAS</h2>
+                <h3 class="page-subtitle">EGRESOS</h3>
+
+                <div class="controls-bar">
+                    <div class="search-input-wrapper">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="searchExpenseInput" placeholder="Buscar egreso...">
+                    </div>
+                    <div class="actions-group">
+                        <button class="btn-green" id="btnAddExpense">
+                            <i class='bx bx-plus'></i> Nuevo Egreso
+                        </button>
+                        <button class="btn-red" id="btnOpenExportExpenses">
+                            <i class='bx bxs-file-pdf'></i> Exportar PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SUNAT Tracking Summary -->
+                <div class="tax-summary">
+                    <div class="tax-card">
+                        <div class="tax-card-info">
+                            <span class="tax-card-title">Meta Mensual SUNAT</span>
+                            <span class="tax-card-value" id="tax-goal">S/. 500.00</span>
+                        </div>
+                        <button class="icon-btn edit-goal-btn" id="btnEditTaxGoal">
+                            <i class='bx bxs-edit-alt'></i>
+                        </button>
+                    </div>
+                    <div class="tax-card paid">
+                        <div class="tax-card-info">
+                            <span class="tax-card-title">Pagado SUNAT</span>
+                            <span class="tax-card-value" id="tax-paid">S/. 0.00</span>
+                        </div>
+                        <i class='bx bx-check-double tax-icon'></i>
+                    </div>
+                    <div class="tax-card pending">
+                        <div class="tax-card-info">
+                            <span class="tax-card-title">Pendiente SUNAT</span>
+                            <span class="tax-card-value" id="tax-pending">S/. 500.00</span>
+                        </div>
+                        <i class='bx bx-time-five tax-icon'></i>
+                    </div>
+                </div>
+
+                <div class="white-box">
+                    <table class="custom-table" id="expensesTable">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Fecha</th>
+                                <th>Categoría</th>
+                                <th>Descripción</th>
+                                <th>Monto</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Live data will be loaded here from Supabase -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div id="users" class="content-section">
+            <div class="page-container">
+                <h2 class="page-title">USUARIOS</h2>
+                <h3 class="page-subtitle">GESTIÓN DE ACCESO</h3>
+
+                <div class="controls-bar">
+                    <div class="search-input-wrapper">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="searchUserInput" placeholder="Buscar usuario...">
+                    </div>
+                    <button class="btn-green" id="btnAddUser">
+                        <i class='bx bx-plus'></i> Nuevo Usuario
+                    </button>
+                </div>
+
+                <div class="white-box">
+                    <table class="custom-table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Último Acceso</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Users will be populated here -->
+                            <tr>
+                                <td>admin</td>
+                                <td>Administrador</td>
+                                <td><span style="color: green; font-weight: bold;">Activo</span></td>
+                                <td>Ahora</td>
+                                <td class="actions-cell">
+                                    <!-- Admin cannot be deleted in prototype -->
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </section>
+    </div> <!-- End Main App Container -->
+
+    <!-- Modal for Adding Product -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Agregar Nueva Luna</h2>
+            <form id="addForm">
+                <div class="form-group">
+                    <label>Código</label>
+                    <input type="text" id="code" required>
+                </div>
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Laboratorio</label>
+                    <input type="text" id="laboratoryInput" list="laboratoryOptions" placeholder="Escribe o selecciona..." required>
+                    <datalist id="laboratoryOptions">
+                        <!-- Options populated by JS -->
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label>Medida</label>
+                    <input type="text" id="measure" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Precio Compra</label>
+                    <input type="text" id="buyPrice" placeholder="S/.0.00">
+                </div>
+                <div class="form-group">
+                    <label>Precio Venta</label>
+                    <input type="text" id="sellPrice" placeholder="S/.0.00">
+                </div>
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="l_date" required>
+                </div>
+                <button type="submit" class="submit-btn">Guardar</button>
+            </form>
+        </div>
     </div>
 
-    <!-- MODAL AGREGAR MONTURA -->
+    <!-- Modal for Adding Montura -->
     <div id="addMonturaModal" class="modal">
         <div class="modal-content">
             <span class="close-btn montura-close">&times;</span>
             <h2>Agregar Nueva Montura</h2>
             <form id="addMonturaForm">
-                <div class="form-row">
-                    <div class="form-group" style="width: 30%;">
-                        <label>Cód. Interno:</label>
-                        <input type="text" id="m_code" required>
-                    </div>
-                    <div class="form-group" style="width: 70%;">
-                        <label>Modelo de la Montura:</label>
-                        <input type="text" id="m_name" required>
-                    </div>
+                <div class="form-group">
+                    <label>Código</label>
+                    <input type="text" id="m_code" required>
+                </div>
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="m_name" required>
                 </div>
                 <div class="form-row">
-                    <div class="form-group" style="width: 50%;">
-                        <label>Stock Total:</label>
-                        <input type="number" id="m_stock" required min="0">
+                    <div class="form-group">
+                        <label>Stock Inicial</label>
+                        <input type="number" id="m_stock" required>
                     </div>
-                    <div class="form-group" style="width: 50%;">
-                        <label>Precio de Venta (S/.):</label>
-                        <input type="number" step="0.01" id="m_sell_price" required min="0">
+                    <div class="form-group">
+                        <label>Precio Venta</label>
+                        <input type="number" step="0.01" id="m_sell_price" required>
                     </div>
                 </div>
-                <button type="submit" class="submit-btn">Guardar Montura</button>
+                <button type="submit" class="submit-btn">Guardar</button>
             </form>
         </div>
     </div>
 
-    <!-- MODAL AGREGAR VENTA (HU02) -->
+    <!-- Modal for Adding Client -->
     <div id="addClientModal" class="modal">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content">
             <span class="close-btn client-close">&times;</span>
-            <h2>Registrar Nueva Venta</h2>
+            <h2>Agregar Nuevo Cliente</h2>
             <form id="addClientForm">
                 <div class="form-row">
-                    <div class="form-group" style="width: 40%;">
-                        <label>Cód. Venta:</label>
-                        <input type="text" id="c_id" required readonly style="background-color: #f1f1f1;">
+                    <div class="form-group">
+                        <label>Código</label>
+                        <input type="text" id="c_id" required>
                     </div>
-                    <div class="form-group" style="width: 60%;">
-                        <label>Fecha:</label>
+                </div>
+                <div class="form-group">
+                    <label>Nombre Completo</label>
+                    <input type="text" id="c_name">
+                </div>
+                <div class="form-group">
+                    <label>Selección de Productos</label>
+                    <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                        <select id="sel_consulta" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value=""> Consulta</option>
+                            <option value="Pool">Pool</option>
+                            <option value="Carlos">Carlos</option>
+                            <option value="Yaret">Yaret</option>
+                            <option value="Cesar">Cesar</option>
+                            <option value="Willy">Willy</option>
+                            <option value="Cesar Breña">Cesar Breña</option>
+                            <option value="Jose">Jose</option>
+                            <option value="Liliana">Liliana</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                        <input type="text" id="c_luna_name" placeholder="Tipo de Luna" style="flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 180px;">
+                        <input type="text" id="c_luna_measure" placeholder="Medida" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 120px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="number" step="0.01" id="c_luna_price" placeholder="Precio de Luna (S/.)" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div id="selected_monturas_tags" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                        <!-- Tags will appear here -->
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <select id="sel_montura_pivot" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8fafc;">
+                            <option value="">Seleccionar Montura</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="number" step="0.01" id="c_montura_price" placeholder="Precio de Montura (S/.)" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <input type="text" id="c_others" placeholder="Otros (opcional)" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                        <select id="sel_vendedora" required style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">Vendedora</option>
+                        </select>
+                        <button type="button" id="btnAddVendedora" title="Agregar nueva vendedora" style="padding: 8px 12px; background: #2e61b3; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 18px; font-weight: bold; line-height: 1;">+</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Datos de Compra (Automático)</label>
+                    <input type="text" id="c_data" readonly style="background-color: #f9f9f9;">
+                </div>
+                <div class="form-row">
+                     <div class="form-group">
+                        <label>N° Celular</label>
+                        <input type="text" id="c_phone">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha</label>
                         <input type="date" id="c_date" required>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Nombre del Cliente:</label>
-                    <input type="text" id="c_name">
-                </div>
                 
-                <h3 style="margin-top: 15px; margin-bottom: 10px; font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Detalle de Compra</h3>
+                <hr>
                 
-                <div class="form-group">
-                    <label>Montura Seleccionada:</label>
-                    <select id="sel_montura_pivot">
-                        <option value="">Seleccione una Montura...</option>
-                        <!-- Cargado por JS -->
-                    </select>
-                </div>
                 <div class="form-row">
-                    <div class="form-group" style="width: 50%;">
-                        <label>Otros Detalles (Lunas, etc):</label>
-                        <input type="text" id="c_others" placeholder="Ej: Lunas Antirreflex">
+                    <div class="form-group">
+                        <label>Monto Total</label>
+                        <input type="number" step="0.01" id="c_total" required>
                     </div>
-                    <div class="form-group" style="width: 50%;">
-                        <label>Vendedora:</label>
-                        <input type="text" id="sel_vendedora" placeholder="Nombre">
+                    <div class="form-group">
+                        <label>A Cuenta (Adelanto)</label>
+                        <input type="number" step="0.01" id="c_advance" value="0" required>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label>Saldo Restante</label>
+                    <input type="text" id="c_balance" readonly style="background-color: #f0f0f0; color: #333; font-weight: bold;">
+                </div>
                 
-                <h3 style="margin-top: 15px; margin-bottom: 10px; font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Pago</h3>
-                <div class="form-row">
-                    <div class="form-group" style="width: 50%;">
-                        <label>Monto Total (S/.):</label>
-                        <input type="number" step="0.01" id="c_total" required min="0" value="0">
-                    </div>
-                    <div class="form-group" style="width: 50%;">
-                        <label>Método de Pago:</label>
-                        <select id="split_method_1">
-                            <option value="EFECTIVO">EFECTIVO</option>
-                            <option value="VISA">VISA</option>
-                            <option value="YAPE">YAPE</option>
-                        </select>
-                    </div>
+                <div class="form-group" style="margin: 15px 0; display: flex; justify-content: center;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; background: #f0f7ff; padding: 8px 16px; border-radius: 20px; border: 1px solid #d0e5ff; color: #0056b3; transition: all 0.3s ease;">
+                        <input type="checkbox" id="chk_split_payment" style="width: 18px; height: 18px; cursor: pointer;"> ¿Pago Mixto? (Dos métodos)
+                    </label>
                 </div>
 
-                <button type="submit" class="submit-btn" style="margin-top: 15px;">Registrar Venta</button>
+                <div id="split_payment_container" style="display: none; background: #ffffff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e0e6ed; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <p style="margin: 0 0 10px 0; font-size: 0.85rem; color: #666; font-weight: 500;">Distribución del adelanto:</p>
+                    <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 4px;">Método 1</label>
+                            <select id="split_method_1" style="width: 100%; padding: 10px; border: 1px solid #dee2e6; border-radius: 6px; background-color: #f8f9fa;">
+                                <option value="">Seleccionar...</option>
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Yape">Yape</option>
+                                <option value="Visa">Visa</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 4px;">Monto 1</label>
+                            <input type="number" id="split_amount_1" placeholder="0.00" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #dee2e6; border-radius: 6px;">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 4px;">Método 2</label>
+                            <select id="split_method_2" style="width: 100%; padding: 10px; border: 1px solid #dee2e6; border-radius: 6px; background-color: #f8f9fa;">
+                                <option value="">Seleccionar...</option>
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Yape">Yape</option>
+                                <option value="Visa">Visa</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 4px;">Monto 2</label>
+                            <input type="number" id="split_amount_2" placeholder="0.00" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #dee2e6; border-radius: 6px;">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group" id="single_payment_container">
+                    <label>Modalidad de Pago</label>
+                    <select id="c_payment_method" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%;">
+                        <option value="">Seleccionar...</option>
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Yape">Yape</option>
+                        <option value="Visa">Visa</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="submit-btn" style="margin-top: 10px;">Guardar</button>
             </form>
         </div>
     </div>
 
-    <!-- Custom Dialog Modal para Alertas -->
+    <!-- Modal for Adding Expense -->
+    <!-- MODAL NUEVA VENDEDORA -->
+    <div id="addVendedoraModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn vendedora-close">&times;</span>
+            <h2>Nueva Vendedora</h2>
+            <form id="addVendedoraForm">
+                <div class="form-group">
+                    <label>Nombre de la Vendedora</label>
+                    <input type="text" id="v_name" required>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px;">Guardar Vendedora</button>
+            </form>
+            <div class="vendedoras-manage-section">
+                <h3>Gestionar Vendedoras</h3>
+                <div id="vendedorasListContainer" class="vendedoras-list">
+                    <!-- List populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL AGREGAR GASTO -->
+    <div id="addExpenseModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn expense-close">&times;</span>
+            <h2 id="expenseModalTitle">Agregar Nuevo Egreso</h2>
+            <form id="addExpenseForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Código</label>
+                        <input type="text" id="e_id" readonly style="background-color: #f0f0f0; cursor: not-allowed;">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="e_date" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <select id="e_category" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="">Seleccionar Categoría...</option>
+                        <option value="Consulta Pool">Consulta Pool</option>
+                        <option value="Consulta Carlos">Consulta Carlos</option>
+                        <option value="Consulta Yaret">Consulta Yaret</option>
+                        <option value="Consulta Cesar">Consulta Cesar</option>
+                        <option value="Consulta Willy">Consulta Willy</option>
+                        <option value="Consulta Cesar Breña">Consulta Cesar Breña</option>
+                        <option value="Expert Lab">Expert Lab</option>
+                        <option value="Boldo">Boldo</option>
+                        <option value="Soldadura">Soldadura</option>
+                        <option value="Flex">Flex</option>
+                        <option value="Medicamento">Medicamento</option>
+                        <option value="Envío">Envío</option>
+                        <option value="Almuerzo">Almuerzo</option>
+                        <option value="Trimax">Trimax</option>
+                        <option value="Negosy">Negosy</option>
+                        <option value="Inoops">Inoops</option>
+                        <option value="Exclusivo">Exclusivo</option>
+                        <option value="Agurto Loreto">Agurto Loreto</option>
+                        <option value="Agurto Lima">Agurto Lima</option>
+                        <option value="Oxo">Oxo</option>
+                        <option value="Topsa">Topsa</option>
+                        <option value="Smart Lents">Smart Lents</option>
+                        <option value="Calu">Calu</option>
+                        <option value="Agua">Agua</option>
+                        <option value="Luz">Luz</option>
+                        <option value="Internet">Internet</option>
+                        <option value="Otros">Otros</option>
+                        <option value="Sistema Roma">Sistema Roma</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Modalidad de Pago</label>
+                    <select id="e_payment_method" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Yape">Yape</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <input type="text" id="e_description">
+                </div>
+                <div class="form-group">
+                    <label>Monto</label>
+                    <input type="number" step="0.01" id="e_amount" required>
+                </div>
+                <button type="submit" class="submit-btn" style="background-color: #007bff; margin-top: 15px;">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Export PDF -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn export-close">&times;</span>
+            <h2>Exportar Reporte de Clientes</h2>
+            <p style="margin-bottom: 15px; color: #666;">Selecciona el rango de fechas para el reporte:</p>
+            <div class="form-group">
+                <label>Desde:</label>
+                <input type="date" id="exportStartDate">
+            </div>
+            <div class="form-group">
+                <label>Hasta:</label>
+                <input type="date" id="exportEndDate">
+            </div>
+            <button id="btnGeneratePDF" class="submit-btn" style="background-color: #e74c3c; margin-top: 10px;">
+                <i class='bx bxs-download'></i> Descargar PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for Export Expenses PDF -->
+    <div id="exportExpensesModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn export-expenses-close">&times;</span>
+            <h2>Exportar Reporte de Egresos</h2>
+            <p style="margin-bottom: 15px; color: #666;">Selecciona el rango de fechas:</p>
+            <div class="form-group">
+                <label>Desde:</label>
+                <input type="date" id="exportExpStartDate">
+            </div>
+            <div class="form-group">
+                <label>Hasta:</label>
+                <input type="date" id="exportExpEndDate">
+            </div>
+            <button id="btnGenerateExpPDF" class="submit-btn" style="background-color: #e74c3c; margin-top: 10px;">
+                <i class='bx bxs-download'></i> Generar PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for Export Lunas PDF -->
+    <div id="exportLunasModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn export-lunas-close">&times;</span>
+            <h2>Exportar Reporte de Lunas</h2>
+            <p style="margin-bottom: 15px; color: #666;">Selecciona el rango de fechas para el reporte:</p>
+            <div class="form-group">
+                <label>Desde:</label>
+                <input type="date" id="exportLunasStartDate">
+            </div>
+            <div class="form-group">
+                <label>Hasta:</label>
+                <input type="date" id="exportLunasEndDate">
+            </div>
+            <button id="btnGenerateLunasPDF" class="submit-btn" style="background-color: #e74c3c; margin-top: 10px;">
+                <i class='bx bxs-download'></i> Descargar PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for Export Monturas PDF -->
+    <div id="exportMonturasModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn export-monturas-close">&times;</span>
+            <h2>Exportar Reporte de Monturas</h2>
+            <p style="margin-bottom: 15px; color: #666;">Selecciona el rango de fechas para el reporte:</p>
+            <div class="form-group">
+                <label>Desde:</label>
+                <input type="date" id="exportMonturasStartDate">
+            </div>
+            <div class="form-group">
+                <label>Hasta:</label>
+                <input type="date" id="exportMonturasEndDate">
+            </div>
+            <button id="btnGenerateMonturasPDF" class="submit-btn" style="background-color: #e74c3c; margin-top: 10px;">
+                <i class='bx bxs-download'></i> Descargar PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Resumen Diario -->
+    <div id="daySummaryModal" class="modal">
+        <div class="modal-content">
+            <div class="summary-header">
+                <span class="summary-close">&times;</span>
+                <h2 id="summaryModalTitle">Resumen Financiero</h2>
+                <p id="summaryModalDate"></p>
+            </div>
+            
+            <div class="summary-grid">
+                <div class="summary-box">
+                    <h3 style="color: var(--green-card);">
+                        <i class='bx bx-trending-up'></i> Ingresos (Ventas)
+                    </h3>
+                    <table id="summarySalesTable" class="summary-table">
+                        <thead>
+                            <tr>
+                                <th style="white-space: nowrap;">Cod</th>
+                                <th>Vendido</th>
+                                <th style="text-align: right; white-space: nowrap;">Monto Total</th>
+                                <th style="text-align: right; white-space: nowrap;">A Cuenta</th>
+                                <th style="text-align: right; white-space: nowrap;">Saldo</th>
+                                <th style="white-space: nowrap;">Estado</th>
+                                <th style="white-space: nowrap;">Modalidad</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                
+                <div class="summary-box">
+                    <h3 style="color: var(--red-card);">
+                        <i class='bx bx-trending-down'></i> Egresos (Gastos)
+                    </h3>
+                    <table id="summaryExpensesTable" class="summary-table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th style="text-align: right;">Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="summary-footer">
+                <div class="summary-totals-grid" style="justify-content: space-between; align-items: center;">
+                    <!-- Left: PDF Action -->
+                    <div class="summary-actions" style="flex: 0 0 auto;">
+                        <button id="btnDownloadDayPDF" class="btn-red" style="padding: 12px 25px; font-weight: 700;">
+                            <i class='bx bxs-file-pdf'></i> PDF
+                        </button>
+                    </div>
+
+                    <!-- Middle: Payment Method Breakdowns (Increased gap) -->
+                    <div class="payment-methods-breakdown" style="display: flex; gap: 50px; flex: 1; justify-content: center; margin: 0 40px;">
+                        <div class="total-item" style="text-align: center;">
+                            <span class="total-label" style="font-size: 10px;">VISA</span>
+                            <span class="total-value" id="sum-total-visa" style="font-size: 16px; color: #2980b9;">S/. 0.00</span>
+                        </div>
+                        <div class="total-item" style="text-align: center;">
+                            <span class="total-label" style="font-size: 10px;">YAPE</span>
+                            <span class="total-value" id="sum-total-yape" style="font-size: 16px; color: #9b59b6;">S/. 0.00</span>
+                        </div>
+                        <div class="total-item" style="text-align: center;">
+                            <span class="total-label" style="font-size: 10px;">EFECTIVO</span>
+                            <span class="total-value" id="sum-total-efectivo" style="font-size: 16px; color: #27ae60;">S/. 0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Right: Overall Totals (Increased gap) -->
+                    <div style="display: flex; gap: 50px; align-items: center;">
+                        <div class="total-item">
+                            <span class="total-label">Total Ingresos</span>
+                            <span class="total-value" id="sum-total-in" style="color: var(--green-card);">S/. 0.00</span>
+                        </div>
+                        <div class="total-item">
+                            <span class="total-label">Total Egresos</span>
+                            <span class="total-value" id="sum-total-out" style="color: var(--red-card);">S/. 0.00</span>
+                        </div>
+                        <div class="total-item balance-card">
+                            <span class="total-label">Balance Neto</span>
+                            <span class="total-value" id="sum-balance">S/. 0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Resumen Semanal -->
+    <div id="weeklySummaryModal" class="modal">
+        <div class="modal-content">
+            <div class="summary-header" style="padding-bottom: 20px;">
+                <span class="weekly-close">&times;</span>
+                <h2>Navegador Semanal</h2>
+                <p style="margin-bottom: 20px;">Selecciona el día para ver el reporte detallado:</p>
+                
+                <!-- Day Selection Tabs (Moved inside header) -->
+                <div id="weeklyDayTabs" class="day-tabs">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+            
+            <div id="weeklyContentArea" style="padding-top: 20px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin: 0 40px 10px 40px;">
+                    <h3 id="weeklyModalDateDisplay" style="margin: 0; color: #475569; font-size: 1.1rem; font-weight: 600;"></h3>
+                </div>
+                
+                <div class="summary-grid">
+                    <div class="summary-box">
+                        <h3 style="color: var(--green-card);">
+                            <i class='bx bx-trending-up'></i> Ingresos (Ventas)
+                        </h3>
+                        <table id="weeklySalesTable" class="summary-table">
+                            <thead>
+                                <tr>
+                                    <th style="white-space: nowrap;">Cod</th>
+                                    <th>Vendido</th>
+                                    <th style="text-align: right; white-space: nowrap;">Monto Total</th>
+                                    <th style="text-align: right; white-space: nowrap;">A Cuenta</th>
+                                    <th style="text-align: right; white-space: nowrap;">Saldo</th>
+                                    <th style="white-space: nowrap;">Estado</th>
+                                    <th style="white-space: nowrap;">Modalidad</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="summary-box">
+                        <h3 style="color: var(--red-card);">
+                            <i class='bx bx-trending-down'></i> Egresos (Gastos)
+                        </h3>
+                        <table id="weeklyExpensesTable" class="summary-table">
+                            <thead>
+                                <tr>
+                                    <th>Descripción</th>
+                                    <th style="text-align: right;">Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="summary-footer">
+                    <div class="summary-totals-grid" style="justify-content: space-between; align-items: center;">
+                        <!-- Left: PDF Action -->
+                        <div class="summary-actions" style="flex: 0 0 auto;">
+                            <button id="btnDownloadWeeklyPDF" class="btn-red" style="padding: 12px 25px; font-weight: 700;">
+                                <i class='bx bxs-file-pdf'></i> PDF
+                            </button>
+                        </div>
+
+                        <!-- Middle: Payment Method Breakdowns (Increased gap) -->
+                        <div class="payment-methods-breakdown" style="display: flex; gap: 50px; flex: 1; justify-content: center; margin: 0 40px;">
+                            <div class="total-item" style="text-align: center;">
+                                <span class="total-label" style="font-size: 10px;">VISA</span>
+                                <span class="total-value" id="weekly-sum-total-visa" style="font-size: 16px; color: #2980b9;">S/. 0.00</span>
+                            </div>
+                            <div class="total-item" style="text-align: center;">
+                                <span class="total-label" style="font-size: 10px;">YAPE/PLIN</span>
+                                <span class="total-value" id="weekly-sum-total-yape" style="font-size: 16px; color: #9b59b6;">S/. 0.00</span>
+                            </div>
+                            <div class="total-item" style="text-align: center;">
+                                <span class="total-label" style="font-size: 10px;">EFECTIVO</span>
+                                <span class="total-value" id="weekly-sum-total-efectivo" style="font-size: 16px; color: #27ae60;">S/. 0.00</span>
+                            </div>
+                        </div>
+
+                        <!-- Right: Overall Totals (Increased gap) -->
+                        <div style="display: flex; gap: 50px; align-items: center;">
+                            <div class="total-item">
+                                <span class="total-label">Total Ingresos</span>
+                                <span class="total-value" id="weekly-sum-total-in" style="color: var(--green-card);">S/. 0.00</span>
+                            </div>
+                            <div class="total-item">
+                                <span class="total-label">Total Egresos</span>
+                                <span class="total-value" id="weekly-sum-total-out" style="color: var(--red-card);">S/. 0.00</span>
+                            </div>
+                            <div class="total-item balance-card">
+                                <span class="total-label">Balance Neto</span>
+                                <span class="total-value" id="weekly-sum-balance">S/. 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Custom Dialog Modal -->
     <div id="customDialog" class="custom-dialog-overlay" style="display: none;">
         <div class="custom-dialog-box">
             <div class="custom-dialog-header">
@@ -273,7 +1083,7 @@
                 <h3 id="customDialogTitle">OPTICA ROMA</h3>
             </div>
             <div class="custom-dialog-body">
-                <p id="customDialogMessage"></p>
+                <p id="customDialogMessage">¿Estás seguro de realizar esta acción?</p>
             </div>
             <div class="custom-dialog-footer">
                 <button id="customDialogCancel" class="dialog-btn cancel-btn">Cancelar</button>
@@ -282,6 +1092,66 @@
         </div>
     </div>
 
-    <script type="module" src="./controllers/AppController.js"></script>
+    <!-- Modal for Detailed Frame Sales Report -->
+    <div id="monturaDetailReportModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="report-modal-header">
+                <h2 id="monturaReportTitle">Reporte de Monturas</h2>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button id="btnExportMonturaPDF" class="action-btn" style="background-color: #ffffff; color: #2f855a; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <i class='bx bxs-file-pdf' style="font-size: 18px;"></i> PDF
+                    </button>
+                    <span class="report-modal-close">&times;</span>
+                </div>
+            </div>
+            <div class="white-box" style="max-height: 400px; overflow-y: auto;">
+                <table class="custom-table" id="monturaReportTable">
+                    <thead>
+                        <tr>
+                            <th>ID Venta</th>
+                            <th>Nombre de Montura</th>
+                            <th>Cant.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Content via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial de Pagos -->
+    <div id="paymentHistoryModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="summary-header">
+                <span class="history-close">&times;</span>
+                <h2>Historial de Pagos</h2>
+                <p id="historyClientName" style="color: #64748b; font-weight: 600; margin-bottom: 10px;"></p>
+            </div>
+            <div class="white-box">
+                <table class="custom-table" id="paymentHistoryTable">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Referencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Via JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="historySummary" style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; display: flex; justify-content: space-between;">
+                <div>Total Venta: <span id="histTotalSale" style="font-weight: 700;">S/. 0.00</span></div>
+                <div>Total Pagado: <span id="histTotalPaid" style="font-weight: 700; color: #27ae60;">S/. 0.00</span></div>
+                <div>Saldo: <span id="histBalance" style="font-weight: 700; color: #e74c3c;">S/. 0.00</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
