@@ -565,8 +565,23 @@ if(btnAddMontura) {
         // Auto-generate Code from Supabase
         document.getElementById('m_code').value = await getNextMonturaCode();
         
+        // Reset stock fields
+        document.getElementById('m_stock').value = '';
+        document.getElementById('m_stock_available').value = '';
+        
         document.querySelector('#addMonturaModal h2').innerText = 'Agregar Nueva Montura';
         modalMontura.style.display = 'block';
+    });
+}
+
+// Sync Initial Stock to Available Stock when creating NEW montura
+const mStockInput = document.getElementById('m_stock');
+const mStockAvailInput = document.getElementById('m_stock_available');
+if (mStockInput && mStockAvailInput) {
+    mStockInput.addEventListener('input', () => {
+        if (!isEditingMontura) {
+            mStockAvailInput.value = mStockInput.value;
+        }
     });
 }
 
@@ -592,7 +607,8 @@ if(addFormMontura) {
         // Get values
         const code = document.getElementById('m_code').value;
         const name = document.getElementById('m_name').value;
-        const stock = parseInt(document.getElementById('m_stock').value);
+        const stockTotal = parseInt(document.getElementById('m_stock').value) || 0;
+        const stockAvail = parseInt(document.getElementById('m_stock_available').value) || 0;
         const sellPrice = parseFloat(document.getElementById('m_sell_price').value) || 0;
         
         try {
@@ -603,8 +619,8 @@ if(addFormMontura) {
                     .update({
                         codigo: code,
                         nombre: name,
-                        stock_total: stock,
-                        stock_disponible: stock, // Resetting available for simplicity in prototype edit
+                        stock_total: stockTotal,
+                        stock_disponible: stockAvail,
                         precio_venta: sellPrice
                     })
                     .eq('id', id);
@@ -615,8 +631,8 @@ if(addFormMontura) {
                     .insert([{
                         codigo: code,
                         nombre: name,
-                        stock_total: stock,
-                        stock_disponible: stock,
+                        stock_total: stockTotal,
+                        stock_disponible: stockAvail,
                         precio_venta: sellPrice
                     }]);
                 if (error) throw error;
@@ -691,10 +707,17 @@ if(tableBodyMonturas) {
             document.getElementById('m_code').value = cells[0].innerText;
             document.getElementById('m_name').value = cells[1].innerText;
             
-            // Extract total from format "Total(Available)"
+            // Extract total and available from format "Total(Available)"
             const stockText = cells[2].innerText;
-            const stockMatch = stockText.match(/(\d+)/);
-            document.getElementById('m_stock').value = stockMatch ? stockMatch[1] : stockText;
+            const stockMatch = stockText.match(/(\d+)\((\d+)\)/);
+            if (stockMatch) {
+                document.getElementById('m_stock').value = stockMatch[1];
+                document.getElementById('m_stock_available').value = stockMatch[2];
+            } else {
+                // Fallback for simple number
+                document.getElementById('m_stock').value = stockText;
+                document.getElementById('m_stock_available').value = stockText;
+            }
             
             const priceText = cells[3].innerText.replace('S/. ', '').replace(',', '');
             document.getElementById('m_sell_price').value = priceText;
@@ -4253,4 +4276,11 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchClients();
     fetchExpenses();
     fetchVendedoras();
+
+    // Prevent mouse wheel from changing values in numeric inputs
+    document.addEventListener('wheel', function (event) {
+        if (document.activeElement.type === 'number') {
+            event.preventDefault();
+        }
+    }, { passive: false });
 });
