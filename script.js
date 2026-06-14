@@ -882,30 +882,48 @@ async function fetchMonturasSalesStats() {
         const mondayStr = `${mYear}-${mMonth}-${mDay}`;
 
         // 1. Fetch Today
-        const { count: countHoy, error: errorHoy } = await _supabase
+        const { data: dataHoy, error: errorHoy } = await _supabase
             .from('ventas')
-            .select('*', { count: 'exact', head: true })
+            .select('datos_compra')
             .not('montura_id', 'is', null)
             .eq('fecha', dateTodayStr);
         
         if (errorHoy) throw errorHoy;
 
+        let countHoy = 0;
+        if (dataHoy) {
+            dataHoy.forEach(sale => {
+                const parts = sale.datos_compra.split('|');
+                const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
+                countHoy += monturasNames.length;
+            });
+        }
+
         // 2. Fetch Weekly
-        const { count: countSemana, error: errorSemana } = await _supabase
+        const { data: dataSemana, error: errorSemana } = await _supabase
             .from('ventas')
-            .select('*', { count: 'exact', head: true })
+            .select('datos_compra')
             .not('montura_id', 'is', null)
             .gte('fecha', mondayStr)
             .lte('fecha', dateTodayStr);
 
         if (errorSemana) throw errorSemana;
 
+        let countSemana = 0;
+        if (dataSemana) {
+            dataSemana.forEach(sale => {
+                const parts = sale.datos_compra.split('|');
+                const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
+                countSemana += monturasNames.length;
+            });
+        }
+
         // Update UI
         const dashHoy = document.getElementById('dash-monturas-hoy');
         const dashSemana = document.getElementById('dash-monturas-semana');
 
-        if (dashHoy) dashHoy.innerText = countHoy || 0;
-        if (dashSemana) dashSemana.innerText = countSemana || 0;
+        if (dashHoy) dashHoy.innerText = countHoy;
+        if (dashSemana) dashSemana.innerText = countSemana;
 
     } catch (err) {
         console.error('Error fetching frame sales stats:', err);
