@@ -183,6 +183,7 @@ input::-webkit-inner-spin-button {
 /* Hide spin buttons for Firefox */
 input[type=number] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .login-btn {
