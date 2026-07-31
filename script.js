@@ -658,6 +658,12 @@ async function fetchMonturas() {
 
         if (tableBodyMonturas) {
             tableBodyMonturas.innerHTML = '';
+            monturasList = data.map(m => ({
+                id: m.id,
+                name: m.nombre,
+                price: parseFloat(m.precio_venta) || 0
+            }));
+
             data.forEach(m => {
                 const newRow = document.createElement('tr');
                 newRow.setAttribute('data-id', m.id);
@@ -1779,27 +1785,36 @@ if (afVendedora) {
 }
 
 let lunasData = {}; // Structure: { "LunaName": ["Measure1", "Measure2"] }
-let monturasList = []; // Structure: ["MonturaName"]
+let monturasList = []; // Structure: [{ id, name, price }]
+
+function parseCurrencyValue(value) {
+    if (!value) return 0;
+    const numberVal = parseFloat(value.replace(/[^0-9.-]+/g, ''));
+    return isNaN(numberVal) ? 0 : numberVal;
+}
 
 function updateClientProductDropdowns() {
     // 1. Fetch persistent vendedoras
     fetchVendedoras();
 
-    // 2. Harvest Monturas Data
-    monturasList = [];
-    const tableMont = getEl('monturasTable');
-    if (tableMont) {
-        const monturasRows = tableMont.querySelectorAll('tbody tr');
-        monturasRows.forEach(row => {
-            const id = row.getAttribute('data-id');
-            const cells = row.getElementsByTagName('td');
-            if(cells.length > 1) {
-                const name = cells[1].innerText;
-                if (!monturasList.some(m => m.id === id)) {
-                    monturasList.push({ id, name });
+    // 2. Harvest Monturas Data only if not already loaded from fetchMonturas
+    if (monturasList.length === 0) {
+        const tableMont = getEl('monturasTable');
+        if (tableMont) {
+            const monturasRows = tableMont.querySelectorAll('tbody tr');
+            monturasRows.forEach(row => {
+                const id = row.getAttribute('data-id');
+                const cells = row.getElementsByTagName('td');
+                if (cells.length > 3) {
+                    const name = cells[1].innerText;
+                    const priceText = cells[3].innerText;
+                    const price = parseCurrencyValue(priceText);
+                    if (!monturasList.some(m => m.id === id)) {
+                        monturasList.push({ id, name, price });
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     // 3. Reset Luna Inputs
@@ -1820,6 +1835,7 @@ function updateClientProductDropdowns() {
             const opt = document.createElement('option');
             opt.value = m.id;
             opt.text = m.name;
+            opt.dataset.price = m.price;
             smPivot.appendChild(opt);
         });
     }
@@ -1876,6 +1892,13 @@ if(smPivotEl) {
         if (this.selectedIndex > 0) {
             const id = this.value;
             const name = this.options[this.selectedIndex].text;
+            const price = this.options[this.selectedIndex].dataset.price;
+            const cmPrice = getEl('c_montura_price');
+
+            if (cmPrice && price !== undefined) {
+                const numericPrice = parseFloat(price);
+                cmPrice.value = isNaN(numericPrice) ? '' : numericPrice.toFixed(2);
+            }
             
             // Avoid duplicates in tag list
             if (!selectedMonturas.some(m => m.id === id)) {
@@ -1883,6 +1906,7 @@ if(smPivotEl) {
                 renderMonturaTags();
             }
             
+            updatePurchaseDataString();
             this.selectedIndex = 0; // Reset pivot
         }
     });
