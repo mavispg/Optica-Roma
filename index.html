@@ -152,7 +152,7 @@
             <!-- HOME -->
             <div id="home" class="content-section active">
                 <div class="home-content">
-                    <h2>Panel de Control</h2>
+                    <h2>PANEL DE CONTROL</h2>
                     <p>Resumen del estado actual del inventario.</p>
 
                     <!-- KPI Cards -->
@@ -207,7 +207,7 @@
                     <div class="dashboard-grid">
 
                         <!-- Historical Sales Consulta -->
-                        <div class="dashboard-panel">
+                        <div class="dashboard-panel historical-panel">
                             <h3><i class='bx bx-history'></i> Consulta Histórica</h3>
                             <div style="display: flex; flex-direction: column; gap: 15px; padding: 10px;">
                                 <p style="font-size: 0.9rem; color: #666; margin: 0;">Explorar ventas y gastos de
@@ -224,7 +224,7 @@
                         </div>
 
                         <!-- Quick Actions -->
-                        <div class="dashboard-panel">
+                        <div class="dashboard-panel quick-actions-panel">
                             <h3>Acceso Rápido</h3>
                             <div class="quick-actions">
                                 <button class="action-btn"
@@ -239,6 +239,16 @@
                                     onclick="document.querySelector('[data-target=\'monturas\']').click(); setTimeout(() => document.getElementById('btnAddMontura').click(), 100);">
                                     <i class='bx bx-plus-circle'></i> Nueva Montura
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Latest Sales (moved below panels) -->
+                    <div class="dashboard-grid">
+                        <div class="dashboard-panel latest-sales-panel" id="latestSalesPanel">
+                            <h3><i class='bx bx-list-ul'></i> Últimas Ventas</h3>
+                            <div id="latestSalesList" style="padding: 16px; display:flex; flex-direction:column; gap:14px;">
+                                <div class="empty-latest">Cargando últimas ventas...</div>
                             </div>
                         </div>
                     </div>

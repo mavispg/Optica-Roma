@@ -11,6 +11,76 @@ const _supabase = supabase.createClient(supabaseUrl, supabaseKey, {
     }
 });
 
+// Fetch and render latest N sales for dashboard
+async function fetchLatestSales(limit = 5) {
+    try {
+        // Try ordering by created_at first
+        let { data, error } = await _supabase
+            .from('ventas')
+            .select(`codigo_venta, fecha, monto_total, adelanto, saldo, datos_compra, vendedora, metodo_pago, clientes (nombre)`)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        // Fallback ordering by codigo_venta if created_at not available
+        if (error || !data || data.length === 0) {
+            const res = await _supabase
+                .from('ventas')
+                .select(`codigo_venta, fecha, monto_total, adelanto, saldo, datos_compra, vendedora, metodo_pago, clientes (nombre)`)
+                .order('codigo_venta', { ascending: false })
+                .limit(limit);
+            data = res.data;
+            error = res.error;
+        }
+
+        if (error) throw error;
+
+        renderLatestSales(data || []);
+    } catch (err) {
+        console.error('Error fetching latest sales:', err);
+        const list = document.getElementById('latestSalesList');
+        if (list) list.innerHTML = `<div class="empty-latest">Error cargando últimas ventas</div>`;
+    }
+}
+
+function renderLatestSales(sales) {
+    const list = document.getElementById('latestSalesList');
+    if (!list) return;
+    if (!sales || sales.length === 0) {
+        list.innerHTML = `<div class="empty-latest">No se encontraron ventas recientes.</div>`;
+        return;
+    }
+
+    list.innerHTML = '';
+    sales.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'latest-sale-item';
+        const cliente = s.clientes?.nombre || 'N/A';
+        const codigo = s.codigo_venta || '';
+        const fecha = s.fecha || '';
+        const total = formatCurrency((s.monto_total || 0).toString());
+        const metodo = s.metodo_pago || '';
+
+        // Build a compact HTML summary
+        item.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                <div style="flex:1;">
+                    <div style="font-weight:700;">${codigo} — ${cliente}</div>
+                    <div style="font-size:0.85rem; color:#555; margin-top:6px;">${formatPurchaseDataForDisplay(s.datos_compra || '')}</div>
+                </div>
+                <div style="text-align:right; min-width:160px;">
+                    <div style="font-weight:700;">${total}</div>
+                    <div style="font-size:0.85rem; color:#2d8f57; margin-top:6px;">${metodo}</div>
+                    <div style="font-size:0.75rem; color:#888;">${fecha}</div>
+                </div>
+            </div>
+        `;
+
+        list.appendChild(item);
+    });
+}
+
+
+
 /* ==========================================
    CUSTOM NOTIFICATION & DIALOG SYSTEM
    ========================================== */
@@ -490,30 +560,49 @@ if(tableBody) {
     });
 }
 
-// Search Logic
+// Search Logic (optimized): use `input` + debounce + per-row cached searchable text
 const searchInput = document.getElementById('searchInput');
-if(searchInput) {
-    searchInput.addEventListener('keyup', function() {
-        const filter = this.value.toLowerCase();
+if (searchInput && tableBody) {
+    let searchTimer = null;
+
+    function filterLunasTable(value) {
+        const filter = (value || '').trim().toLowerCase();
         const rows = tableBody.getElementsByTagName('tr');
-        
         for (let i = 0; i < rows.length; i++) {
-            const cells = rows[i].getElementsByTagName('td');
-            let match = false;
-            // Check all cells
-            for (let j = 0; j < cells.length - 1; j++) { // Exclude actions cell
-                if (cells[j]) {
-                    if (cells[j].innerText.toLowerCase().indexOf(filter) > -1) {
-                        match = true;
-                        break;
-                    }
+            const row = rows[i];
+
+            // Cache a combined lowercased text for the row to avoid repeated DOM reads
+            let text = row.dataset.searchText;
+            if (!text) {
+                const cells = row.getElementsByTagName('td');
+                const parts = [];
+                for (let j = 0; j < cells.length - 1; j++) { // exclude actions cell
+                    if (cells[j]) parts.push(cells[j].innerText.toLowerCase());
                 }
+                text = parts.join(' ');
+                row.dataset.searchText = text;
             }
-            if (match) {
-                rows[i].style.display = "";
+
+            if (filter === '' || text.indexOf(filter) > -1) {
+                row.style.display = '';
             } else {
-                rows[i].style.display = "none";
+                row.style.display = 'none';
             }
+        }
+    }
+
+    // Debounce input so heavy filtering doesn't run on every keystroke when typing fast
+    searchInput.addEventListener('input', function () {
+        clearTimeout(searchTimer);
+        const val = this.value;
+        searchTimer = setTimeout(() => filterLunasTable(val), 180);
+    });
+
+    // If you want immediate feedback on Enter, you can also listen keydown for Enter
+    searchInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            clearTimeout(searchTimer);
+            filterLunasTable(this.value);
         }
     });
 }
@@ -738,29 +827,45 @@ if(tableBodyMonturas) {
     });
 }
 
-// Search Logic for Monturas
+// Search Logic for Monturas (optimized)
 const searchMonturasInput = document.getElementById('searchMonturasInput');
-if(searchMonturasInput && tableBodyMonturas) {
-    searchMonturasInput.addEventListener('keyup', function() {
-        const filter = this.value.toLowerCase();
+if (searchMonturasInput && tableBodyMonturas) {
+    let monturasTimer = null;
+
+    function filterMonturasTable(value) {
+        const filter = (value || '').trim().toLowerCase();
         const rows = tableBodyMonturas.getElementsByTagName('tr');
-        
         for (let i = 0; i < rows.length; i++) {
-            const cells = rows[i].getElementsByTagName('td');
-            let match = false;
-            for (let j = 0; j < cells.length - 1; j++) {
-                if (cells[j]) {
-                    if (cells[j].innerText.toLowerCase().indexOf(filter) > -1) {
-                        match = true;
-                        break;
-                    }
+            const row = rows[i];
+            let text = row.dataset.searchText;
+            if (!text) {
+                const cells = row.getElementsByTagName('td');
+                const parts = [];
+                for (let j = 0; j < cells.length - 1; j++) {
+                    if (cells[j]) parts.push(cells[j].innerText.toLowerCase());
                 }
+                text = parts.join(' ');
+                row.dataset.searchText = text;
             }
-            if (match) {
-                rows[i].style.display = "";
+
+            if (filter === '' || text.indexOf(filter) > -1) {
+                row.style.display = '';
             } else {
-                rows[i].style.display = "none";
+                row.style.display = 'none';
             }
+        }
+    }
+
+    searchMonturasInput.addEventListener('input', function () {
+        clearTimeout(monturasTimer);
+        const val = this.value;
+        monturasTimer = setTimeout(() => filterMonturasTable(val), 180);
+    });
+
+    searchMonturasInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            clearTimeout(monturasTimer);
+            filterMonturasTable(this.value);
         }
     });
 }
@@ -2386,6 +2491,7 @@ if(addFormClient) {
 // Fetch Clients & Sales
 async function fetchClients() {
     try {
+        // Request an explicit large range to avoid implicit row limits from the client/server
         const { data, error } = await _supabase
             .from('ventas')
             .select(`
@@ -2393,7 +2499,8 @@ async function fetchClients() {
                 clientes (nombre, celular),
                 ventas_pagos (id)
             `)
-            .order('codigo_venta', { ascending: true });
+            .order('codigo_venta', { ascending: true })
+            .range(0, 9999);
 
         if (error) throw error;
 
@@ -2429,6 +2536,23 @@ async function fetchClients() {
                         <input type="hidden" class="raw-payment-method" value="${v.metodo_pago}">
                     </td>
                 `;
+                // Precompute searchable text for this row to avoid heavy DOM reads on first search
+                try {
+                    const parts = [];
+                    parts.push(String(v.codigo_venta || ''));
+                    parts.push(String(v.clientes?.nombre || ''));
+                    parts.push(String(v.datos_compra || '').replace(/\|/g, ' '));
+                    parts.push(String(v.clientes?.celular || ''));
+                    parts.push(String(dateDisplay || ''));
+                    parts.push(String(v.monto_total || ''));
+                    parts.push(String(v.adelanto || ''));
+                    parts.push(String(v.metodo_pago || ''));
+                    newRow.dataset.searchText = parts.join(' ').toLowerCase();
+                } catch (e) {
+                    // if anything fails, fall back to using innerText (still ok)
+                    newRow.dataset.searchText = newRow.innerText.toLowerCase();
+                }
+
                 tableBodyClients.appendChild(newRow);
             });
         }
@@ -2436,6 +2560,95 @@ async function fetchClients() {
         console.error('Error fetching clients:', error);
     }
 }
+
+// Obtener la última venta desde Supabase (por `created_at`, con fallback por `codigo_venta`)
+async function fetchLastSale() {
+    try {
+        // Intentar por created_at primero
+        let { data, error } = await _supabase
+            .from('ventas')
+            .select(`*, clientes (nombre, celular), ventas_pagos (id)`)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        // Si no existe created_at o falla, intentar por codigo_venta (descendente)
+        if (error || !data) {
+            const res = await _supabase
+                .from('ventas')
+                .select(`*, clientes (nombre, celular), ventas_pagos (id)`)
+                .order('codigo_venta', { ascending: false })
+                .limit(1)
+                .single();
+            data = res.data;
+            error = res.error;
+        }
+
+        if (error) throw error;
+
+        const cliente = data.clientes?.nombre || 'N/A';
+        const codigo = data.codigo_venta || '';
+        const fecha = data.fecha || '';
+        const total = formatCurrency((data.monto_total || 0).toString());
+
+        const msg = `Última venta: ${codigo} — Cliente: ${cliente} — Fecha: ${fecha} — Total: ${total}`;
+        if (typeof showCustomAlert === 'function') {
+            await showCustomAlert(msg, 'Última Venta');
+        } else {
+            console.log(msg);
+        }
+
+        return data;
+    } catch (err) {
+        console.error('Error fetching last sale:', err);
+        if (typeof showCustomAlert === 'function') await showCustomAlert('Error al obtener la última venta: ' + (err.message || err), 'ERROR');
+        return null;
+    }
+}
+
+// Hacer accesible para pruebas desde consola
+window.fetchLastSale = fetchLastSale;
+
+// Helper: buscar venta en la tabla del DOM (clientes)
+function findSaleLocal(code) {
+    if (!tableBodyClients) return null;
+    const rows = tableBodyClients.getElementsByTagName('tr');
+    for (let i = 0; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName('td');
+        if (cells[0] && String(cells[0].innerText).trim() === String(code).trim()) {
+            console.log('Venta encontrada en tabla (fila):', rows[i]);
+            return rows[i];
+        }
+    }
+    console.log('Venta no encontrada en la tabla local:', code);
+    return null;
+}
+
+// Helper: buscar venta en Supabase por codigo_venta
+async function findSaleRemote(code) {
+    try {
+        const { data, error } = await _supabase
+            .from('ventas')
+            .select('*, clientes(nombre, celular), ventas_pagos(id)')
+            .eq('codigo_venta', String(code))
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) {
+            console.log('Venta no encontrada en Supabase:', code);
+            return null;
+        }
+        console.log('Venta encontrada en Supabase:', data);
+        return data;
+    } catch (err) {
+        console.error('Error buscando venta remota:', err);
+        return null;
+    }
+}
+
+window.findSaleLocal = findSaleLocal;
+window.findSaleRemote = findSaleRemote;
 
 // Payment History Modal Logic
 const modalHistory = document.getElementById('paymentHistoryModal');
@@ -2776,28 +2989,130 @@ if(tableBodyClients) {
     });
 }
 
-// Search Logic for Clients
+// Search Logic for Clients (optimized): debounce + cached per-row text
 const searchClientInput = document.getElementById('searchClientInput');
-if(searchClientInput && tableBodyClients) {
-    searchClientInput.addEventListener('keyup', function() {
-        const filter = this.value.toLowerCase();
+if (searchClientInput && tableBodyClients) {
+    let clientTimer = null;
+    let lastRemoteQuery = null; // cache to avoid duplicate remote calls
+
+    // Helper: render a table row element from a sale object (from Supabase)
+    function renderClientRowFromSale(v, isTemp = false) {
+        const dateParts = (v.fecha || '').split('-');
+        const dateDisplay = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : (v.fecha || '');
+        const newRow = document.createElement('tr');
+        if (v.id) newRow.setAttribute('data-id', v.id);
+        if (isTemp) newRow.setAttribute('data-temp', 'true');
+        newRow.innerHTML = `
+            <td>${v.codigo_venta || ''}</td>
+            <td>${v.clientes?.nombre || 'N/A'}</td>
+            <td class="compact-cell">${formatPurchaseDataForDisplay(v.datos_compra)}</td>
+            <td>${v.clientes?.celular || ''}</td>
+            <td>${dateDisplay}</td>
+            <td>${formatCurrency((v.monto_total || 0).toString())}</td>
+            <td>${formatCurrency((v.adelanto || 0).toString())}</td>
+            <td>${formatCurrency((v.saldo || 0).toString())}</td>
+            <td>${getStatusBadge(v.monto_total || 0, v.adelanto || 0)}</td>
+            <td>${formatPaymentMethodBadge(v.metodo_pago || '')}</td>
+            <td class="actions-cell">
+                <div class="actions-wrapper">
+                    <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                    <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                </div>
+                <input type="hidden" class="raw-date" value="${v.fecha || ''}">
+                <input type="hidden" class="raw-data" value="${(v.datos_compra || '')}">
+                <input type="hidden" class="raw-advance" value="${v.adelanto || 0}">
+                <input type="hidden" class="raw-total" value="${v.monto_total || 0}">
+                <input type="hidden" class="raw-payment-method" value="${v.metodo_pago || ''}">
+            </td>
+        `;
+
+        // Precompute searchable text
+        try {
+            const parts = [];
+            parts.push(String(v.codigo_venta || ''));
+            parts.push(String(v.clientes?.nombre || ''));
+            parts.push(String(v.datos_compra || '').replace(/\|/g, ' '));
+            parts.push(String(v.clientes?.celular || ''));
+            parts.push(String(dateDisplay || ''));
+            parts.push(String(v.monto_total || ''));
+            parts.push(String(v.adelanto || ''));
+            parts.push(String(v.metodo_pago || ''));
+            newRow.dataset.searchText = parts.join(' ').toLowerCase();
+        } catch (e) {
+            newRow.dataset.searchText = newRow.innerText.toLowerCase();
+        }
+
+        return newRow;
+    }
+
+    function filterClientsTable(value) {
+        const filter = (value || '').trim().toLowerCase();
         const rows = tableBodyClients.getElementsByTagName('tr');
-        
+        // Remove any previous temporary rows
+        const prevTemps = tableBodyClients.querySelectorAll('tr[data-temp="true"]');
+        prevTemps.forEach(t => t.remove());
         for (let i = 0; i < rows.length; i++) {
-            const cells = rows[i].getElementsByTagName('td');
-            let match = false;
-             // Check ID (0), Name (1), Purchase Data (2), Date (4), Status (5)
-            if (cells[0] && cells[0].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-            if (cells[1] && cells[1].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-            if (cells[2] && cells[2].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-            if (cells[4] && cells[4].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-            if (cells[8] && cells[8].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-            
-            if (match) {
-                rows[i].style.display = "";
-            } else {
-                rows[i].style.display = "none";
+            const row = rows[i];
+            let text = row.dataset.searchText;
+            if (!text) {
+                const cells = row.getElementsByTagName('td');
+                const parts = [];
+                // Collect the same columns as original logic: 0,1,2,4,8 (if present)
+                if (cells[0]) parts.push(cells[0].innerText.toLowerCase());
+                if (cells[1]) parts.push(cells[1].innerText.toLowerCase());
+                if (cells[2]) parts.push(cells[2].innerText.toLowerCase());
+                if (cells[4]) parts.push(cells[4].innerText.toLowerCase());
+                if (cells[8]) parts.push(cells[8].innerText.toLowerCase());
+                text = parts.join(' ');
+                row.dataset.searchText = text;
             }
+
+            if (filter === '' || text.indexOf(filter) > -1) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+
+        // If filter looks like a numeric code, ensure we check codigo_venta specifically.
+        if (filter !== '' && /^\d+$/.test(filter)) {
+            // Check if any local row has the same codigo in column 0
+            const rowsNow = tableBodyClients.getElementsByTagName('tr');
+            let codeMatch = false;
+            for (let i = 0; i < rowsNow.length; i++) {
+                const c0 = rowsNow[i].getElementsByTagName('td')[0];
+                if (c0 && String(c0.innerText).trim() === filter) {
+                    codeMatch = true;
+                    break;
+                }
+            }
+
+            if (!codeMatch && lastRemoteQuery !== filter) {
+                lastRemoteQuery = filter;
+                (async () => {
+                    const remote = await findSaleRemote(filter);
+                    if (remote) {
+                        const tempRow = renderClientRowFromSale(remote, true);
+                        tableBodyClients.prepend(tempRow);
+                    }
+                })();
+            }
+        } else {
+            // clear last query when input not numeric to allow new searches later
+            lastRemoteQuery = null;
+        }
+    }
+
+    searchClientInput.addEventListener('input', function () {
+        clearTimeout(clientTimer);
+        const val = this.value;
+        clientTimer = setTimeout(() => filterClientsTable(val), 180);
+    });
+
+    searchClientInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            clearTimeout(clientTimer);
+            filterClientsTable(this.value);
         }
     });
 }
@@ -4318,6 +4633,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchClients();
     fetchExpenses();
     fetchVendedoras();
+    fetchLatestSales(5);
 
     // Prevent mouse wheel from changing values in numeric inputs
     document.addEventListener('wheel', function (event) {
