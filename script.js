@@ -2767,61 +2767,107 @@ window.editSale = async function(id) {
             .single();
         
         if (error) throw error;
+        if (!v) {
+            await showCustomAlert('No se encontró la venta', 'ERROR');
+            return;
+        }
 
-        // Reset and show modal
+        // Reset state and set edit mode
         isEditingClient = true;
-        currentEditRowClient = document.querySelector(`tr:has(button[onclick*="${id}"])`); 
-        // Note: setting row might be tricky without a data-id, but we'll set it in fetchClients
+        currentEditRowClient = document.querySelector(`tr[data-id="${id}"]`);
         
-        document.getElementById('c_id').value = v.codigo_venta;
+        // Store original values for comparison during save
+        originalSaleDate = v.fecha || '';
+        originalEgresoId = v.egreso_id || null;
+        originalMonturaId = v.montura_id || null;
+        originalMonturaIds = v.montura_ids || '';
+
+        // Populate basic fields
+        document.getElementById('c_id').value = v.codigo_venta || '';
         document.getElementById('c_name').value = v.clientes?.nombre || '';
         document.getElementById('c_phone').value = v.clientes?.celular || '';
-        document.getElementById('c_date').value = v.fecha;
-        originalSaleDate = v.fecha; // STORE ORIGINAL
-        originalEgresoId = v.egreso_id; // STORE ORIGINAL LINK
-        document.getElementById('c_total').value = v.monto_total;
-        initialTotalOnEdit = parseFloat(v.monto_total) || 0; // STORE INITIAL
-        document.getElementById('c_advance').value = v.adelanto;
-        initialAdvanceOnEdit = parseFloat(v.adelanto) || 0; // STORE INITIAL
-        document.getElementById('c_payment_method').value = v.metodo_pago;
-        document.getElementById('sel_vendedora').value = v.vendedora;
-        originalMonturaId = v.montura_id; 
-        originalMonturaIds = v.montura_ids; // Capture original IDs list
-        
-        // Deconstruct purchase data
-        const parts = v.datos_compra.split('|');
-        if (parts.length >= 1) { // MORE ROBUST
-            document.getElementById('c_luna_name').value = parts[0] || '';
-            document.getElementById('c_luna_measure').value = parts[1] || '';
-            
-            document.getElementById('sel_consulta').value = parts[3] || '';
-            originalConsultaName = parts[3] || ''; // STORE ORIGINAL
-            document.getElementById('c_others').value = parts[4] || '';
+        document.getElementById('c_date').value = v.fecha || '';
+        document.getElementById('c_total').value = v.monto_total || 0;
+        document.getElementById('c_advance').value = v.adelanto || 0;
+        document.getElementById('c_payment_method').value = v.metodo_pago || '';
+        document.getElementById('sel_vendedora').value = v.vendedora || '';
 
-            // Reconstruct monturas tags
-            selectedMonturas = [];
-            if (v.montura_ids) {
-                const ids = v.montura_ids.split(',');
-                ids.forEach(mid => {
-                    const match = monturasList.find(m => m.id == mid);
-                    if (match) selectedMonturas.push(match);
-                });
-            } else if (v.montura_id) {
-                const match = monturasList.find(m => m.id == v.montura_id);
+        // Store initial values for change tracking
+        initialTotalOnEdit = parseFloat(v.monto_total) || 0;
+        initialAdvanceOnEdit = parseFloat(v.adelanto) || 0;
+
+        // Parse and populate purchase data
+        const datosCompra = v.datos_compra || '';
+        const parts = datosCompra.split('|');
+        
+        if (parts.length >= 5) {
+            document.getElementById('c_luna_name').value = parts[0]?.trim() || '';
+            document.getElementById('c_luna_measure').value = parts[1]?.trim() || '';
+            document.getElementById('sel_consulta').value = parts[3]?.trim() || '';
+            originalConsultaName = parts[3]?.trim() || '';
+            document.getElementById('c_others').value = parts[4]?.trim() || '';
+        } else if (parts.length >= 4) {
+            // Fallback for older format
+            document.getElementById('c_luna_name').value = parts[0]?.trim() || '';
+            document.getElementById('c_luna_measure').value = parts[1]?.trim() || '';
+            document.getElementById('sel_consulta').value = parts[3]?.trim() || '';
+            originalConsultaName = parts[3]?.trim() || '';
+        }
+
+        // Load and reconstruct monturas tags
+        selectedMonturas = [];
+        if (v.montura_ids && v.montura_ids.trim() !== '') {
+            const ids = v.montura_ids.split(',').filter(id => id.trim());
+            ids.forEach(mid => {
+                const match = monturasList.find(m => m.id == mid.trim());
                 if (match) selectedMonturas.push(match);
-            }
-            renderMonturaTags(); // This triggers sync, will now have correct doctor
+            });
+        } else if (v.montura_id) {
+            const match = monturasList.find(m => m.id == v.montura_id);
+            if (match) selectedMonturas.push(match);
         }
         
-        // FINAL FORCED SYNC
-        updatePurchaseDataString();
+        renderMonturaTags();
 
-        document.querySelector('#addClientModal h2').innerText = 'Editar Venta / Cliente';
-        modalClient.style.display = 'block';
+        // Handle payment method (split or single)
+        const isSplit = (v.metodo_pago || '').includes('|');
+        const chkSplitPayment = document.getElementById('chk_split_payment');
+        const splitPaymentContainer = document.getElementById('split_payment_container');
+        const singlePaymentContainer = document.getElementById('single_payment_container');
+
+        if (isSplit) {
+            if (chkSplitPayment) chkSplitPayment.checked = true;
+            if (splitPaymentContainer) splitPaymentContainer.style.display = 'block';
+            if (singlePaymentContainer) singlePaymentContainer.style.display = 'none';
+            
+            const paymentParts = v.metodo_pago.split('|');
+            if (paymentParts[0]) {
+                const [m1, a1] = paymentParts[0].split(':');
+                document.getElementById('split_method_1').value = m1 || '';
+                document.getElementById('split_amount_1').value = parseFloat(a1 || 0).toFixed(2);
+            }
+            if (paymentParts[1]) {
+                const [m2, a2] = paymentParts[1].split(':');
+                document.getElementById('split_method_2').value = m2 || '';
+                document.getElementById('split_amount_2').value = parseFloat(a2 || 0).toFixed(2);
+            }
+        } else {
+            if (chkSplitPayment) chkSplitPayment.checked = false;
+            if (splitPaymentContainer) splitPaymentContainer.style.display = 'none';
+            if (singlePaymentContainer) singlePaymentContainer.style.display = 'block';
+        }
+
+        // Final sync to ensure all data is consistent
+        updatePurchaseDataString();
         calculateBalance();
 
+        // Open modal
+        document.querySelector('#addClientModal h2').innerText = 'Editar Venta / Cliente';
+        modalClient.style.display = 'block';
+
     } catch (error) {
-        console.error('Error fetching sale for edit:', error);
+        console.error('Error loading sale for edit:', error);
+        await showCustomAlert('Error al cargar la venta: ' + error.message, 'ERROR DE CARGA');
     }
 }
 // End of Sales Logic
@@ -2833,158 +2879,35 @@ if(tableBodyClients) {
         if(e.target.closest('.delete-btn')) {
             if(await showCustomConfirm('¿Estás seguro de eliminar este cliente?', { title: 'ELIMINAR CLIENTE', confirmText: 'Eliminar', isDanger: true })) {
                 const row = e.target.closest('tr');
-                const clientId = row.getElementsByTagName('td')[0].innerText;
+                const saleId = row.getAttribute('data-id');
                 
-                // Remove linked expense if any
-                const linkedExpenseRow = findExpenseByLinkedId(clientId);
-                if (linkedExpenseRow) {
-                    linkedExpenseRow.remove();
+                // Delete from Supabase
+                try {
+                    const { error } = await _supabase.from('ventas').delete().eq('id', saleId);
+                    if (error) throw error;
+                    
+                    await showCustomAlert('Venta eliminada correctamente', 'ÉXITO');
+                    fetchClients();
+                    fetchExpenses();
+                    updateFinancialDashboards();
+                } catch (err) {
+                    console.error('Error deleting sale:', err);
+                    await showCustomAlert('Error al eliminar la venta: ' + err.message, 'ERROR');
                 }
-
-                row.remove();
             }
         }
         
-        // Edit
+        // Edit - Delegate to window.editSale
         if(e.target.closest('.edit-btn')) {
             const row = e.target.closest('tr');
-            const cells = row.getElementsByTagName('td');
+            const saleId = row.getAttribute('data-id');
             
-            // Populate Form
-            document.getElementById('c_id').value = cells[0].innerText;
-            document.getElementById('c_name').value = cells[1].innerText;
-            
-            // Get raw data from hidden field (not from the formatted cell)
-            const rawDataField = row.querySelector('.raw-data');
-            const rawDataValue = rawDataField ? rawDataField.value : cells[2].innerText;
-            document.getElementById('c_data').value = rawDataValue;
-            
-            document.getElementById('c_phone').value = cells[3].innerText;
-            
-            // Retrieve hidden values if available, otherwise parse
-            const rawDate = row.querySelector('.raw-date') ? row.querySelector('.raw-date').value : '';
-            const rawTotal = row.querySelector('.raw-total') ? row.querySelector('.raw-total').value : '';
-            const rawAdvance = row.querySelector('.raw-advance') ? row.querySelector('.raw-advance').value : '';
-            
-            // If hidden inputs exist (newly added rows), use them. 
-            // For static rows (prototype), we might need parsing. 
-            // Since I added static rows with same structure but maybe no hidden inputs initially? 
-            // Let's assume user starts adding new data or I update static rows.
-            
-            if(rawDate) {
-                document.getElementById('c_date').value = rawDate;
-                document.getElementById('c_total').value = rawTotal;
-                document.getElementById('c_advance').value = rawAdvance;
+            // Use the improved editSale function from Supabase
+            if (saleId) {
+                await window.editSale(saleId);
             } else {
-                // Fallback parsing for static rows (if any)
-                // For now, let's assume we use the new structure.
-                // If I modify index.html static rows, I should add hidden inputs there too OR parse currency.
-                
-                // Let's parse currency for now as fallback
-                const totalText = cells[5].innerText.replace('S/. ', '').replace(',', ''); 
-                const advanceText = cells[6].innerText.replace('S/. ', '').replace(',', '');
-                const totalVal = parseFloat(totalText);
-                const advanceVal = parseFloat(advanceText);
-                
-                document.getElementById('c_total').value = totalVal;
-                document.getElementById('c_advance').value = advanceVal;
-                
-                // Date parsing (dd/mm/yyyy -> yyyy-mm-dd)
-                const dateParts = cells[4].innerText.split('/');
-                if(dateParts.length === 3) {
-                     document.getElementById('c_date').value = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-                }
+                await showCustomAlert('Error: No se encontró el ID de la venta', 'ERROR');
             }
-            
-            calculateBalance(); // Update readonly field
-            
-            // ==========================================
-            // Extract original montura from hidden field or "Datos de Compra"
-            // ==========================================
-            originalMonturaName = null; // Reset
-            
-            // Try to get from hidden field first (for newly created rows)
-            const rawMontura = row.querySelector('.raw-montura') ? row.querySelector('.raw-montura').value : '';
-            
-            if (rawMontura && rawMontura !== '') {
-                originalMonturaName = rawMontura;
-            } else {
-                // Fallback: Parse from "Datos de Compra" column (for old/static rows)
-                 const datosCompra = cells[2].innerText;
-                
-                if (datosCompra && datosCompra !== 'Consulta') {
-                    // Try new format first, then fallback
-                    let parts = [];
-                    if (datosCompra.includes('|')) {
-                        parts = datosCompra.split('|').map(p => p.trim());
-                        originalMonturaName = parts[2] || null;
-                    } else {
-                        parts = datosCompra.split(' , ').map(p => p.trim());
-                        // Check if any part matches a montura name from the monturas list
-                        for (let i = parts.length - 1; i >= 0; i--) {
-                            if (monturasList.includes(parts[i])) {
-                                originalMonturaName = parts[i];
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            // ==========================================
-            
-            // Load payment method
-            const rawPaymentMethod = row.querySelector('.raw-payment-method') ? row.querySelector('.raw-payment-method').value : '';
-            if(rawPaymentMethod) {
-                // Check if it's a split payment
-                const isSplit = rawPaymentMethod.includes('|');
-                const chkSplitPayment = document.getElementById('chk_split_payment');
-                const splitPaymentContainer = document.getElementById('split_payment_container');
-                const singlePaymentContainer = document.getElementById('single_payment_container');
-
-                if (isSplit) {
-                    if (chkSplitPayment) chkSplitPayment.checked = true;
-                    if (splitPaymentContainer) splitPaymentContainer.style.display = 'block';
-                    if (singlePaymentContainer) singlePaymentContainer.style.display = 'none';
-                    
-                    const parts = rawPaymentMethod.split('|');
-                    if (parts[0]) {
-                        const [m1, a1] = parts[0].split(':');
-                        document.getElementById('split_method_1').value = m1;
-                        document.getElementById('split_amount_1').value = parseFloat(a1).toFixed(2);
-                    }
-                    if (parts[1]) {
-                        const [m2, a2] = parts[1].split(':');
-                        document.getElementById('split_method_2').value = m2;
-                        document.getElementById('split_amount_2').value = parseFloat(a2).toFixed(2);
-                    }
-                } else {
-                    if (chkSplitPayment) chkSplitPayment.checked = false;
-                    if (splitPaymentContainer) splitPaymentContainer.style.display = 'none';
-                    if (singlePaymentContainer) singlePaymentContainer.style.display = 'block';
-                    document.getElementById('c_payment_method').value = rawPaymentMethod;
-                }
-            }
-            
-            // ==========================================
-            // Deconstruct Purchase Data to fill form fields
-            // ==========================================
-            if (rawDataValue) {
-                const parts = rawDataValue.split('|');
-                if (parts.length >= 5) {
-                    if (cLunaName) cLunaName.value = parts[0] || '';
-                    if (cLunaMeasure) cLunaMeasure.value = parts[1] || '';
-                    if (selMontura) selMontura.value = parts[2] || '';
-                    if (selConsulta) selConsulta.value = parts[3] || '';
-                    if (cOthers) cOthers.value = parts[4] || '';
-                }
-            }
-            // ==========================================
-            
-            // Set Edit Mode
-            isEditingClient = true;
-            currentEditRowClient = row;
-            document.querySelector('#addClientModal h2').innerText = 'Editar Cliente';
-            modalClient.style.display = 'block';
         }
     });
 }
