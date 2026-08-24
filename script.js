@@ -2917,6 +2917,7 @@ const searchClientInput = document.getElementById('searchClientInput');
 if (searchClientInput && tableBodyClients) {
     let clientTimer = null;
     let lastRemoteQuery = null; // cache to avoid duplicate remote calls
+    let remoteSearchSequence = 0;
 
     // Helper: render a table row element from a sale object (from Supabase)
     function renderClientRowFromSale(v, isTemp = false) {
@@ -3023,6 +3024,49 @@ if (searchClientInput && tableBodyClients) {
         } else {
             // clear last query when input not numeric to allow new searches later
             lastRemoteQuery = null;
+
+            if (filter !== '') {
+                const currentSearchSequence = ++remoteSearchSequence;
+                (async () => {
+                    const { data: matchingClients, error: clientsError } = await _supabase
+                        .from('clientes')
+                        .select('id')
+                        .ilike('nombre', `%${filter}%`)
+                        .limit(100);
+
+                    if (clientsError || currentSearchSequence !== remoteSearchSequence) return;
+
+                    const clientIds = (matchingClients || []).map(client => client.id);
+                    if (clientIds.length === 0) return;
+
+                    const { data: remoteSales, error: salesError } = await _supabase
+                        .from('ventas')
+                        .select(`
+                            *,
+                            clientes (nombre, celular),
+                            ventas_pagos (id)
+                        `)
+                        .in('cliente_id', clientIds)
+                        .order('codigo_venta', { ascending: true });
+
+                    if (salesError || currentSearchSequence !== remoteSearchSequence) return;
+
+                    const localSaleIds = new Set(
+                        Array.from(tableBodyClients.querySelectorAll('tr[data-id]'))
+                            .map(row => row.getAttribute('data-id'))
+                    );
+
+                    (remoteSales || []).forEach(sale => {
+                        if (!localSaleIds.has(String(sale.id))) {
+                            const remoteRow = renderClientRowFromSale(sale, true);
+                            remoteRow.style.display = '';
+                            tableBodyClients.appendChild(remoteRow);
+                        }
+                    });
+                })();
+            } else {
+                remoteSearchSequence++;
+            }
         }
     }
 
