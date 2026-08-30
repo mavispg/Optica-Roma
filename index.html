@@ -355,7 +355,13 @@
                     <div class="controls-bar">
                         <div class="search-input-wrapper">
                             <i class='bx bx-search'></i>
-                            <input type="text" id="searchClientInput" placeholder="Buscar cliente...">
+                            <input type="text" id="searchClientTextInput" placeholder="Buscar cliente o montura...">
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="date" id="searchClientInput" style="padding: 10px 15px; border: 1px solid #000; border-radius: 5px; font-size: 16px; cursor: pointer;">
+                            <button class="btn-secondary" id="btnClearDateFilter" style="padding: 8px 16px; display: none;">
+                                <i class='bx bx-x'></i> Limpiar
+                            </button>
                         </div>
                         <div class="actions-group">
                             <button class="btn-green" id="btnAddClient">

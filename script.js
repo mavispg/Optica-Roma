@@ -2912,12 +2912,16 @@ if(tableBodyClients) {
     });
 }
 
-// Search Logic for Clients (optimized): debounce + cached per-row text
-const searchClientInput = document.getElementById('searchClientInput');
-if (searchClientInput && tableBodyClients) {
+// Search Logic for Clients (optimized): support both date and text search
+const searchClientTextInput = document.getElementById('searchClientTextInput');
+const searchClientDateInput = document.getElementById('searchClientInput');
+const btnClearDateFilter = document.getElementById('btnClearDateFilter');
+
+if ((searchClientTextInput || searchClientDateInput) && tableBodyClients) {
     let clientTimer = null;
-    let lastRemoteQuery = null; // cache to avoid duplicate remote calls
+    let lastRemoteQuery = null;
     let remoteSearchSequence = 0;
+    let currentDateFilter = null; // Track current date filter
 
     // Helper: render a table row element from a sale object (from Supabase)
     function renderClientRowFromSale(v, isTemp = false) {
@@ -2962,94 +2966,55 @@ if (searchClientInput && tableBodyClients) {
             parts.push(String(v.adelanto || ''));
             parts.push(String(v.metodo_pago || ''));
             newRow.dataset.searchText = parts.join(' ').toLowerCase();
+            newRow.dataset.rawDate = v.fecha || ''; // Store raw date for filtering
         } catch (e) {
             newRow.dataset.searchText = newRow.innerText.toLowerCase();
+            newRow.dataset.rawDate = '';
         }
 
         return newRow;
     }
 
-    function filterClientsTable(value) {
-        const filter = (value || '').trim().toLowerCase();
+    function filterClientsTable(textFilter, dateFilter) {
         const rows = tableBodyClients.getElementsByTagName('tr');
+        
         // Remove any previous temporary rows
         const prevTemps = tableBodyClients.querySelectorAll('tr[data-temp="true"]');
         prevTemps.forEach(t => t.remove());
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            let text = row.dataset.searchText;
-            if (!text) {
-                const cells = row.getElementsByTagName('td');
-                const parts = [];
-                // Collect the same columns as original logic: 0,1,2,4,8 (if present)
-                if (cells[0]) parts.push(cells[0].innerText.toLowerCase());
-                if (cells[1]) parts.push(cells[1].innerText.toLowerCase());
-                if (cells[2]) parts.push(cells[2].innerText.toLowerCase());
-                if (cells[4]) parts.push(cells[4].innerText.toLowerCase());
-                if (cells[8]) parts.push(cells[8].innerText.toLowerCase());
-                text = parts.join(' ');
-                row.dataset.searchText = text;
-            }
 
-            if (filter === '' || text.indexOf(filter) > -1) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        }
-
-        // If filter looks like a numeric code, ensure we check codigo_venta specifically.
-        if (filter !== '' && /^\d+$/.test(filter)) {
-            // Check if any local row has the same codigo in column 0
-            const rowsNow = tableBodyClients.getElementsByTagName('tr');
-            let codeMatch = false;
-            for (let i = 0; i < rowsNow.length; i++) {
-                const c0 = rowsNow[i].getElementsByTagName('td')[0];
-                if (c0 && String(c0.innerText).trim() === filter) {
-                    codeMatch = true;
-                    break;
+        // If date filter is active, use only date
+        if (dateFilter) {
+            currentDateFilter = dateFilter;
+            btnClearDateFilter.style.display = 'inline-block';
+            
+            // Filter local rows by exact date match
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const rowDate = row.dataset.rawDate || '';
+                if (rowDate === dateFilter) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
                 }
             }
-
-            if (!codeMatch && lastRemoteQuery !== filter) {
-                lastRemoteQuery = filter;
-                (async () => {
-                    const remote = await findSaleRemote(filter);
-                    if (remote) {
-                        const tempRow = renderClientRowFromSale(remote, true);
-                        tableBodyClients.prepend(tempRow);
-                    }
-                })();
-            }
-        } else {
-            // clear last query when input not numeric to allow new searches later
-            lastRemoteQuery = null;
-
-            if (filter !== '') {
-                const currentSearchSequence = ++remoteSearchSequence;
-                (async () => {
-                    const { data: matchingClients, error: clientsError } = await _supabase
-                        .from('clientes')
-                        .select('id')
-                        .ilike('nombre', `%${filter}%`)
-                        .limit(100);
-
-                    if (clientsError || currentSearchSequence !== remoteSearchSequence) return;
-
-                    const clientIds = (matchingClients || []).map(client => client.id);
-                    if (clientIds.length === 0) return;
-
-                    const { data: remoteSales, error: salesError } = await _supabase
+            
+            // Fetch remote sales for this date
+            (async () => {
+                try {
+                    const { data: remoteSales, error } = await _supabase
                         .from('ventas')
                         .select(`
                             *,
                             clientes (nombre, celular),
                             ventas_pagos (id)
                         `)
-                        .in('cliente_id', clientIds)
+                        .eq('fecha', dateFilter)
                         .order('codigo_venta', { ascending: true });
 
-                    if (salesError || currentSearchSequence !== remoteSearchSequence) return;
+                    if (error) {
+                        console.error('Error fetching sales by date:', error);
+                        return;
+                    }
 
                     const localSaleIds = new Set(
                         Array.from(tableBodyClients.querySelectorAll('tr[data-id]'))
@@ -3063,25 +3028,175 @@ if (searchClientInput && tableBodyClients) {
                             tableBodyClients.appendChild(remoteRow);
                         }
                     });
-                })();
+                } catch (err) {
+                    console.error('Error in date filter:', err);
+                }
+            })();
+        } else {
+            // Text search mode
+            currentDateFilter = null;
+            btnClearDateFilter.style.display = 'none';
+            
+            const filterLower = (textFilter || '').trim().toLowerCase();
+            
+            // Show/hide rows based on searchable text
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                let text = row.dataset.searchText;
+                if (!text) {
+                    const cells = row.getElementsByTagName('td');
+                    const parts = [];
+                    if (cells[0]) parts.push(cells[0].innerText.toLowerCase());
+                    if (cells[1]) parts.push(cells[1].innerText.toLowerCase());
+                    if (cells[2]) parts.push(cells[2].innerText.toLowerCase());
+                    if (cells[4]) parts.push(cells[4].innerText.toLowerCase());
+                    if (cells[8]) parts.push(cells[8].innerText.toLowerCase());
+                    text = parts.join(' ');
+                    row.dataset.searchText = text;
+                }
+
+                if (filterLower === '' || text.indexOf(filterLower) > -1) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+
+            // If filter looks like a numeric code, search remotely
+            if (filterLower !== '' && /^\d+$/.test(filterLower)) {
+                const rowsNow = tableBodyClients.getElementsByTagName('tr');
+                let codeMatch = false;
+                for (let i = 0; i < rowsNow.length; i++) {
+                    const c0 = rowsNow[i].getElementsByTagName('td')[0];
+                    if (c0 && String(c0.innerText).trim() === filterLower) {
+                        codeMatch = true;
+                        break;
+                    }
+                }
+
+                if (!codeMatch && lastRemoteQuery !== filterLower) {
+                    lastRemoteQuery = filterLower;
+                    (async () => {
+                        const remote = await findSaleRemote(filterLower);
+                        if (remote) {
+                            const tempRow = renderClientRowFromSale(remote, true);
+                            tableBodyClients.prepend(tempRow);
+                        }
+                    })();
+                }
             } else {
-                remoteSearchSequence++;
+                lastRemoteQuery = null;
+
+                if (filterLower !== '') {
+                    const currentSearchSequence = ++remoteSearchSequence;
+                    (async () => {
+                        const localSaleIds = new Set(
+                            Array.from(tableBodyClients.querySelectorAll('tr[data-id]'))
+                                .map(row => row.getAttribute('data-id'))
+                        );
+
+                        // Search 1: By client name
+                        const { data: matchingClients, error: clientsError } = await _supabase
+                            .from('clientes')
+                            .select('id')
+                            .ilike('nombre', `%${filterLower}%`)
+                            .limit(100);
+
+                        if (clientsError || currentSearchSequence !== remoteSearchSequence) return;
+
+                        const clientIds = (matchingClients || []).map(client => client.id);
+                        
+                        // Search 2: By montura (datos_compra)
+                        const { data: salesByMontura, error: monturaError } = await _supabase
+                            .from('ventas')
+                            .select(`
+                                *,
+                                clientes (nombre, celular),
+                                ventas_pagos (id)
+                            `)
+                            .ilike('datos_compra', `%${filterLower}%`)
+                            .order('codigo_venta', { ascending: true })
+                            .limit(100);
+
+                        if (monturaError || currentSearchSequence !== remoteSearchSequence) return;
+
+                        const allRemoteSales = [];
+                        
+                        if (clientIds.length > 0) {
+                            const { data: salesByClient, error: salesError } = await _supabase
+                                .from('ventas')
+                                .select(`
+                                    *,
+                                    clientes (nombre, celular),
+                                    ventas_pagos (id)
+                                `)
+                                .in('cliente_id', clientIds)
+                                .order('codigo_venta', { ascending: true });
+
+                            if (!salesError && salesByClient) {
+                                allRemoteSales.push(...salesByClient);
+                            }
+                        }
+                        
+                        if (salesByMontura) {
+                            allRemoteSales.push(...salesByMontura);
+                        }
+
+                        const seenSales = new Set();
+                        allRemoteSales.forEach(sale => {
+                            const saleId = String(sale.id);
+                            if (!seenSales.has(saleId) && !localSaleIds.has(saleId)) {
+                                seenSales.add(saleId);
+                                const remoteRow = renderClientRowFromSale(sale, true);
+                                remoteRow.style.display = '';
+                                tableBodyClients.appendChild(remoteRow);
+                            }
+                        });
+                    })();
+                } else {
+                    remoteSearchSequence++;
+                }
             }
         }
     }
 
-    searchClientInput.addEventListener('input', function () {
-        clearTimeout(clientTimer);
-        const val = this.value;
-        clientTimer = setTimeout(() => filterClientsTable(val), 180);
-    });
-
-    searchClientInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
+    // Event listener for text search input
+    if (searchClientTextInput) {
+        searchClientTextInput.addEventListener('input', function () {
             clearTimeout(clientTimer);
-            filterClientsTable(this.value);
-        }
-    });
+            const textVal = this.value;
+            clientTimer = setTimeout(() => filterClientsTable(textVal, searchClientDateInput?.value || null), 180);
+        });
+
+        searchClientTextInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                clearTimeout(clientTimer);
+                filterClientsTable(this.value, searchClientDateInput?.value || null);
+            }
+        });
+    }
+
+    // Event listener for date picker
+    if (searchClientDateInput) {
+        searchClientDateInput.addEventListener('change', function () {
+            clearTimeout(clientTimer);
+            const dateVal = this.value;
+            // Clear text search when date is selected
+            if (searchClientTextInput) searchClientTextInput.value = '';
+            filterClientsTable('', dateVal || null);
+        });
+    }
+
+    // Clear date filter button
+    if (btnClearDateFilter) {
+        btnClearDateFilter.addEventListener('click', function () {
+            if (searchClientTextInput) searchClientTextInput.value = '';
+            if (searchClientDateInput) searchClientDateInput.value = '';
+            currentDateFilter = null;
+            btnClearDateFilter.style.display = 'none';
+            filterClientsTable('', null);
+        });
+    }
 }
 
 // ==========================================

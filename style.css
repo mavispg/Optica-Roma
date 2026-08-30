@@ -544,6 +544,25 @@ input[type=number] {
     color: #555;
 }
 
+.btn-secondary {
+    background: #666;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    font-size: 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.3s;
+}
+
+.btn-secondary:hover {
+    background: #555;
+}
+
 .btn-green {
     background: #009900; /* Green from wireframe */
     color: #fff;
