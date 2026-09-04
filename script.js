@@ -241,24 +241,32 @@ function formatPurchaseDataForDisplay(dataString) {
     
     let parts = [];
     if (dataString.includes('|')) {
-        // Structured format: Luna | Medida | Montura
         parts = dataString.split('|').map(p => p.trim());
     } else {
-        // Legacy formatted string
         parts = dataString.split(' , ').map(p => p.trim());
     }
     
     let html = '<div class="purchase-data">';
     
     if (dataString.includes('|')) {
+        const isNewFormat = parts.length >= 7;
+
         if (parts[0]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Luna:</span>${parts[0]}</span>`;
         if (parts[1]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Medida:</span>${parts[1]}</span>`;
-        if (parts[2]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>${parts[2]}</span>`;
-        if (parts[3]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Consulta:</span>${parts[3]}</span>`;
-        if (parts[4]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Otros:</span>${parts[4]}</span>`;
-        if (parts[5]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Vendedora:</span>${parts[5]}</span>`;
+
+        if (isNewFormat) {
+            if (parts[2]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Laboratorio:</span>${parts[2]}</span>`;
+            if (parts[3]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>${parts[3]}</span>`;
+            if (parts[4]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Consulta:</span>${parts[4]}</span>`;
+            if (parts[5]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Otros:</span>${parts[5]}</span>`;
+            if (parts[6]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Vendedora:</span>${parts[6]}</span>`;
+        } else {
+            if (parts[2]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Montura:</span>${parts[2]}</span>`;
+            if (parts[3]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Consulta:</span>${parts[3]}</span>`;
+            if (parts[4]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Otros:</span>${parts[4]}</span>`;
+            if (parts[5]) html += `<span class="purchase-data-item"><span class="purchase-data-label">Vendedora:</span>${parts[5]}</span>`;
+        }
     } else {
-        // Fallback for old records
         if (parts.length === 1) {
             html += `<span class="purchase-data-item">${parts[0]}</span>`;
         } else if (parts.length === 2) {
@@ -374,7 +382,18 @@ if(btnAdd) {
 }
 
 // LABORATORIES DATA MANAGEMENT
-let laboratories = JSON.parse(localStorage.getItem('optica_laboratories')) || ['SHINGWA', 'CRISOL', 'EYES'];
+let laboratories = [];
+const storedLaboratories = localStorage.getItem('optica_laboratories');
+if (storedLaboratories) {
+    try {
+        const parsed = JSON.parse(storedLaboratories);
+        if (Array.isArray(parsed)) {
+            laboratories = parsed;
+        }
+    } catch (error) {
+        console.error('Error parsing stored laboratories:', error);
+    }
+}
 
 function saveLaboratories() {
     localStorage.setItem('optica_laboratories', JSON.stringify(laboratories));
@@ -1776,22 +1795,18 @@ async function fetchVendedoras() {
         
         if (error) throw error;
 
-        // Populate Main Dropdown
         el.innerHTML = '<option value="">Vendedora</option>';
         
-        // Populate Management List
         if (container) container.innerHTML = '';
 
         if (!data || data.length === 0) return;
 
         data.forEach(v => {
-            // Dropdown option
             const opt = document.createElement('option');
             opt.value = v.nombre;
             opt.text = v.nombre;
             el.appendChild(opt);
 
-            // Management item
             if (container) {
                 const item = document.createElement('div');
                 item.className = 'vendedora-item';
@@ -1807,6 +1822,122 @@ async function fetchVendedoras() {
     } catch (err) {
         console.error('Error in fetchVendedoras:', err);
     }
+}
+
+function syncLaboratoriosSelect() {
+    const el = document.getElementById('sel_laboratorio');
+    const container = document.getElementById('laboratoriosListContainer');
+    if (!el) return;
+
+    const saved = localStorage.getItem('optica_laboratories');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+                laboratories = parsed;
+            } else {
+                laboratories = [];
+            }
+        } catch (error) {
+            console.error('Error parsing stored laboratories:', error);
+            laboratories = [];
+        }
+    } else {
+        laboratories = [];
+    }
+
+    el.innerHTML = '<option value="">Laboratorio</option>';
+    if (container) container.innerHTML = '';
+
+    laboratories.forEach(lab => {
+        const opt = document.createElement('option');
+        opt.value = lab;
+        opt.text = lab;
+        el.appendChild(opt);
+
+        if (container) {
+            const item = document.createElement('div');
+            item.className = 'vendedora-item';
+            item.innerHTML = `
+                <span>${lab}</span>
+                <button class="btn-delete-v" onclick="deleteLaboratorio('${lab}')">
+                    <i class='bx bx-trash'></i>
+                </button>
+            `;
+            container.appendChild(item);
+        }
+    });
+}
+
+function saveLaboratories() {
+    localStorage.setItem('optica_laboratories', JSON.stringify(laboratories));
+}
+
+async function deleteLaboratorio(name) {
+    const confirmed = await showCustomConfirm(`¿Seguro que deseas eliminar "${name}"?`, {
+        title: 'ELIMINAR LABORATORIO',
+        confirmText: 'Eliminar',
+        isDanger: true
+    });
+
+    if (!confirmed) return;
+
+    laboratories = laboratories.filter(lab => lab !== name);
+    saveLaboratories();
+    syncLaboratoriosSelect();
+
+    const current = document.getElementById('sel_laboratorio');
+    if (current && current.value === name) {
+        current.value = '';
+    }
+    updatePurchaseDataString();
+}
+
+const bAddLab = document.getElementById('btnAddLaboratorio');
+if (bAddLab) {
+    bAddLab.addEventListener('click', () => {
+        const modalLab = document.getElementById('addLaboratorioModal');
+        if (modalLab) {
+            modalLab.style.display = 'block';
+            syncLaboratoriosSelect();
+        }
+    });
+}
+
+const cBtnLab = document.querySelector('.laboratorio-close');
+if (cBtnLab) {
+    cBtnLab.addEventListener('click', () => {
+        const modalLab = document.getElementById('addLaboratorioModal');
+        if (modalLab) modalLab.style.display = 'none';
+    });
+}
+
+const afLaboratorio = document.getElementById('addLaboratorioForm');
+if (afLaboratorio) {
+    afLaboratorio.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const labInput = document.getElementById('lab_name');
+        const labName = labInput ? labInput.value.trim() : '';
+        if (!labName) return;
+
+        const normalized = labName.toUpperCase();
+        if (!laboratories.includes(normalized)) {
+            laboratories.push(normalized);
+            saveLaboratories();
+        }
+
+        syncLaboratoriosSelect();
+
+        const selLab = document.getElementById('sel_laboratorio');
+        if (selLab) selLab.value = normalized;
+
+        updatePurchaseDataString();
+
+        const modalLab = document.getElementById('addLaboratorioModal');
+        if (modalLab) modalLab.style.display = 'none';
+        afLaboratorio.reset();
+        await showCustomAlert(`Laboratorio ${normalized} agregado correctamente`, 'EXITO');
+    });
 }
 
 // Delete vendedora logic
@@ -1899,10 +2030,9 @@ function parseCurrencyValue(value) {
 }
 
 function updateClientProductDropdowns() {
-    // 1. Fetch persistent vendedoras
     fetchVendedoras();
+    syncLaboratoriosSelect();
 
-    // 2. Harvest Monturas Data only if not already loaded from fetchMonturas
     if (monturasList.length === 0) {
         const tableMont = getEl('monturasTable');
         if (tableMont) {
@@ -1957,6 +2087,10 @@ function updateClientProductDropdowns() {
     // Reset Vendedora
     const selVendedora = getEl('sel_vendedora');
     if(selVendedora) selVendedora.value = '';
+
+    // Reset Laboratorio
+    const selLaboratorio = getEl('sel_laboratorio');
+    if(selLaboratorio) selLaboratorio.value = '';
     
     // Reset Consulta
     const selConsulta = getEl('sel_consulta');
@@ -2050,6 +2184,8 @@ const cOth = getEl('c_others');
 if(cOth) cOth.addEventListener('input', updatePurchaseDataString);
 const sVend = getEl('sel_vendedora');
 if(sVend) sVend.addEventListener('change', updatePurchaseDataString);
+const sLab = getEl('sel_laboratorio');
+if(sLab) sLab.addEventListener('change', updatePurchaseDataString);
     
 // Split Payment Toggle Logic
 const chkSplitPayment = document.getElementById('chk_split_payment');
@@ -2096,6 +2232,7 @@ function updatePurchaseDataString() {
     const cmPrice = getEl('c_montura_price');
     const cOtherFields = getEl('c_others');
     const sVendedora = getEl('sel_vendedora');
+    const sLaboratorio = getEl('sel_laboratorio');
     const cDI = getEl('c_data');
 
     const consulta = sConsulta ? sConsulta.value : '';
@@ -2106,8 +2243,8 @@ function updatePurchaseDataString() {
     }
     
     const measure = clnMeasure ? clnMeasure.value : '';
+    const laboratorio = sLaboratorio ? sLaboratorio.value : '';
     
-    // Tag-based monturas (selectedMonturas is a global array)
     let monturasText = selectedMonturas.length > 0 ? selectedMonturas.map(m => m.name).join(', ') : '';
     if (monturasText && cmPrice && cmPrice.value) {
         monturasText += ` (S/. ${parseFloat(cmPrice.value).toFixed(2)})`;
@@ -2116,9 +2253,8 @@ function updatePurchaseDataString() {
     const others = cOtherFields ? cOtherFields.value : '';
     const vendedora = sVendedora ? sVendedora.value : '';
     
-    // Use structured format Luna|Measure|MonturaText|Consulta|Otros|Vendedora
     if (cDI) {
-        cDI.value = `${lunaName}|${measure}|${monturasText}|${consulta}|${others}|${vendedora}`;
+        cDI.value = `${lunaName}|${measure}|${laboratorio}|${monturasText}|${consulta}|${others}|${vendedora}`;
     }
 }
 
@@ -2235,7 +2371,7 @@ if(addFormClient) {
 
             // 2. Consultation to Expense logic (DO THIS BEFORE SALE TO GET ID)
             let egreso_id = isEditingClient ? originalEgresoId : null;
-            const consultationPart = data.split('|')[3];
+            const consultationPart = data.split('|')[4];
             const consultaName = consultationPart ? consultationPart.trim() : '';
 
             const doctorChanged = originalConsultaName !== consultaName;
@@ -2328,12 +2464,14 @@ if(addFormClient) {
             let luna_id = null;
             const lunaName = data.split('|')[0];
             const lunaMeasure = data.split('|')[1];
+            const lunaLaboratorio = data.split('|')[2];
             if (lunaName && lunaName.trim() !== '') {
                 const { data: existingLuna } = await _supabase.from('lunas').select('id').eq('codigo', id_venta).limit(1);
                 const lunaEntry = {
                     codigo: id_venta,
                     nombre: lunaName,
                     medida: lunaMeasure,
+                    laboratorio: lunaLaboratorio || null,
                     fecha: dateRaw
                 };
                 if (existingLuna && existingLuna.length > 0) {
@@ -2428,6 +2566,7 @@ if(addFormClient) {
             }
 
             // 5. Stock Management
+            const wasEditingSale = isEditingClient;
             if (isEditingClient) {
                 // Restore stock for OLD monturas list
                 if (originalMonturaIds) {
@@ -2474,18 +2613,31 @@ if(addFormClient) {
             selectedMonturas = []; // CLEAR TAGS
 
             document.querySelector('#addClientModal h2').innerText = 'Agregar Nuevo Cliente';
-            fetchClients();
-            fetchMonturas();
-            fetchExpenses();
-            fetchLunas();
             addFormClient.reset();
             modalClient.style.display = 'none';
+
+            await refreshSaleRelatedData();
+
+            await showCustomAlert(
+                wasEditingSale ? 'Venta actualizada correctamente.' : 'Venta realizada correctamente.',
+                'VENTA GUARDADA'
+            );
 
         } catch (error) {
             console.error('Error saving client/sale:', error);
             await showCustomAlert('Error al guardar venta: ' + error.message, 'ERROR DE GUARDADO');
         }
     });
+}
+
+async function refreshSaleRelatedData() {
+    await Promise.all([
+        fetchClients(),
+        fetchMonturas(),
+        fetchExpenses(),
+        fetchLunas()
+    ]);
+    updateFinancialDashboards();
 }
 
 // Fetch Clients & Sales
@@ -2713,11 +2865,12 @@ window.showPaymentHistory = async function(ventaId) {
 window.deleteSale = async function(id) {
     if (await showCustomConfirm('¿Eliminar esta venta?', { title: 'ELIMINAR VENTA', confirmText: 'Eliminar', isDanger: true })) {
         try {
-            // 1. Get the IDs of the linked Luna, Egreso, and Montura
-            const { data: sale } = await _supabase.from('ventas').select('luna_id, egreso_id, montura_id, montura_ids').eq('id', id).single();
-            
-            // 2. Restore Montura Stock if it exists
-            // 2. Restore Montura Stock if it exists
+            const { data: sale } = await _supabase
+                .from('ventas')
+                .select('luna_id, egreso_id, montura_id, montura_ids, codigo_venta')
+                .eq('id', id)
+                .single();
+
             if (sale) {
                 const idsToRestore = sale.montura_ids ? sale.montura_ids.split(',') : (sale.montura_id ? [sale.montura_id] : []);
                 for (const mid of idsToRestore) {
@@ -2730,23 +2883,22 @@ window.deleteSale = async function(id) {
                         }
                     }
                 }
+
+                if (sale.luna_id) {
+                    await _supabase.from('lunas').delete().eq('id', sale.luna_id);
+                } else if (sale.codigo_venta) {
+                    await _supabase.from('lunas').delete().eq('codigo', sale.codigo_venta);
+                }
+
+                if (sale.egreso_id) {
+                    await _supabase.from('egresos').delete().eq('id', sale.egreso_id);
+                }
             }
 
-            // 3. Delete children if they exist
-            if (sale) {
-                if (sale.luna_id) await _supabase.from('lunas').delete().eq('id', sale.luna_id);
-                if (sale.egreso_id) await _supabase.from('egresos').delete().eq('id', sale.egreso_id);
-            }
-
-            // 4. Delete the sale itself
             const { error } = await _supabase.from('ventas').delete().eq('id', id);
             if (error) throw error;
             
-            fetchClients();
-            fetchMonturas();
-            fetchExpenses();
-            fetchLunas();
-            updateFinancialDashboards();
+            await refreshSaleRelatedData();
         } catch (error) {
             console.error('Error deleting sale:', error);
             await showCustomAlert('Error al eliminar venta');
@@ -2883,13 +3035,29 @@ if(tableBodyClients) {
                 
                 // Delete from Supabase
                 try {
+                    const { data: saleToDelete } = await _supabase
+                        .from('ventas')
+                        .select('luna_id, egreso_id, codigo_venta')
+                        .eq('id', saleId)
+                        .single();
+
+                    if (saleToDelete) {
+                        if (saleToDelete.luna_id) {
+                            await _supabase.from('lunas').delete().eq('id', saleToDelete.luna_id);
+                        } else if (saleToDelete.codigo_venta) {
+                            await _supabase.from('lunas').delete().eq('codigo', saleToDelete.codigo_venta);
+                        }
+
+                        if (saleToDelete.egreso_id) {
+                            await _supabase.from('egresos').delete().eq('id', saleToDelete.egreso_id);
+                        }
+                    }
+
                     const { error } = await _supabase.from('ventas').delete().eq('id', saleId);
                     if (error) throw error;
                     
                     await showCustomAlert('Venta eliminada correctamente', 'ÉXITO');
-                    fetchClients();
-                    fetchExpenses();
-                    updateFinancialDashboards();
+                    await refreshSaleRelatedData();
                 } catch (err) {
                     console.error('Error deleting sale:', err);
                     await showCustomAlert('Error al eliminar la venta: ' + err.message, 'ERROR');

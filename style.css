@@ -1941,7 +1941,8 @@ body.modal-open {
     font-weight: 700;
 }
 
-#addVendedoraForm button {
+#addVendedoraForm button,
+#addLaboratorioForm button {
     background: linear-gradient(135deg, #2e61b3, #4a90e2);
     color: white;
     border: none;
@@ -1952,15 +1953,19 @@ body.modal-open {
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(46, 97, 179, 0.2);
     letter-spacing: 0.5px;
+    width: 100%;
+    margin-top: 15px;
 }
 
-#addVendedoraForm button:hover {
+#addVendedoraForm button:hover,
+#addLaboratorioForm button:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(46, 97, 179, 0.3);
     background: linear-gradient(135deg, #244d8f, #357abd);
 }
 
-#addVendedoraForm button:active {
+#addVendedoraForm button:active,
+#addLaboratorioForm button:active {
     transform: translateY(0);
 }
 

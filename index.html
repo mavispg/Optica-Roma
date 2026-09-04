@@ -631,6 +631,14 @@
                         <input type="number" step="0.01" id="c_luna_price" placeholder="Precio de Luna (S/.)"
                             style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     </div>
+                    <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;">
+                        <select id="sel_laboratorio" required
+                            style="flex: 1; min-height: 32px; padding: 8px; border: 1px solid #cfcfcf; border-radius: 4px; background: #fff; font-size: 14px; box-sizing: border-box;">
+                            <option value="">Laboratorio</option>
+                        </select>
+                        <button type="button" id="btnAddLaboratorio" title="Agregar nuevo laboratorio"
+                            style="width: 36px; min-width: 36px; height: 32px; padding: 0; background: #2e61b3; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 20px; font-weight: 700; line-height: 1; display: inline-flex; align-items: center; justify-content: center;">+</button>
+                    </div>
                     <div id="selected_monturas_tags"
                         style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
                         <!-- Tags will appear here -->
@@ -649,13 +657,13 @@
                         <input type="text" id="c_others" placeholder="Otros (opcional)"
                             style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     </div>
-                    <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                    <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;">
                         <select id="sel_vendedora" required
-                            style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            style="flex: 1; min-height: 32px; padding: 8px; border: 1px solid #cfcfcf; border-radius: 4px; background: #fff; font-size: 14px; box-sizing: border-box;">
                             <option value="">Vendedora</option>
                         </select>
                         <button type="button" id="btnAddVendedora" title="Agregar nueva vendedora"
-                            style="padding: 8px 12px; background: #2e61b3; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 18px; font-weight: bold; line-height: 1;">+</button>
+                            style="width: 36px; min-width: 36px; height: 32px; padding: 0; background: #2e61b3; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 20px; font-weight: 700; line-height: 1; display: inline-flex; align-items: center; justify-content: center;">+</button>
                     </div>
                 </div>
 
@@ -777,6 +785,27 @@
             <div class="vendedoras-manage-section">
                 <h3>Gestionar Vendedoras</h3>
                 <div id="vendedorasListContainer" class="vendedoras-list">
+                    <!-- List populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO LABORATORIO -->
+    <div id="addLaboratorioModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn laboratorio-close">&times;</span>
+            <h2>Nuevo Laboratorio</h2>
+            <form id="addLaboratorioForm">
+                <div class="form-group">
+                    <label>Nombre del Laboratorio</label>
+                    <input type="text" id="lab_name" required>
+                </div>
+                <button type="submit" class="btn-primary">Guardar Laboratorio</button>
+            </form>
+            <div class="vendedoras-manage-section">
+                <h3>Gestionar Laboratorios</h3>
+                <div id="laboratoriosListContainer" class="vendedoras-list">
                     <!-- List populated by JS -->
                 </div>
             </div>
