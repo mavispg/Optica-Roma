@@ -431,8 +431,7 @@ window.addEventListener('click', (e) => {
 if(addForm) {
     addForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        // Get values
+
         const code = document.getElementById('code').value;
         const name = document.getElementById('name').value;
         const laboratory = document.getElementById('laboratoryInput').value;
@@ -442,44 +441,89 @@ if(addForm) {
         const date = document.getElementById('l_date').value;
 
         try {
+            let savedId = null;
+
             if (isEditing && currentEditRow) {
                 const id = currentEditRow.getAttribute('data-id');
                 const { error } = await _supabase
                     .from('lunas')
-                    .update({ 
-                        codigo: code, 
-                        nombre: name, 
-                        laboratorio: laboratory, 
-                        medida: measure, 
-                        precio_compra: buyPrice, 
-                        precio_venta: sellPrice, 
-                        fecha: date 
+                    .update({
+                        codigo: code,
+                        nombre: name,
+                        laboratorio: laboratory,
+                        medida: measure,
+                        precio_compra: buyPrice,
+                        precio_venta: sellPrice,
+                        fecha: date
                     })
                     .eq('id', id);
 
                 if (error) throw error;
+                savedId = id;
             } else {
-                const { error } = await _supabase
+                const { data, error } = await _supabase
                     .from('lunas')
-                    .insert([{ 
-                        codigo: code, 
-                        nombre: name, 
-                        laboratorio: laboratory, 
-                        medida: measure, 
-                        precio_compra: buyPrice, 
-                        precio_venta: sellPrice, 
-                        fecha: date 
-                    }]);
+                    .insert([{
+                        codigo: code,
+                        nombre: name,
+                        laboratorio: laboratory,
+                        medida: measure,
+                        precio_compra: buyPrice,
+                        precio_venta: sellPrice,
+                        fecha: date
+                    }])
+                    .select('id')
+                    .single();
 
                 if (error) throw error;
+                savedId = data?.id;
             }
 
-            // Refresh table from DB
-            fetchLunas();
-            
-            // Clear & Close
+            if (tableBody) {
+                if (isEditing && currentEditRow && savedId) {
+                    const row = currentEditRow;
+                    row.setAttribute('data-id', savedId);
+                    row.innerHTML = `
+                        <td>${code}</td>
+                        <td>${name}</td>
+                        <td>${laboratory || ''}</td>
+                        <td>${measure || ''}</td>
+                        <td>${formatCurrency(buyPrice?.toString() || '0')}</td>
+                        <td>${formatCurrency(sellPrice?.toString() || '0')}</td>
+                        <td>${date}</td>
+                        <td class="actions-cell">
+                            <div class="actions-wrapper">
+                                <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                            </div>
+                        </td>
+                    `;
+                } else if (savedId) {
+                    const newRow = document.createElement('tr');
+                    newRow.setAttribute('data-id', savedId);
+                    newRow.innerHTML = `
+                        <td>${code}</td>
+                        <td>${name}</td>
+                        <td>${laboratory || ''}</td>
+                        <td>${measure || ''}</td>
+                        <td>${formatCurrency(buyPrice?.toString() || '0')}</td>
+                        <td>${formatCurrency(sellPrice?.toString() || '0')}</td>
+                        <td>${date}</td>
+                        <td class="actions-cell">
+                            <div class="actions-wrapper">
+                                <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(newRow);
+                }
+            }
+
             addForm.reset();
             modal.style.display = 'none';
+            isEditing = false;
+            currentEditRow = null;
         } catch (error) {
             console.error('Error saving luna:', error);
             await showCustomAlert('Error al guardar: ' + error.message, 'ERROR DE GUARDADO');
@@ -498,7 +542,7 @@ async function fetchLunas() {
         if (error) throw error;
 
         if (tableBody) {
-            tableBody.innerHTML = '';
+            const fragment = document.createDocumentFragment();
             data.forEach(luna => {
                 const newRow = document.createElement('tr');
                 newRow.setAttribute('data-id', luna.id);
@@ -517,8 +561,10 @@ async function fetchLunas() {
                         </div>
                     </td>
                 `;
-                tableBody.appendChild(newRow);
+                fragment.appendChild(newRow);
             });
+            tableBody.innerHTML = '';
+            tableBody.appendChild(fragment);
         }
     } catch (error) {
         console.error('Error fetching lunas:', error);
@@ -711,15 +757,16 @@ window.addEventListener('click', (e) => {
 if(addFormMontura) {
     addFormMontura.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        // Get values
+
         const code = document.getElementById('m_code').value;
         const name = document.getElementById('m_name').value;
         const stockTotal = parseInt(document.getElementById('m_stock').value) || 0;
         const stockAvail = parseInt(document.getElementById('m_stock_available').value) || 0;
         const sellPrice = parseFloat(document.getElementById('m_sell_price').value) || 0;
-        
+
         try {
+            let savedId = null;
+
             if (isEditingMontura && currentEditRowMontura) {
                 const id = currentEditRowMontura.getAttribute('data-id');
                 const { error } = await _supabase
@@ -733,8 +780,9 @@ if(addFormMontura) {
                     })
                     .eq('id', id);
                 if (error) throw error;
+                savedId = id;
             } else {
-                const { error } = await _supabase
+                const { data, error } = await _supabase
                     .from('monturas')
                     .insert([{
                         codigo: code,
@@ -742,12 +790,52 @@ if(addFormMontura) {
                         stock_total: stockTotal,
                         stock_disponible: stockAvail,
                         precio_venta: sellPrice
-                    }]);
+                    }])
+                    .select('id')
+                    .single();
                 if (error) throw error;
+                savedId = data?.id;
             }
-            fetchMonturas();
+
+            if (tableBodyMonturas) {
+                if (isEditingMontura && currentEditRowMontura && savedId) {
+                    const row = currentEditRowMontura;
+                    row.setAttribute('data-id', savedId);
+                    row.innerHTML = `
+                        <td>${code}</td>
+                        <td>${name}</td>
+                        <td>${stockTotal}(${stockAvail})</td>
+                        <td>${formatCurrency(sellPrice?.toString())}</td>
+                        <td class="actions-cell">
+                            <div class="actions-wrapper">
+                                <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                            </div>
+                        </td>
+                    `;
+                } else if (savedId) {
+                    const newRow = document.createElement('tr');
+                    newRow.setAttribute('data-id', savedId);
+                    newRow.innerHTML = `
+                        <td>${code}</td>
+                        <td>${name}</td>
+                        <td>${stockTotal}(${stockAvail})</td>
+                        <td>${formatCurrency(sellPrice?.toString())}</td>
+                        <td class="actions-cell">
+                            <div class="actions-wrapper">
+                                <button class="icon-btn edit-btn"><i class='bx bxs-edit-alt'></i></button>
+                                <button class="icon-btn delete-btn"><i class='bx bxs-trash'></i></button>
+                            </div>
+                        </td>
+                    `;
+                    tableBodyMonturas.appendChild(newRow);
+                }
+            }
+
             addFormMontura.reset();
             modalMontura.style.display = 'none';
+            isEditingMontura = false;
+            currentEditRowMontura = null;
         } catch (error) {
             console.error('Error saving montura:', error);
             await showCustomAlert('Error al guardar montura: ' + (error.message || JSON.stringify(error)), 'ERROR DE GUARDADO');
@@ -765,7 +853,7 @@ async function fetchMonturas() {
         if (error) throw error;
 
         if (tableBodyMonturas) {
-            tableBodyMonturas.innerHTML = '';
+            const fragment = document.createDocumentFragment();
             monturasList = data.map(m => ({
                 id: m.id,
                 name: m.nombre,
@@ -787,10 +875,12 @@ async function fetchMonturas() {
                         </div>
                     </td>
                 `;
-                tableBodyMonturas.appendChild(newRow);
+                fragment.appendChild(newRow);
             });
+            tableBodyMonturas.innerHTML = '';
+            tableBodyMonturas.appendChild(fragment);
             updateDashboard();
-            updateClientProductDropdowns(); // Refresh dropdown in client modal
+            updateClientProductDropdowns();
         }
     } catch (error) {
         console.error('Error fetching monturas:', error);
