@@ -1798,6 +1798,7 @@ let originalConsultaName = null; // TRACK ORIGINAL DOCTOR FOR CLEANUP
 let originalSaleDate = null; // TRACK ORIGINAL DATE FOR CLEANUP
 let originalEgresoId = null; // TRACK ORIGINAL EGRESO LINK
 let selectedMonturas = []; // Array of {id, name} for current form
+let selectedLaboratorios = []; // Array of strings for current form
 
 
 // Helper: Calculate Balance
@@ -1830,6 +1831,8 @@ if(bAddCl) {
         originalEgresoId = null;
         initialAdvanceOnEdit = 0;
         selectedMonturas = [];
+        selectedLaboratorios = [];
+        renderLaboratorioTags();
         
         const h2 = document.querySelector('#addClientModal h2');
         if (h2) h2.innerText = 'Agregar Nuevo Cliente';
@@ -1936,6 +1939,8 @@ function syncLaboratoriosSelect() {
         laboratories = [];
     }
 
+    const currentValue = selectedLaboratorios.length > 0 ? selectedLaboratorios[selectedLaboratorios.length - 1] : '';
+
     el.innerHTML = '<option value="">Laboratorio</option>';
     if (container) container.innerHTML = '';
 
@@ -1957,6 +1962,12 @@ function syncLaboratoriosSelect() {
             container.appendChild(item);
         }
     });
+
+    if (currentValue && laboratories.includes(currentValue)) {
+        el.value = currentValue;
+    } else {
+        el.value = '';
+    }
 }
 
 function saveLaboratories() {
@@ -2019,8 +2030,10 @@ if (afLaboratorio) {
         syncLaboratoriosSelect();
 
         const selLab = document.getElementById('sel_laboratorio');
-        if (selLab) selLab.value = normalized;
-
+    if (selLab) {
+        selLab.value = normalized;
+        addSelectedLaboratorio(normalized);
+    }
         updatePurchaseDataString();
 
         const modalLab = document.getElementById('addLaboratorioModal');
@@ -2181,6 +2194,8 @@ function updateClientProductDropdowns() {
     // Reset Laboratorio
     const selLaboratorio = getEl('sel_laboratorio');
     if(selLaboratorio) selLaboratorio.value = '';
+    selectedLaboratorios = [];
+    renderLaboratorioTags();
     
     // Reset Consulta
     const selConsulta = getEl('sel_consulta');
@@ -2214,6 +2229,53 @@ window.removeMonturaTag = function(index) {
     selectedMonturas.splice(index, 1);
     renderMonturaTags();
 };
+
+function renderLaboratorioTags() {
+    const laboratorioTagsContainer = getEl('selected_laboratorios_tags');
+    if (!laboratorioTagsContainer) return;
+    laboratorioTagsContainer.innerHTML = '';
+
+    selectedLaboratorios.forEach((lab, index) => {
+        const tag = document.createElement('div');
+        tag.className = 'laboratorio-tag';
+        tag.style.cssText = 'background: #eefbf5; color: #2f7d56; border: 1px solid #bfe7d3; padding: 4px 10px; border-radius: 20px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; border-bottom: 2px solid #90d9b3;';
+
+        tag.innerHTML = `
+            <i class='bx bx-test-tube' style='font-size: 16px;'></i>
+            <span>${lab}</span>
+            <i class='bx bx-x' style='cursor: pointer; font-size: 18px; color: #c53030; background: #fff5f5; border-radius: 50%;' onclick="removeLaboratorioTag(${index})"></i>
+        `;
+        laboratorioTagsContainer.appendChild(tag);
+    });
+    updatePurchaseDataString();
+}
+
+window.removeLaboratorioTag = function(index) {
+    selectedLaboratorios.splice(index, 1);
+    renderLaboratorioTags();
+    const labSelect = getEl('sel_laboratorio');
+    if (labSelect) labSelect.value = '';
+};
+
+function addSelectedLaboratorio(labName) {
+    const normalized = (labName || '').trim();
+    if (!normalized) return;
+    if (!selectedLaboratorios.includes(normalized)) {
+        selectedLaboratorios.push(normalized);
+    }
+    renderLaboratorioTags();
+    const labSelect = getEl('sel_laboratorio');
+    if (labSelect) labSelect.value = '';
+}
+
+const sLab = getEl('sel_laboratorio');
+if(sLab) {
+    sLab.addEventListener('change', function() {
+        if (this.value) {
+            addSelectedLaboratorio(this.value);
+        }
+    });
+}
 
 const smPivotEl = getEl('sel_montura_pivot');
 if(smPivotEl) {
@@ -2274,9 +2336,7 @@ const cOth = getEl('c_others');
 if(cOth) cOth.addEventListener('input', updatePurchaseDataString);
 const sVend = getEl('sel_vendedora');
 if(sVend) sVend.addEventListener('change', updatePurchaseDataString);
-const sLab = getEl('sel_laboratorio');
-if(sLab) sLab.addEventListener('change', updatePurchaseDataString);
-    
+
 // Split Payment Toggle Logic
 const chkSplitPayment = document.getElementById('chk_split_payment');
 const splitPaymentContainer = document.getElementById('split_payment_container');
@@ -2333,7 +2393,9 @@ function updatePurchaseDataString() {
     }
     
     const measure = clnMeasure ? clnMeasure.value : '';
-    const laboratorio = sLaboratorio ? sLaboratorio.value : '';
+    const laboratorio = selectedLaboratorios.length > 0
+        ? selectedLaboratorios.join(', ')
+        : (sLaboratorio ? sLaboratorio.value : '');
     
     let monturasText = selectedMonturas.length > 0 ? selectedMonturas.map(m => m.name).join(', ') : '';
     if (monturasText && cmPrice && cmPrice.value) {
@@ -3045,6 +3107,12 @@ window.editSale = async function(id) {
         if (parts.length >= 5) {
             document.getElementById('c_luna_name').value = parts[0]?.trim() || '';
             document.getElementById('c_luna_measure').value = parts[1]?.trim() || '';
+            selectedLaboratorios = [];
+            const labsText = (parts[2] || '').trim();
+            if (labsText) {
+                selectedLaboratorios = labsText.split(',').map(l => l.trim()).filter(Boolean);
+            }
+            renderLaboratorioTags();
             document.getElementById('sel_consulta').value = parts[3]?.trim() || '';
             originalConsultaName = parts[3]?.trim() || '';
             document.getElementById('c_others').value = parts[4]?.trim() || '';
@@ -3052,6 +3120,12 @@ window.editSale = async function(id) {
             // Fallback for older format
             document.getElementById('c_luna_name').value = parts[0]?.trim() || '';
             document.getElementById('c_luna_measure').value = parts[1]?.trim() || '';
+            selectedLaboratorios = [];
+            const labsText = (parts[2] || '').trim();
+            if (labsText) {
+                selectedLaboratorios = labsText.split(',').map(l => l.trim()).filter(Boolean);
+            }
+            renderLaboratorioTags();
             document.getElementById('sel_consulta').value = parts[3]?.trim() || '';
             originalConsultaName = parts[3]?.trim() || '';
         }
