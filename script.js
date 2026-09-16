@@ -986,7 +986,7 @@ function updateDashboard() {
     const lunasTableBody = document.querySelector('#lunasTable tbody');
     const monturasTableBody = document.querySelector('#monturasTable tbody');
 
-    // Helper to sum stock column (Index 5)
+    // Sum the available stock shown as Total(Available).
     function calculateTotalStock(tbody) {
         if (!tbody) return 0;
         let total = 0;
@@ -1008,18 +1008,13 @@ function updateDashboard() {
             
             // Let's refactor this function slightly or just hardcode for valid tables.
             
-             if (cells.length > 2) {
-                 // For Monturas (Length 6), Stock is 2
-                 // For Lunas (Length 7), we don't sum stock (it's count).
-                 
-                 // If the table corresponds to Monturas, we use index 2.
-                 // We can check if `tbody` is `monturasTableBody`.
-                 if (tbody === monturasTableBody) {
-                    const stockVal = parseInt(cells[2].innerText);
-                     if (!isNaN(stockVal)) {
-                        total += stockVal;
-                    }
-                 }
+            if (tbody === monturasTableBody && cells.length > 2) {
+                const stockText = cells[2].innerText.trim();
+                const stockMatch = stockText.match(/\((\d+)\)/);
+                const stockVal = stockMatch ? parseInt(stockMatch[1], 10) : parseInt(stockText, 10);
+                if (!isNaN(stockVal)) {
+                    total += stockVal;
+                }
             }
         });
         return total;
@@ -1079,6 +1074,20 @@ function updateDashboard() {
     fetchMonturasSalesStats();
 }
 
+// Extract montura names from both the current and legacy purchase formats.
+function getMonturaNamesFromSale(sale) {
+    const parts = (sale?.datos_compra || '').split('|').map(part => part.trim());
+    const monturaIndex = parts.length >= 7 ? 3 : 2;
+    const monturasText = parts[monturaIndex] || '';
+
+    if (!monturasText) return [];
+    return monturasText
+        .replace(/\s*\(S\/\.\s*[\d.,]+\)\s*$/i, '')
+        .split(',')
+        .map(name => name.trim())
+        .filter(Boolean);
+}
+
 /**
  * Counts frame sales from the 'ventas' table in Supabase
  * filtered by Today and Current Week (Monday to Today).
@@ -1104,8 +1113,7 @@ async function fetchMonturasSalesStats() {
         // 1. Fetch Today
         const { data: dataHoy, error: errorHoy } = await _supabase
             .from('ventas')
-            .select('datos_compra')
-            .not('montura_id', 'is', null)
+            .select('datos_compra, montura_id, montura_ids')
             .eq('fecha', dateTodayStr);
         
         if (errorHoy) throw errorHoy;
@@ -1113,17 +1121,14 @@ async function fetchMonturasSalesStats() {
         let countHoy = 0;
         if (dataHoy) {
             dataHoy.forEach(sale => {
-                const parts = sale.datos_compra.split('|');
-                const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
-                countHoy += monturasNames.length;
+                countHoy += getMonturaNamesFromSale(sale).length;
             });
         }
 
         // 2. Fetch Weekly
         const { data: dataSemana, error: errorSemana } = await _supabase
             .from('ventas')
-            .select('datos_compra')
-            .not('montura_id', 'is', null)
+            .select('datos_compra, montura_id, montura_ids')
             .gte('fecha', mondayStr)
             .lte('fecha', dateTodayStr);
 
@@ -1132,9 +1137,7 @@ async function fetchMonturasSalesStats() {
         let countSemana = 0;
         if (dataSemana) {
             dataSemana.forEach(sale => {
-                const parts = sale.datos_compra.split('|');
-                const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
-                countSemana += monturasNames.length;
+                countSemana += getMonturaNamesFromSale(sale).length;
             });
         }
 
@@ -1165,7 +1168,7 @@ async function showMonturaDetailReport(period) {
         const dayOfMonth = String(today.getDate()).padStart(2, '0');
         const dateTodayStr = `${year}-${month}-${dayOfMonth}`;
 
-        let query = _supabase.from('ventas').select('codigo_venta, datos_compra, fecha').not('montura_id', 'is', null);
+        let query = _supabase.from('ventas').select('codigo_venta, datos_compra, fecha, montura_id, montura_ids');
 
         if (period === 'hoy') {
             title.innerText = 'Monturas Vendidas Hoy';
@@ -1194,8 +1197,7 @@ async function showMonturaDetailReport(period) {
         if (period === 'hoy') {
             let dailyTotal = 0;
             data.forEach(sale => {
-                const parts = sale.datos_compra.split('|');
-                const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
+                const monturasNames = getMonturaNamesFromSale(sale);
                 
                 monturasNames.forEach(mName => {
                     const qty = 1;
@@ -1242,8 +1244,7 @@ async function showMonturaDetailReport(period) {
                     
                     let dayTotal = 0;
                     grouped[i].forEach(sale => {
-                        const parts = sale.datos_compra.split('|');
-                        const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
+                        const monturasNames = getMonturaNamesFromSale(sale);
                         
                         monturasNames.forEach(mName => {
                             const qty = 1;
@@ -1300,8 +1301,7 @@ function exportMonturaReportPDF(period, data) {
     if (period === 'hoy') {
         let totalHoy = 0;
         data.forEach(sale => {
-            const parts = sale.datos_compra.split('|');
-            const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
+            const monturasNames = getMonturaNamesFromSale(sale);
             monturasNames.forEach(mName => {
                 const qty = 1;
                 totalHoy += qty;
@@ -1329,8 +1329,7 @@ function exportMonturaReportPDF(period, data) {
                 tableData.push([ { content: daysNames[i], colSpan: 3, styles: { fillColor: [56, 161, 105], textColor: [255, 255, 255], fontStyle: 'bold' } } ]);
                 let daySum = 0;
                 grouped[i].forEach(sale => {
-                    const parts = sale.datos_compra.split('|');
-                    const monturasNames = parts[2] ? parts[2].split(',').map(n => n.trim()) : ['Sin nombre'];
+                    const monturasNames = getMonturaNamesFromSale(sale);
                     monturasNames.forEach(mName => {
                         const qty = 1;
                         daySum += qty;
@@ -2136,6 +2135,9 @@ function updateClientProductDropdowns() {
     fetchVendedoras();
     syncLaboratoriosSelect();
 
+    const compareMonturaNames = (first, second) =>
+        first.name.localeCompare(second.name, 'es', { sensitivity: 'base' });
+
     if (monturasList.length === 0) {
         const tableMont = getEl('monturasTable');
         if (tableMont) {
@@ -2169,7 +2171,7 @@ function updateClientProductDropdowns() {
     const smPivot = getEl('sel_montura_pivot');
     if (smPivot) {
         smPivot.innerHTML = '<option value="">Seleccionar Montura</option>';
-        monturasList.forEach(m => {
+        [...monturasList].sort(compareMonturaNames).forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.id;
             opt.text = m.name;
@@ -3201,11 +3203,28 @@ if(tableBodyClients) {
                 try {
                     const { data: saleToDelete } = await _supabase
                         .from('ventas')
-                        .select('luna_id, egreso_id, codigo_venta')
+                        .select('luna_id, egreso_id, montura_id, montura_ids, codigo_venta')
                         .eq('id', saleId)
                         .single();
 
                     if (saleToDelete) {
+                        const idsToRestore = saleToDelete.montura_ids
+                            ? saleToDelete.montura_ids.split(',').filter(Boolean)
+                            : (saleToDelete.montura_id ? [saleToDelete.montura_id] : []);
+                        for (const monturaId of idsToRestore) {
+                            const { data: montura } = await _supabase
+                                .from('monturas')
+                                .select('stock_disponible')
+                                .eq('id', monturaId)
+                                .single();
+                            if (montura) {
+                                await _supabase
+                                    .from('monturas')
+                                    .update({ stock_disponible: montura.stock_disponible + 1 })
+                                    .eq('id', monturaId);
+                            }
+                        }
+
                         if (saleToDelete.luna_id) {
                             await _supabase.from('lunas').delete().eq('id', saleToDelete.luna_id);
                         } else if (saleToDelete.codigo_venta) {
