@@ -534,12 +534,21 @@ if(addForm) {
 // Fetch Lunas from Supabase
 async function fetchLunas() {
     try {
-        const { data, error } = await _supabase
-            .from('lunas')
-            .select('*')
-            .order('codigo', { ascending: true });
+        const data = [];
+        const pageSize = 1000;
+        let offset = 0;
+        while (true) {
+            const { data: page, error } = await _supabase
+                .from('lunas')
+                .select('*')
+                .order('codigo', { ascending: true })
+                .range(offset, offset + pageSize - 1);
 
-        if (error) throw error;
+            if (error) throw error;
+            data.push(...(page || []));
+            if (!page || page.length < pageSize) break;
+            offset += pageSize;
+        }
 
         if (tableBody) {
             const fragment = document.createDocumentFragment();
@@ -551,8 +560,8 @@ async function fetchLunas() {
                     <td>${luna.nombre}</td>
                     <td>${luna.laboratorio || ''}</td>
                     <td>${luna.medida || ''}</td>
-                    <td>${formatCurrency(luna.precio_compra?.toString() || '0')}</td>
-                    <td>${formatCurrency(luna.precio_venta?.toString() || '0')}</td>
+                    <td>${luna.precio_compra == null ? '—' : formatCurrency(luna.precio_compra.toString())}</td>
+                    <td>${luna.precio_venta == null ? '—' : formatCurrency(luna.precio_venta.toString())}</td>
                     <td>${luna.fecha}</td>
                     <td class="actions-cell">
                         <div class="actions-wrapper">
@@ -2442,7 +2451,7 @@ window.addEventListener('click', (e) => {
 function getStatusBadge(total, advance) {
     const balance = total - advance;
     if (balance <= 0) {
-        return '<span class="status-badge status-paid">CANCELADO</span>';
+        return '<span class="status-badge status-paid">PAGADO</span>';
     } else if (advance > 0) {
         return '<span class="status-badge status-advance">ADELANTO</span>';
     } else {
@@ -2620,7 +2629,13 @@ if(addFormClient) {
             const lunaMeasure = data.split('|')[1];
             const lunaLaboratorio = data.split('|')[2];
             if (lunaName && lunaName.trim() !== '') {
-                const { data: existingLuna } = await _supabase.from('lunas').select('id').eq('codigo', id_venta).limit(1);
+                const { data: existingLuna, error: lunaFetchError } = await _supabase
+                    .from('lunas')
+                    .select('id')
+                    .eq('codigo', id_venta)
+                    .limit(1);
+                if (lunaFetchError) throw lunaFetchError;
+
                 const lunaEntry = {
                     codigo: id_venta,
                     nombre: lunaName,
@@ -2629,11 +2644,21 @@ if(addFormClient) {
                     fecha: dateRaw
                 };
                 if (existingLuna && existingLuna.length > 0) {
-                    await _supabase.from('lunas').update(lunaEntry).eq('id', existingLuna[0].id);
+                    const { error: lunaUpdateError } = await _supabase
+                        .from('lunas')
+                        .update(lunaEntry)
+                        .eq('id', existingLuna[0].id);
+                    if (lunaUpdateError) throw lunaUpdateError;
                     luna_id = existingLuna[0].id;
                 } else {
-                    const { data: newLuna, error: lError } = await _supabase.from('lunas').insert([lunaEntry]).select();
-                    if (!lError && newLuna) luna_id = newLuna[0].id;
+                    const { data: newLuna, error: lunaInsertError } = await _supabase
+                        .from('lunas')
+                        .insert([lunaEntry])
+                        .select('id')
+                        .single();
+                    if (lunaInsertError) throw lunaInsertError;
+                    if (!newLuna) throw new Error('No se pudo confirmar el registro de la luna.');
+                    luna_id = newLuna.id;
                 }
             }
 
