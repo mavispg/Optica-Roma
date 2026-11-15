@@ -1816,6 +1816,7 @@ let originalSaleDate = null; // TRACK ORIGINAL DATE FOR CLEANUP
 let originalEgresoId = null; // TRACK ORIGINAL EGRESO LINK
 let selectedMonturas = []; // Array of {id, name} for current form
 let selectedLaboratorios = []; // Array of strings for current form
+let isSavingClientSale = false;
 
 
 // Helper: Calculate Balance
@@ -2487,6 +2488,24 @@ function findExpenseByLinkedId(clientId) {
 if(addFormClient) {
     addFormClient.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (isSavingClientSale) return;
+        isSavingClientSale = true;
+
+        const submitButton = addFormClient.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton ? submitButton.textContent : '';
+        let saveLockReleased = false;
+        const restoreSubmitButton = () => {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+                submitButton.removeAttribute('aria-busy');
+            }
+        };
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = isEditingClient ? 'Actualizando...' : 'Registrando...';
+            submitButton.setAttribute('aria-busy', 'true');
+        }
         
         const id_venta = document.getElementById('c_id').value.trim(); // User manually enters Venta ID
         const dateRaw = document.getElementById('c_date').value;
@@ -2517,6 +2536,16 @@ if(addFormClient) {
             let saleId = null;
             if (isEditingClient && currentEditRowClient) {
                 saleId = currentEditRowClient.getAttribute('data-id');
+            } else {
+                const { data: existingSales, error: existingSaleError } = await _supabase
+                    .from('ventas')
+                    .select('id')
+                    .eq('codigo_venta', id_venta)
+                    .limit(1);
+                if (existingSaleError) throw existingSaleError;
+                if (existingSales && existingSales.length > 0) {
+                    throw new Error(`El código de venta ${id_venta} ya está registrado.`);
+                }
             }
 
             // 1. Check/Insert Client
@@ -2563,12 +2592,13 @@ if(addFormClient) {
                 // CLEANUP OLD CONSULTATION IF (Doctor Changed OR (Date Changed AND NO Amount Change))
                 if (isEditingClient && originalConsultaName && (doctorChanged || (dateChanged && !isAmountChanged))) {
                     const oldBaseCat = `Consulta ${originalConsultaName}`;
-                    const { data: oldExp } = await _supabase
+                    const { data: oldExp, error: oldExpError } = await _supabase
                         .from('egresos')
-                        .select('id, categoria')
+                        .select('id, categoria, monto')
                         .eq('fecha', originalSaleDate)
                         .ilike('categoria', `${oldBaseCat}%`)
                         .limit(1);
+                    if (oldExpError) throw oldExpError;
                     
                     if (oldExp && oldExp.length > 0) {
                         const exp = oldExp[0];
@@ -2576,12 +2606,18 @@ if(addFormClient) {
                         if (parsed && parsed.count > 1) {
                             const newCount = parsed.count - 1;
                             const unitPrice = (exp.monto || 0) / parsed.count;
-                            await _supabase.from('egresos').update({
+                            const { error: oldExpenseUpdateError } = await _supabase.from('egresos').update({
                                 categoria: `${parsed.baseName} (${newCount})`,
+                                descripcion: `Consultas agrupadas para ${originalConsultaName}`,
                                 monto: unitPrice * newCount
                             }).eq('id', exp.id);
+                            if (oldExpenseUpdateError) throw oldExpenseUpdateError;
                         } else {
-                            await _supabase.from('egresos').delete().eq('id', exp.id);
+                            const { error: oldExpenseDeleteError } = await _supabase
+                                .from('egresos')
+                                .delete()
+                                .eq('id', exp.id);
+                            if (oldExpenseDeleteError) throw oldExpenseDeleteError;
                         }
                     }
                 }
@@ -2590,12 +2626,13 @@ if(addFormClient) {
                 if (consultaName && consultaName !== '') {
                     const baseCat = `Consulta ${consultaName}`;
                     // Search for an existing consultation expense for this doctor on the target date
-                    const { data: existingExp } = await _supabase
+                    const { data: existingExp, error: existingExpenseError } = await _supabase
                         .from('egresos')
-                        .select('id, categoria')
+                        .select('id, categoria, monto')
                         .eq('fecha', targetConsultaDate)
                         .ilike('categoria', `${baseCat}%`)
                         .limit(1);
+                    if (existingExpenseError) throw existingExpenseError;
                     
                     if (existingExp && existingExp.length > 0) {
                         const exp = existingExp[0];
@@ -2603,11 +2640,12 @@ if(addFormClient) {
                         const currentCount = parsed ? parsed.count : 1;
                         const newCount = currentCount + 1;
                         const unitPrice = (exp.monto || 0) / currentCount;
-                        await _supabase.from('egresos').update({
+                        const { error: existingExpenseUpdateError } = await _supabase.from('egresos').update({
                             categoria: `${baseCat} (${newCount})`,
                             descripcion: `Consultas agrupadas para ${consultaName}`,
                             monto: unitPrice * newCount
                         }).eq('id', exp.id);
+                        if (existingExpenseUpdateError) throw existingExpenseUpdateError;
                         egreso_id = exp.id;
                     } else {
                         // Create new
@@ -2696,42 +2734,51 @@ if(addFormClient) {
                 // Sum all existing payments for this sale
                 const { data: existingPayments, error: epErr } = await _supabase
                     .from('ventas_pagos')
-                    .select('id, monto')
+                    .select('id, monto, fecha')
                     .eq('venta_id', saleId)
                     .order('id', { ascending: true });
 
-                if (epErr) {
-                    console.error('Error fetching existing payments for reconciliation:', epErr);
-                } else {
-                    const totalAlreadyPaid = existingPayments ? existingPayments.reduce((s, p) => s + p.monto, 0) : 0;
-                    const paymentDiff = Math.round((advance - totalAlreadyPaid) * 100) / 100; // Round to avoid float issues
+                if (epErr) throw epErr;
 
-                    if (paymentDiff > 0.009) {
-                        // New money added — record as new payment today
-                        const { error: paymentError } = await _supabase.from('ventas_pagos').insert([{
-                            venta_id: saleId,
-                            monto: paymentDiff,
-                            fecha: getLocalDateString(),
-                            metodo_pago: paymentMethod
-                        }]);
-                        if (paymentError) console.error('Error recording payment history:', paymentError);
-                    } else if (paymentDiff < -0.009) {
-                        // Total was reduced — trim from the most recent payment record
-                        let amountToRemove = Math.abs(paymentDiff);
-                        const payments = existingPayments ? [...existingPayments].reverse() : [];
-                        for (const p of payments) {
-                            if (amountToRemove <= 0.009) break;
-                            if (p.monto <= amountToRemove) {
-                                await _supabase.from('ventas_pagos').delete().eq('id', p.id);
-                                amountToRemove -= p.monto;
-                            } else {
-                                await _supabase.from('ventas_pagos').update({ monto: parseFloat((p.monto - amountToRemove).toFixed(2)) }).eq('id', p.id);
-                                amountToRemove = 0;
-                            }
+                if (initialAdvanceOnEdit > 0) {
+                    const initialPayment = existingPayments?.[0];
+                    if (initialPayment && initialPayment.fecha !== dateRaw) {
+                        const { error: paymentDateError } = await _supabase
+                            .from('ventas_pagos')
+                            .update({ fecha: dateRaw })
+                            .eq('id', initialPayment.id);
+                        if (paymentDateError) throw paymentDateError;
+                    }
+                }
+
+                const totalAlreadyPaid = existingPayments ? existingPayments.reduce((s, p) => s + p.monto, 0) : 0;
+                const paymentDiff = Math.round((advance - totalAlreadyPaid) * 100) / 100; // Round to avoid float issues
+
+                if (paymentDiff > 0.009) {
+                    // New money added — record as new payment today
+                    const { error: paymentError } = await _supabase.from('ventas_pagos').insert([{
+                        venta_id: saleId,
+                        monto: paymentDiff,
+                        fecha: getLocalDateString(),
+                        metodo_pago: paymentMethod
+                    }]);
+                    if (paymentError) console.error('Error recording payment history:', paymentError);
+                } else if (paymentDiff < -0.009) {
+                    // Total was reduced — trim from the most recent payment record
+                    let amountToRemove = Math.abs(paymentDiff);
+                    const payments = existingPayments ? [...existingPayments].reverse() : [];
+                    for (const p of payments) {
+                        if (amountToRemove <= 0.009) break;
+                        if (p.monto <= amountToRemove) {
+                            await _supabase.from('ventas_pagos').delete().eq('id', p.id);
+                            amountToRemove -= p.monto;
+                        } else {
+                            await _supabase.from('ventas_pagos').update({ monto: parseFloat((p.monto - amountToRemove).toFixed(2)) }).eq('id', p.id);
+                            amountToRemove = 0;
                         }
                     }
-                    // If paymentDiff ≈ 0, nothing to do
                 }
+                // If paymentDiff ≈ 0, nothing to do
             } else {
                 const { data: newSale, error: insertError } = await _supabase.from('ventas').insert([saleData]).select();
                 if (insertError) throw insertError;
@@ -2800,16 +2847,35 @@ if(addFormClient) {
             addFormClient.reset();
             modalClient.style.display = 'none';
 
-            await refreshSaleRelatedData();
-
+            const refreshResult = refreshSaleRelatedData().then(
+                () => ({ error: null }),
+                error => ({ error })
+            );
             await showCustomAlert(
                 wasEditingSale ? 'Venta actualizada correctamente.' : 'Venta realizada correctamente.',
                 'VENTA GUARDADA'
             );
+            isSavingClientSale = false;
+            saveLockReleased = true;
+            restoreSubmitButton();
+
+            const { error: refreshError } = await refreshResult;
+            if (refreshError) {
+                console.error('Sale saved but related data refresh failed:', refreshError);
+                await showCustomAlert(
+                    'La venta se guardó, pero no se pudieron actualizar las listas. Recarga la página para ver los cambios.',
+                    'VENTA GUARDADA'
+                );
+            }
 
         } catch (error) {
             console.error('Error saving client/sale:', error);
             await showCustomAlert('Error al guardar venta: ' + error.message, 'ERROR DE GUARDADO');
+        } finally {
+            if (!saveLockReleased) {
+                isSavingClientSale = false;
+                restoreSubmitButton();
+            }
         }
     });
 }
@@ -3137,7 +3203,7 @@ window.editSale = async function(id) {
         const datosCompra = v.datos_compra || '';
         const parts = datosCompra.split('|');
         
-        if (parts.length >= 5) {
+        if (parts.length >= 7) {
             document.getElementById('c_luna_name').value = parts[0]?.trim() || '';
             document.getElementById('c_luna_measure').value = parts[1]?.trim() || '';
             selectedLaboratorios = [];
@@ -3145,6 +3211,14 @@ window.editSale = async function(id) {
             if (labsText) {
                 selectedLaboratorios = labsText.split(',').map(l => l.trim()).filter(Boolean);
             }
+            renderLaboratorioTags();
+            document.getElementById('sel_consulta').value = parts[4]?.trim() || '';
+            originalConsultaName = parts[4]?.trim() || '';
+            document.getElementById('c_others').value = parts[5]?.trim() || '';
+        } else if (parts.length >= 5) {
+            document.getElementById('c_luna_name').value = parts[0]?.trim() || '';
+            document.getElementById('c_luna_measure').value = parts[1]?.trim() || '';
+            selectedLaboratorios = [];
             renderLaboratorioTags();
             document.getElementById('sel_consulta').value = parts[3]?.trim() || '';
             originalConsultaName = parts[3]?.trim() || '';
@@ -3726,6 +3800,8 @@ const closeBtnExpense = document.querySelector('.expense-close');
 const addFormExpense = document.getElementById('addExpenseForm');
 const tableBodyExpenses = document.querySelector('#expensesTable tbody');
 const searchExpenseInput = document.getElementById('searchExpenseInput');
+const searchExpenseDateInput = document.getElementById('searchExpenseDateInput');
+const btnClearExpenseDateFilter = document.getElementById('btnClearExpenseDateFilter');
 let isEditingExpense = false;
 let currentEditRowExpense = null;
 
@@ -3900,12 +3976,19 @@ if(addFormExpense) {
 // Fetch Expenses
 async function fetchExpenses() {
     try {
-        const { data, error } = await _supabase
-            .from('egresos')
-            .select('*')
-            .order('codigo', { ascending: true });
+        const pageSize = 1000;
+        const data = [];
+        for (let from = 0; ; from += pageSize) {
+            const { data: page, error } = await _supabase
+                .from('egresos')
+                .select('*')
+                .order('codigo', { ascending: true })
+                .range(from, from + pageSize - 1);
 
-        if (error) throw error;
+            if (error) throw error;
+            if (page) data.push(...page);
+            if (!page || page.length < pageSize) break;
+        }
 
         if (tableBodyExpenses) {
             tableBodyExpenses.innerHTML = '';
@@ -3920,6 +4003,7 @@ async function fetchExpenses() {
                 newRow.setAttribute('data-id', eg.id);
                 newRow.setAttribute('data-count', count);
                 newRow.setAttribute('data-unit-price', unitPrice);
+                newRow.dataset.rawDate = eg.fecha || '';
 
                 const amountDisplay = (eg.metodo_pago === 'Yape') ? `${formatCurrency(eg.monto.toString())} (Yape)` : formatCurrency(eg.monto.toString());
 
@@ -3949,6 +4033,7 @@ async function fetchExpenses() {
                 ].join(' ').toLowerCase();
                 tableBodyExpenses.appendChild(newRow);
             });
+            applyExpenseFilters();
             updateFinancialDashboards();
         }
     } catch (error) {
@@ -4118,25 +4203,54 @@ if(tableBodyExpenses) {
 }
 
 // Search Logic
-if(searchExpenseInput && tableBodyExpenses) {
-    let expenseSearchTimer = null;
+let expenseSearchTimer = null;
+let hasExpenseFiltersApplied = false;
+
+function applyExpenseFilters() {
+    if (!tableBodyExpenses) return;
+
+    const textFilter = searchExpenseInput ? searchExpenseInput.value.trim().toLowerCase() : '';
+    const dateFilter = searchExpenseDateInput ? searchExpenseDateInput.value : '';
+    const hasFilters = Boolean(textFilter || dateFilter);
+
+    if (btnClearExpenseDateFilter) {
+        btnClearExpenseDateFilter.style.display = dateFilter ? 'inline-flex' : 'none';
+    }
+
+    if (!hasFilters && !hasExpenseFiltersApplied) return;
+    hasExpenseFiltersApplied = hasFilters;
+
+    filterTableRowsInBatches(tableBodyExpenses, row => {
+        let text = row.dataset.searchText;
+        if (!text) {
+            const cells = row.getElementsByTagName('td');
+            text = Array.from(cells)
+                .slice(0, 4)
+                .map(cell => cell.innerText.toLowerCase())
+                .join(' ');
+            row.dataset.searchText = text;
+        }
+
+        const rowDate = row.dataset.rawDate || row.querySelector('.raw-date')?.value || '';
+        return text.includes(textFilter) && (!dateFilter || rowDate === dateFilter);
+    });
+}
+
+if (searchExpenseInput && tableBodyExpenses) {
     searchExpenseInput.addEventListener('input', function() {
         clearTimeout(expenseSearchTimer);
-        const filter = this.value.trim().toLowerCase();
-        expenseSearchTimer = setTimeout(() => {
-            filterTableRowsInBatches(tableBodyExpenses, row => {
-                let text = row.dataset.searchText;
-                if (!text) {
-                    const cells = row.getElementsByTagName('td');
-                    text = Array.from(cells)
-                        .slice(0, 4)
-                        .map(cell => cell.innerText.toLowerCase())
-                        .join(' ');
-                    row.dataset.searchText = text;
-                }
-                return text.includes(filter);
-            });
-        }, 300);
+        expenseSearchTimer = setTimeout(applyExpenseFilters, 300);
+    });
+}
+
+if (searchExpenseDateInput) {
+    searchExpenseDateInput.addEventListener('change', applyExpenseFilters);
+}
+
+if (btnClearExpenseDateFilter) {
+    btnClearExpenseDateFilter.addEventListener('click', () => {
+        if (searchExpenseDateInput) searchExpenseDateInput.value = '';
+        applyExpenseFilters();
     });
 }
 

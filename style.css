@@ -544,6 +544,34 @@ input[type=number] {
     color: #555;
 }
 
+.expense-search-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    max-width: 820px;
+}
+.expense-search-controls .search-input-wrapper {
+    flex: 1;
+    width: auto;
+    min-width: 150px;
+    max-width: 600px;
+}
+.expense-date-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.expense-date-filter input[type="date"] {
+    min-width: 155px;
+    padding: 10px 12px;
+    border: 1px solid #000;
+    border-radius: 5px;
+    font-size: 15px;
+}
+
 .btn-secondary {
     background: #666;
     color: #fff;
@@ -810,6 +838,21 @@ input[type=number] {
         width: 100%;
         max-width: none;
     }
+    .expense-search-controls {
+        width: 100%;
+        max-width: none;
+        flex-wrap: wrap;
+    }
+    .expense-search-controls .search-input-wrapper {
+        flex: 1 1 100%;
+    }
+    .expense-date-filter {
+        width: 100%;
+    }
+    .expense-date-filter input[type="date"] {
+        flex: 1;
+        min-width: 0;
+    }
     .btn-green {
         justify-content: center;
     }
@@ -940,6 +983,10 @@ input[type=number] {
 }
 .submit-btn:hover {
     background: #0056b3;
+}
+.submit-btn:disabled {
+    opacity: 0.7;
+    cursor: wait;
 }
 
 /* Dashboard Styles */

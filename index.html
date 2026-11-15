@@ -405,9 +405,17 @@
                     <h3 class="page-subtitle">EGRESOS</h3>
 
                     <div class="controls-bar">
-                        <div class="search-input-wrapper">
-                            <i class='bx bx-search'></i>
-                            <input type="text" id="searchExpenseInput" placeholder="Buscar egreso...">
+                        <div class="expense-search-controls">
+                            <div class="search-input-wrapper">
+                                <i class='bx bx-search'></i>
+                                <input type="text" id="searchExpenseInput" placeholder="Buscar egreso...">
+                            </div>
+                            <div class="expense-date-filter">
+                                <input type="date" id="searchExpenseDateInput" aria-label="Filtrar egresos por fecha" title="Filtrar por fecha">
+                                <button class="btn-secondary" id="btnClearExpenseDateFilter" type="button" style="display: none;">
+                                    <i class='bx bx-x'></i> Limpiar fecha
+                                </button>
+                            </div>
                         </div>
                         <div class="actions-group">
                             <button class="btn-green" id="btnAddExpense">
