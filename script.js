@@ -2602,17 +2602,13 @@ if(addFormClient) {
                         egreso_id = exp.id;
                     } else {
                         // Create new
-                        const { data: newExpRecord, error: expError } = await _supabase
-                            .from('egresos')
-                            .insert([{
-                                codigo: getNextExpenseID(),
-                                fecha: targetConsultaDate,
-                                categoria: `${baseCat} (1)`,
-                                descripcion: `Consultas agrupadas para ${consultaName}`,
-                                monto: 0,
-                                metodo_pago: 'Efectivo'
-                            }]).select();
-                        if (expError) throw expError;
+                        const { data: newExpRecord } = await insertExpenseWithUniqueCode({
+                            fecha: targetConsultaDate,
+                            categoria: `${baseCat} (1)`,
+                            descripcion: `Consultas agrupadas para ${consultaName}`,
+                            monto: 0,
+                            metodo_pago: 'Efectivo'
+                        });
                         if (newExpRecord && newExpRecord.length > 0) {
                             egreso_id = newExpRecord[0].id;
                         }
@@ -3742,42 +3738,64 @@ let isEditingExpense = false;
 let currentEditRowExpense = null;
 
 // Helper to generate next Expense ID (E-001, E-002, etc.)
-function getNextExpenseID() {
-    if (!tableBodyExpenses) return "E-001";
-    const rows = tableBodyExpenses.querySelectorAll('tr');
+async function getNextExpenseID() {
+    const { data, error } = await _supabase.from('egresos').select('codigo');
+    if (error) throw error;
+
     let maxNum = 0;
-    
-    rows.forEach(row => {
-        const idText = row.getElementsByTagName('td')[0].innerText;
-        if (idText.startsWith('E-')) {
-            const num = parseInt(idText.split('-')[1]);
-            if (!isNaN(num) && num > maxNum) maxNum = num;
-        }
+
+    (data || []).forEach(expense => {
+        const match = /^E-(\d+)$/i.exec(expense.codigo || '');
+        const num = match ? parseInt(match[1], 10) : 0;
+        if (num > maxNum) maxNum = num;
     });
-    
+
     const nextNum = maxNum + 1;
     return `E-${nextNum.toString().padStart(3, '0')}`;
 }
 
+async function insertExpenseWithUniqueCode(expense) {
+    let lastCodeConflict;
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const codigo = await getNextExpenseID();
+        const { data, error } = await _supabase
+            .from('egresos')
+            .insert([{ ...expense, codigo }])
+            .select();
+
+        if (!error) return { data, error };
+
+        const isCodeConflict = error.code === '23505'
+            && `${error.message || ''} ${error.details || ''}`.includes('egresos_codigo_key');
+        if (!isCodeConflict) throw error;
+        lastCodeConflict = error;
+    }
+
+    throw lastCodeConflict;
+}
+
 // Open Modal Expense
 if(btnAddExpense) {
-    btnAddExpense.addEventListener('click', () => {
+    btnAddExpense.addEventListener('click', async () => {
         isEditingExpense = false;
         currentEditRowExpense = null;
         addFormExpense.reset();
         document.getElementById('expenseModalTitle').innerText = 'Agregar Nuevo Egreso';
         
-        // Auto-set ID and date
-        document.getElementById('e_id').value = getNextExpenseID();
-        document.getElementById('e_date').value = getLocalDateString();
-        
-        modalExpense.style.display = 'block';
-        
-        // Reset description requirement
-        const descInput = document.getElementById('e_description');
-        if(descInput) {
-            descInput.required = false;
-            descInput.placeholder = '';
+        try {
+            document.getElementById('e_id').value = await getNextExpenseID();
+            document.getElementById('e_date').value = getLocalDateString();
+            
+            modalExpense.style.display = 'block';
+            
+            const descInput = document.getElementById('e_description');
+            if(descInput) {
+                descInput.required = false;
+                descInput.placeholder = '';
+            }
+        } catch (error) {
+            console.error('Error generating expense code:', error);
+            await showCustomAlert('No se pudo generar el código del egreso: ' + error.message, 'ERROR');
         }
     });
 }
@@ -3871,17 +3889,13 @@ if(addFormExpense) {
                     .eq('id', id);
                 if (error) throw error;
             } else {
-                const { error } = await _supabase
-                    .from('egresos')
-                    .insert([{
-                        codigo: id_egreso,
-                        fecha: dateRaw,
-                        categoria: finalCategory,
-                        descripcion: description,
-                        monto: amount,
-                        metodo_pago: method
-                    }]);
-                if (error) throw error;
+                await insertExpenseWithUniqueCode({
+                    fecha: dateRaw,
+                    categoria: finalCategory,
+                    descripcion: description,
+                    monto: amount,
+                    metodo_pago: method
+                });
             }
             
             isEditingExpense = false;
