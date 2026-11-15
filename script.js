@@ -634,6 +634,30 @@ if(tableBody) {
     });
 }
 
+const tableFilterJobs = new WeakMap();
+
+function filterTableRowsInBatches(tableBody, shouldShowRow) {
+    const jobId = (tableFilterJobs.get(tableBody) || 0) + 1;
+    tableFilterJobs.set(tableBody, jobId);
+
+    const rows = Array.from(tableBody.rows);
+    let index = 0;
+    const batchSize = 250;
+
+    function processBatch() {
+        if (tableFilterJobs.get(tableBody) !== jobId) return;
+
+        const end = Math.min(index + batchSize, rows.length);
+        for (; index < end; index++) {
+            rows[index].style.display = shouldShowRow(rows[index]) ? '' : 'none';
+        }
+
+        if (index < rows.length) requestAnimationFrame(processBatch);
+    }
+
+    requestAnimationFrame(processBatch);
+}
+
 // Search Logic (optimized): use `input` + debounce + per-row cached searchable text
 const searchInput = document.getElementById('searchInput');
 if (searchInput && tableBody) {
@@ -641,10 +665,7 @@ if (searchInput && tableBody) {
 
     function filterLunasTable(value) {
         const filter = (value || '').trim().toLowerCase();
-        const rows = tableBody.getElementsByTagName('tr');
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-
+        filterTableRowsInBatches(tableBody, row => {
             // Cache a combined lowercased text for the row to avoid repeated DOM reads
             let text = row.dataset.searchText;
             if (!text) {
@@ -656,20 +677,15 @@ if (searchInput && tableBody) {
                 text = parts.join(' ');
                 row.dataset.searchText = text;
             }
-
-            if (filter === '' || text.indexOf(filter) > -1) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        }
+            return filter === '' || text.indexOf(filter) > -1;
+        });
     }
 
     // Debounce input so heavy filtering doesn't run on every keystroke when typing fast
     searchInput.addEventListener('input', function () {
         clearTimeout(searchTimer);
         const val = this.value;
-        searchTimer = setTimeout(() => filterLunasTable(val), 180);
+        searchTimer = setTimeout(() => filterLunasTable(val), 300);
     });
 
     // If you want immediate feedback on Enter, you can also listen keydown for Enter
@@ -952,9 +968,7 @@ if (searchMonturasInput && tableBodyMonturas) {
 
     function filterMonturasTable(value) {
         const filter = (value || '').trim().toLowerCase();
-        const rows = tableBodyMonturas.getElementsByTagName('tr');
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
+        filterTableRowsInBatches(tableBodyMonturas, row => {
             let text = row.dataset.searchText;
             if (!text) {
                 const cells = row.getElementsByTagName('td');
@@ -965,19 +979,14 @@ if (searchMonturasInput && tableBodyMonturas) {
                 text = parts.join(' ');
                 row.dataset.searchText = text;
             }
-
-            if (filter === '' || text.indexOf(filter) > -1) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        }
+            return filter === '' || text.indexOf(filter) > -1;
+        });
     }
 
     searchMonturasInput.addEventListener('input', function () {
         clearTimeout(monturasTimer);
         const val = this.value;
-        monturasTimer = setTimeout(() => filterMonturasTable(val), 180);
+        monturasTimer = setTimeout(() => filterMonturasTable(val), 300);
     });
 
     searchMonturasInput.addEventListener('keydown', function (e) {
@@ -2838,6 +2847,7 @@ async function fetchClients() {
                 const dateDisplay = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
                 const newRow = document.createElement('tr');
                 newRow.setAttribute('data-id', v.id);
+                newRow.dataset.saleCode = String(v.codigo_venta || '');
                 newRow.innerHTML = `
                     <td>${v.codigo_venta}</td>
                     <td>${v.clientes?.nombre || 'N/A'}</td>
@@ -3301,6 +3311,7 @@ if ((searchClientTextInput || searchClientDateInput) && tableBodyClients) {
         const dateDisplay = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : (v.fecha || '');
         const newRow = document.createElement('tr');
         if (v.id) newRow.setAttribute('data-id', v.id);
+        newRow.dataset.saleCode = String(v.codigo_venta || '');
         if (isTemp) newRow.setAttribute('data-temp', 'true');
         newRow.innerHTML = `
             <td>${v.codigo_venta || ''}</td>
@@ -3348,8 +3359,6 @@ if ((searchClientTextInput || searchClientDateInput) && tableBodyClients) {
     }
 
     function filterClientsTable(textFilter, dateFilter) {
-        const rows = tableBodyClients.getElementsByTagName('tr');
-        
         // Remove any previous temporary rows
         const prevTemps = tableBodyClients.querySelectorAll('tr[data-temp="true"]');
         prevTemps.forEach(t => t.remove());
@@ -3360,15 +3369,10 @@ if ((searchClientTextInput || searchClientDateInput) && tableBodyClients) {
             btnClearDateFilter.style.display = 'inline-block';
             
             // Filter local rows by exact date match
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const rowDate = row.dataset.rawDate || '';
-                if (rowDate === dateFilter) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            }
+            filterTableRowsInBatches(
+                tableBodyClients,
+                row => (row.dataset.rawDate || '') === dateFilter
+            );
             
             // Fetch remote sales for this date
             (async () => {
@@ -3412,8 +3416,7 @@ if ((searchClientTextInput || searchClientDateInput) && tableBodyClients) {
             const filterLower = (textFilter || '').trim().toLowerCase();
             
             // Show/hide rows based on searchable text
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
+            filterTableRowsInBatches(tableBodyClients, row => {
                 let text = row.dataset.searchText;
                 if (!text) {
                     const cells = row.getElementsByTagName('td');
@@ -3426,25 +3429,14 @@ if ((searchClientTextInput || searchClientDateInput) && tableBodyClients) {
                     text = parts.join(' ');
                     row.dataset.searchText = text;
                 }
-
-                if (filterLower === '' || text.indexOf(filterLower) > -1) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            }
+                return filterLower === '' || text.indexOf(filterLower) > -1;
+            });
 
             // If filter looks like a numeric code, search remotely
             if (filterLower !== '' && /^\d+$/.test(filterLower)) {
-                const rowsNow = tableBodyClients.getElementsByTagName('tr');
-                let codeMatch = false;
-                for (let i = 0; i < rowsNow.length; i++) {
-                    const c0 = rowsNow[i].getElementsByTagName('td')[0];
-                    if (c0 && String(c0.innerText).trim() === filterLower) {
-                        codeMatch = true;
-                        break;
-                    }
-                }
+                const codeMatch = tableBodyClients.querySelector(
+                    `tr[data-sale-code="${filterLower}"]`
+                );
 
                 if (!codeMatch && lastRemoteQuery !== filterLower) {
                     lastRemoteQuery = filterLower;
@@ -3537,7 +3529,7 @@ if ((searchClientTextInput || searchClientDateInput) && tableBodyClients) {
         searchClientTextInput.addEventListener('input', function () {
             clearTimeout(clientTimer);
             const textVal = this.value;
-            clientTimer = setTimeout(() => filterClientsTable(textVal, searchClientDateInput?.value || null), 180);
+            clientTimer = setTimeout(() => filterClientsTable(textVal, searchClientDateInput?.value || null), 300);
         });
 
         searchClientTextInput.addEventListener('keydown', function (e) {
@@ -3737,27 +3729,19 @@ const searchExpenseInput = document.getElementById('searchExpenseInput');
 let isEditingExpense = false;
 let currentEditRowExpense = null;
 
-// Helper to generate next Expense ID (E-001, E-002, etc.)
-async function getNextExpenseID() {
-    const { data, error } = await _supabase.from('egresos').select('codigo');
+async function generateExpenseCode() {
+    const { data, error } = await _supabase.rpc('generar_codigo_egreso');
     if (error) throw error;
-
-    let maxNum = 0;
-
-    (data || []).forEach(expense => {
-        const match = /^E-(\d+)$/i.exec(expense.codigo || '');
-        const num = match ? parseInt(match[1], 10) : 0;
-        if (num > maxNum) maxNum = num;
-    });
-
-    const nextNum = maxNum + 1;
-    return `E-${nextNum.toString().padStart(3, '0')}`;
+    if (typeof data !== 'string' || !/^E-\d+$/.test(data)) {
+        throw new Error('Supabase devolvió un código de egreso inválido.');
+    }
+    return data;
 }
 
-async function insertExpenseWithUniqueCode(expense) {
+async function insertExpenseWithUniqueCode(expense, reservedCode = null) {
+    let codigo = reservedCode || await generateExpenseCode();
     let lastCodeConflict;
     for (let attempt = 0; attempt < 5; attempt++) {
-        const codigo = await getNextExpenseID();
         const { data, error } = await _supabase
             .from('egresos')
             .insert([{ ...expense, codigo }])
@@ -3769,6 +3753,7 @@ async function insertExpenseWithUniqueCode(expense) {
             && `${error.message || ''} ${error.details || ''}`.includes('egresos_codigo_key');
         if (!isCodeConflict) throw error;
         lastCodeConflict = error;
+        codigo = await generateExpenseCode();
     }
 
     throw lastCodeConflict;
@@ -3783,7 +3768,7 @@ if(btnAddExpense) {
         document.getElementById('expenseModalTitle').innerText = 'Agregar Nuevo Egreso';
         
         try {
-            document.getElementById('e_id').value = await getNextExpenseID();
+            document.getElementById('e_id').value = await generateExpenseCode();
             document.getElementById('e_date').value = getLocalDateString();
             
             modalExpense.style.display = 'block';
@@ -3895,7 +3880,7 @@ if(addFormExpense) {
                     descripcion: description,
                     monto: amount,
                     metodo_pago: method
-                });
+                }, id_egreso);
             }
             
             isEditingExpense = false;
@@ -3956,6 +3941,12 @@ async function fetchExpenses() {
                         <input type="hidden" class="raw-method" value="${eg.metodo_pago || 'Efectivo'}">
                     </td>
                 `;
+                newRow.dataset.searchText = [
+                    eg.codigo,
+                    dateDisplay,
+                    eg.categoria,
+                    eg.descripcion
+                ].join(' ').toLowerCase();
                 tableBodyExpenses.appendChild(newRow);
             });
             updateFinancialDashboards();
@@ -4128,22 +4119,24 @@ if(tableBodyExpenses) {
 
 // Search Logic
 if(searchExpenseInput && tableBodyExpenses) {
-    searchExpenseInput.addEventListener('keyup', function() {
-        const filter = this.value.toLowerCase();
-        const rows = tableBodyExpenses.getElementsByTagName('tr');
-
-        for (let i = 0; i < rows.length; i++) {
-            const cells = rows[i].getElementsByTagName('td');
-            let match = false;
-            
-            // Search in ID, Date, Category, Description
-            if (cells[0] && cells[0].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-            if (cells[1] && cells[1].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-            if (cells[2] && cells[2].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-            if (cells[3] && cells[3].innerText.toLowerCase().indexOf(filter) > -1) match = true;
-
-            rows[i].style.display = match ? "" : "none";
-        }
+    let expenseSearchTimer = null;
+    searchExpenseInput.addEventListener('input', function() {
+        clearTimeout(expenseSearchTimer);
+        const filter = this.value.trim().toLowerCase();
+        expenseSearchTimer = setTimeout(() => {
+            filterTableRowsInBatches(tableBodyExpenses, row => {
+                let text = row.dataset.searchText;
+                if (!text) {
+                    const cells = row.getElementsByTagName('td');
+                    text = Array.from(cells)
+                        .slice(0, 4)
+                        .map(cell => cell.innerText.toLowerCase())
+                        .join(' ');
+                    row.dataset.searchText = text;
+                }
+                return text.includes(filter);
+            });
+        }, 300);
     });
 }
 
