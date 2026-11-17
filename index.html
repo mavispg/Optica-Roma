@@ -21,7 +21,7 @@
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="icon" type="image/png" href="logo-optica-roma.png">
 </head>
 
 <body>
@@ -31,13 +31,7 @@
         <div class="login-bg-overlay"></div>
         <div class="login-box">
             <div class="login-header">
-                <div class="brand-logo">
-                    <i class='bx bx-glasses brand-icon'></i>
-                    <div class="brand-text-row">
-                        <div class="brand-block opticas">OPTICAS</div>
-                        <div class="brand-block roma">ROMA</div>
-                    </div>
-                </div>
+                <img class="brand-logo-image login-brand-logo" src="logo-optica-roma.png" alt="Ópticas Roma">
                 <h2>OPTICA <span>ROMA</span></h2>
                 <p>Bienvenido al Sistema</p>
             </div>
@@ -62,14 +56,7 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo-details">
-                <div class="brand-logo" style="flex-direction: row; gap: 12px;">
-                    <i class='bx bx-glasses brand-icon' style="font-size: 32px; margin: 0;"></i>
-                    <div class="brand-text-row" style="align-items: flex-start; gap: 3px;">
-                        <div class="brand-block opticas" style="font-size: 14px; padding: 2px 8px;">OPTICAS</div>
-                        <div class="brand-block roma" style="font-size: 14px; padding: 2px 8px; margin-left: 20px;">ROMA
-                        </div>
-                    </div>
-                </div>
+                <img class="brand-logo-image sidebar-brand-logo" src="logo-optica-roma.png" alt="Ópticas Roma">
                 <i class='bx bx-x' id="mobileCloseBtn"></i>
             </div>
             <ul class="nav-list">
@@ -85,7 +72,7 @@
                     <div class="iocn-link">
                         <a href="#">
                             <i class='bx bx-layer'></i>
-                            <span class="links_name">PRODUCTOS</span>
+                            <span class="links_name">INVENTARIO</span>
                         </a>
                         <i class='bx bxs-chevron-down arrow'></i>
                     </div>
@@ -98,37 +85,24 @@
                 <li>
                     <a href="#" class="nav-link" data-target="clients">
                         <i class='bx bx-id-card'></i>
-                        <span class="links_name">CLIENTES</span>
+                        <span class="links_name">VENTAS Y CLIENTES</span>
                     </a>
                 </li>
 
-                <!-- Finanzas Group -->
-                <li class="">
-                    <div class="iocn-link">
-                        <a href="#">
-                            <i class='bx bx-dollar-circle'></i>
-                            <span class="links_name">FINANZAS</span>
-                        </a>
-                        <i class='bx bxs-chevron-down arrow'></i>
-                    </div>
-                    <ul class="sub-menu">
-                        <li><a class="nav-link" href="#" data-target="expenses">Egresos</a></li>
-                    </ul>
+                <li>
+                    <a href="#" class="nav-link" data-target="expenses">
+                        <i class='bx bx-dollar-circle'></i>
+                        <span class="links_name">EGRESOS</span>
+                    </a>
                 </li>
 
                 <li>
                     <a href="#" class="nav-link" data-target="users">
                         <i class='bx bx-user'></i>
-                        <span class="links_name">USUARIOS</span>
+                        <span class="links_name">ADMINISTRACIÓN</span>
                     </a>
                 </li>
 
-                <li class="logout-mode">
-                    <a href="#" class="nav-link" id="logoutBtn">
-                        <i class='bx bx-log-out'></i>
-                        <span class="links_name">SALIR</span>
-                    </a>
-                </li>
             </ul>
         </aside>
 
@@ -139,11 +113,17 @@
                 <div class="sidebar-button">
                     <i class='bx bx-menu sidebarBtn'></i>
                 </div>
-                <div class="profile-details-top">
-                    <div class="user-icon">
-                        <i class='bx bxs-user'></i>
+                <div class="top-nav-actions">
+                    <div class="profile-details-top">
+                        <div class="user-icon">
+                            <i class='bx bxs-user'></i>
+                        </div>
+                        <span class="admin_name">Administrador</span>
                     </div>
-                    <span class="admin_name">Administrador</span>
+                    <button type="button" class="top-logout-btn" id="logoutBtn" title="Cerrar sesión">
+                        <i class='bx bx-log-out' aria-hidden="true"></i>
+                        <span>Salir</span>
+                    </button>
                 </div>
             </div>
 
@@ -152,8 +132,13 @@
             <!-- HOME -->
             <div id="home" class="content-section active">
                 <div class="home-content">
-                    <h2>PANEL DE CONTROL</h2>
-                    <p>Resumen del estado actual del inventario.</p>
+                    <div class="dashboard-heading">
+                        <div>
+                            <span class="dashboard-eyebrow">OPTICA ROMA · RESUMEN GENERAL</span>
+                            <h2>Panel de control</h2>
+                            <p>Una vista rápida de tus ventas, inventario y gastos.</p>
+                        </div>
+                    </div>
 
                     <!-- KPI Cards -->
                     <!-- KPI Cards -->
@@ -229,7 +214,7 @@
                             <div class="quick-actions">
                                 <button class="action-btn"
                                     onclick="document.querySelector('[data-target=\'clients\']').click(); setTimeout(() => document.getElementById('btnAddClient').click(), 100);">
-                                    <i class='bx bx-plus-circle'></i> Nuevo Cliente
+                                    <i class='bx bx-plus-circle'></i> Registrar venta
                                 </button>
                                 <button class="action-btn"
                                     onclick="document.querySelector('[data-target=\'lunas\']').click(); setTimeout(() => document.getElementById('btnAddLunal').click(), 100);">
@@ -258,17 +243,18 @@
             <!-- LUNAS -->
             <div id="lunas" class="content-section">
                 <div class="page-container">
-                    <h2 class="page-title">PRODUCTOS</h2>
-                    <h3 class="page-subtitle">LUNAS</h3>
+                    <h2 class="page-title">INVENTARIO</h2>
+                    <h3 class="page-subtitle">Lunas</h3>
+                    <p class="page-description">Consulta y administra los lentes disponibles en tu catálogo.</p>
 
                     <div class="controls-bar">
                         <div class="search-input-wrapper">
                             <i class='bx bx-search'></i>
-                            <input type="text" id="searchInput" placeholder="search">
+                            <input type="text" id="searchInput" placeholder="Buscar por código, nombre o laboratorio">
                         </div>
                         <div class="actions-group">
                             <button class="btn-green" id="btnAddLunal">
-                                <i class='bx bx-plus'></i> Agregar
+                                <i class='bx bx-plus'></i> Nueva luna
                             </button>
                             <button class="btn-red" id="btnOpenExportLunas">
                                 <i class='bx bxs-file-pdf'></i> Exportar PDF
@@ -301,16 +287,17 @@
             <!-- MONTURAS -->
             <div id="monturas" class="content-section">
                 <div class="page-container">
-                    <h2 class="page-title">PRODUCTOS</h2>
-                    <h3 class="page-subtitle">MONTURAS</h3>
+                    <h2 class="page-title">INVENTARIO</h2>
+                    <h3 class="page-subtitle">Monturas</h3>
+                    <p class="page-description">Controla existencias, precios y modelos de monturas.</p>
                     <div class="controls-bar">
                         <div class="search-input-wrapper">
                             <i class='bx bx-search'></i>
-                            <input type="text" id="searchMonturasInput" placeholder="search">
+                            <input type="text" id="searchMonturasInput" placeholder="Buscar por código o nombre">
                         </div>
                         <div class="actions-group">
                             <button class="btn-green" id="btnAddMontura">
-                                <i class='bx bx-plus'></i> Agregar
+                                <i class='bx bx-plus'></i> Nueva montura
                             </button>
                             <button class="btn-red" id="btnOpenExportMonturas">
                                 <i class='bx bxs-file-pdf'></i> Exportar PDF
@@ -337,17 +324,18 @@
                 </div>
             </div>
 
-            <!-- Other sections placeholders -->
+            <!-- Sales and clients -->
             <div id="clients" class="content-section">
                 <div class="page-container">
-                    <h2 class="page-title">CLIENTES</h2>
-                    <h3 class="page-subtitle">HISTORIAL DE VENTAS</h3>
+                    <h2 class="page-title">VENTAS Y CLIENTES</h2>
+                    <h3 class="page-subtitle">Historial de ventas</h3>
+                    <p class="page-description">Consulta ventas, pagos y datos de clientes. Registra una nueva venta desde aquí.</p>
 
                     <!-- Daily Summary Clientes -->
                     <div class="daily-summary-bar">
                         <div class="summary-item">
                             <i class='bx bx-wallet'></i>
-                            <span class="label">Ventas Hoy:</span>
+                            <span class="label">Ventas registradas hoy</span>
                             <span class="value" id="client-sales-today">S/. 0.00</span>
                         </div>
                     </div>
@@ -355,17 +343,17 @@
                     <div class="controls-bar">
                         <div class="search-input-wrapper">
                             <i class='bx bx-search'></i>
-                            <input type="text" id="searchClientTextInput" placeholder="Buscar cliente o montura...">
+                            <input type="text" id="searchClientTextInput" placeholder="Buscar por cliente, código o producto..." aria-label="Buscar ventas">
                         </div>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="date" id="searchClientInput" style="padding: 10px 15px; border: 1px solid #000; border-radius: 5px; font-size: 16px; cursor: pointer;">
+                        <div class="client-date-control">
+                            <input type="date" id="searchClientInput" aria-label="Filtrar ventas por fecha">
                             <button class="btn-secondary" id="btnClearDateFilter" style="padding: 8px 16px; display: none;">
                                 <i class='bx bx-x'></i> Limpiar
                             </button>
                         </div>
                         <div class="actions-group">
                             <button class="btn-green" id="btnAddClient">
-                                <i class='bx bx-plus'></i> Nuevo Cliente
+                                <i class='bx bx-plus'></i> Registrar venta
                             </button>
                             <button class="btn-red" id="btnOpenExportModal">
                                 <i class='bx bxs-file-pdf'></i> Exportar PDF
@@ -401,8 +389,9 @@
             <!-- EXPENSES (EGRESOS) -->
             <div id="expenses" class="content-section">
                 <div class="page-container">
-                    <h2 class="page-title">FINANZAS</h2>
-                    <h3 class="page-subtitle">EGRESOS</h3>
+                    <h2 class="page-title">EGRESOS</h2>
+                    <h3 class="page-subtitle">Control de egresos</h3>
+                    <p class="page-description">Registra y revisa los gastos del negocio y el seguimiento de pagos SUNAT.</p>
 
                     <div class="controls-bar">
                         <div class="expense-search-controls">
@@ -601,24 +590,42 @@
     <div id="addClientModal" class="modal">
         <div class="modal-content">
             <span class="close-btn client-close">&times;</span>
-            <h2>Agregar Nuevo Cliente</h2>
+            <h2>Registrar nueva venta</h2>
             <form id="addClientForm">
+                <div class="sale-form-heading">
+                    <span class="sale-form-step">01</span>
+                    <div><h3>Datos de la venta</h3><p>Identifica la operación y al cliente.</p></div>
+                </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Código</label>
+                        <label for="c_id">Código de venta</label>
                         <input type="text" id="c_id" required>
                     </div>
+                    <div class="form-group">
+                        <label for="c_name">Nombre completo</label>
+                        <input type="text" id="c_name" autocomplete="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="c_phone">Celular</label>
+                        <input type="tel" id="c_phone" autocomplete="tel" inputmode="tel">
+                    </div>
+                    <div class="form-group">
+                        <label for="c_date">Fecha</label>
+                        <input type="date" id="c_date" required>
+                    </div>
+                </div>
+                <div class="sale-form-heading sale-form-heading-products">
+                    <span class="sale-form-step">02</span>
+                    <div><h3>Productos y receta</h3><p>Agrega los productos y registra las medidas ópticas.</p></div>
                 </div>
                 <div class="form-group">
-                    <label>Nombre Completo</label>
-                    <input type="text" id="c_name">
-                </div>
-                <div class="form-group">
-                    <label>Selección de Productos</label>
-                    <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                    <label>Productos de la venta</label>
+                    <div class="sale-inline-field sale-select-field">
+                        <label for="sel_consulta">Consulta <span class="optional-label">(si aplica)</span></label>
+                        <div class="sale-select-control">
                         <select id="sel_consulta"
                             style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                            <option value=""> Consulta</option>
+                            <option value="">Seleccionar consulta</option>
                             <option value="Pool">Pool</option>
                             <option value="Carlos">Carlos</option>
                             <option value="Yaret">Yaret</option>
@@ -628,24 +635,69 @@
                             <option value="Jose">Jose</option>
                             <option value="Liliana">Liliana</option>
                         </select>
+                        </div>
                     </div>
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                        <input type="text" id="c_luna_name" placeholder="Tipo de Luna"
-                            style="flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 180px;">
-                        <input type="text" id="c_luna_measure" placeholder="Medida"
-                            style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 120px;">
+                    <div class="sale-inline-field">
+                        <label for="c_luna_name">Tipo de luna</label>
+                        <input type="text" id="c_luna_name" placeholder="Ej. Monofocal, bifocal, fotocromática"
+                            style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 180px;">
                     </div>
-                    <div style="margin-bottom: 15px;">
-                        <input type="number" step="0.01" id="c_luna_price" placeholder="Precio de Luna (S/.)"
+                    <section class="prescription-card" aria-labelledby="prescriptionTitle">
+                        <div class="prescription-card-heading">
+                            <div>
+                                <h4 id="prescriptionTitle">Receta y medidas</h4>
+                                <p>Ingresa los valores de cada ojo según la receta.</p>
+                            </div>
+                            <i class='bx bx-glasses-alt' aria-hidden="true"></i>
+                        </div>
+                        <div class="prescription-grid" role="group" aria-label="Medidas por ojo">
+                            <div class="prescription-row prescription-label-row" aria-hidden="true">
+                                <span></span><span>Esfera</span><span>Cilindro</span><span>Eje</span>
+                            </div>
+                            <div class="prescription-row">
+                                <label class="eye-label" for="rx_od_sphere">Ojo derecho <span>(OD)</span></label>
+                                <input id="rx_od_sphere" type="text" inputmode="decimal" placeholder="±0.00" aria-label="Esfera del ojo derecho">
+                                <input id="rx_od_cylinder" type="text" inputmode="decimal" placeholder="±0.00" aria-label="Cilindro del ojo derecho">
+                                <div class="axis-field"><input id="rx_od_axis" type="number" min="0" max="180" step="1" placeholder="0" aria-label="Eje del ojo derecho"><span>°</span></div>
+                            </div>
+                            <div class="prescription-row">
+                                <label class="eye-label" for="rx_oi_sphere">Ojo izquierdo <span>(OI)</span></label>
+                                <input id="rx_oi_sphere" type="text" inputmode="decimal" placeholder="±0.00" aria-label="Esfera del ojo izquierdo">
+                                <input id="rx_oi_cylinder" type="text" inputmode="decimal" placeholder="±0.00" aria-label="Cilindro del ojo izquierdo">
+                                <div class="axis-field"><input id="rx_oi_axis" type="number" min="0" max="180" step="1" placeholder="0" aria-label="Eje del ojo izquierdo"><span>°</span></div>
+                            </div>
+                        </div>
+                        <div class="prescription-extra-fields">
+                            <div class="form-group">
+                                <label for="rx_addition">Adición <span class="optional-label">(opcional)</span></label>
+                                <input id="rx_addition" type="text" inputmode="decimal" placeholder="±0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="rx_observations">Observaciones <span class="optional-label">(opcional)</span></label>
+                                <input id="rx_observations" type="text" placeholder="Notas de la receta">
+                            </div>
+                        </div>
+                    </section>
+                    <div class="form-group prescription-summary-field">
+                        <label for="c_luna_measure">Resumen de medidas guardado con la venta</label>
+                        <textarea id="c_luna_measure" rows="2" placeholder="Completa las medidas de la receta para generar el resumen."></textarea>
+                        <small>También puedes editar el resumen directamente si solo tienes una medida general.</small>
+                    </div>
+                    <div class="sale-inline-field">
+                        <label for="c_luna_price">Precio de luna (S/.)</label>
+                        <input type="number" min="0" step="0.01" id="c_luna_price" placeholder="0.00"
                             style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     </div>
-                    <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;">
+                    <div class="sale-inline-field sale-select-field">
+                        <label for="sel_laboratorio">Laboratorio</label>
+                        <div class="sale-select-control">
                         <select id="sel_laboratorio"
                             style="flex: 1; min-height: 32px; padding: 8px; border: 1px solid #cfcfcf; border-radius: 4px; background: #fff; font-size: 14px; box-sizing: border-box;">
-                            <option value="">Laboratorio</option>
+                            <option value="">Seleccionar laboratorio</option>
                         </select>
                         <button type="button" id="btnAddLaboratorio" title="Agregar nuevo laboratorio"
                             style="width: 36px; min-width: 36px; height: 32px; padding: 0; background: #2e61b3; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 20px; font-weight: 700; line-height: 1; display: inline-flex; align-items: center; justify-content: center;">+</button>
+                        </div>
                     </div>
                     <div id="selected_laboratorios_tags"
                         style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
@@ -655,59 +707,58 @@
                         style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
                         <!-- Tags will appear here -->
                     </div>
-                    <div style="margin-bottom: 10px;">
+                    <div class="sale-inline-field">
+                        <label for="sel_montura_pivot">Montura</label>
                         <select id="sel_montura_pivot"
                             style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8fafc;">
-                            <option value="">Seleccionar Montura</option>
+                            <option value="">Seleccionar montura</option>
                         </select>
                     </div>
-                    <div style="margin-bottom: 15px;">
-                        <input type="number" step="0.01" id="c_montura_price" placeholder="Precio de Montura (S/.)"
+                    <div class="sale-inline-field">
+                        <label for="c_montura_price">Precio de montura (S/.)</label>
+                        <input type="number" min="0" step="0.01" id="c_montura_price" placeholder="0.00"
                             style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     </div>
-                    <div style="margin-bottom: 10px;">
-                        <input type="text" id="c_others" placeholder="Otros (opcional)"
+                    <div class="sale-inline-field">
+                        <label for="c_others">Otros <span class="optional-label">(opcional)</span></label>
+                        <input type="text" id="c_others" placeholder="Descripción u otro producto"
                             style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     </div>
-                    <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;">
+                    <div class="sale-inline-field sale-select-field">
+                        <label for="sel_vendedora">Vendedora</label>
+                        <div class="sale-select-control">
                         <select id="sel_vendedora" required
                             style="flex: 1; min-height: 32px; padding: 8px; border: 1px solid #cfcfcf; border-radius: 4px; background: #fff; font-size: 14px; box-sizing: border-box;">
-                            <option value="">Vendedora</option>
+                            <option value="">Seleccionar vendedora</option>
                         </select>
                         <button type="button" id="btnAddVendedora" title="Agregar nueva vendedora"
                             style="width: 36px; min-width: 36px; height: 32px; padding: 0; background: #2e61b3; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 20px; font-weight: 700; line-height: 1; display: inline-flex; align-items: center; justify-content: center;">+</button>
+                        </div>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Datos de Compra (Automático)</label>
+                    <label for="c_data">Resumen de la venta</label>
                     <input type="text" id="c_data" readonly style="background-color: #f9f9f9;">
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>N° Celular</label>
-                        <input type="text" id="c_phone">
-                    </div>
-                    <div class="form-group">
-                        <label>Fecha</label>
-                        <input type="date" id="c_date" required>
-                    </div>
+                <div class="sale-form-heading sale-form-heading-payment">
+                    <span class="sale-form-step">03</span>
+                    <div><h3>Pago</h3><p>Revisa el total y registra el adelanto recibido.</p></div>
                 </div>
 
-                <hr>
-
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Monto Total</label>
-                        <input type="number" step="0.01" id="c_total" required>
+                        <label for="c_total">Monto total (S/.)</label>
+                        <input type="number" min="0" step="0.01" id="c_total" required>
+                        <small>Se calcula con los precios de luna y montura. Puedes ajustarlo si hace falta.</small>
                     </div>
                     <div class="form-group">
-                        <label>A Cuenta (Adelanto)</label>
-                        <input type="number" step="0.01" id="c_advance" value="0" required>
+                        <label for="c_advance">Adelanto (S/.)</label>
+                        <input type="number" min="0" step="0.01" id="c_advance" value="0" required>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Saldo Restante</label>
+                    <label for="c_balance">Saldo pendiente (S/.)</label>
                     <input type="text" id="c_balance" readonly
                         style="background-color: #f0f0f0; color: #333; font-weight: bold;">
                 </div>
@@ -739,7 +790,7 @@
                         <div style="flex: 1;">
                             <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 4px;">Monto
                                 1</label>
-                            <input type="number" id="split_amount_1" placeholder="0.00" step="0.01"
+                            <input type="number" id="split_amount_1" min="0" placeholder="0.00" step="0.01"
                                 style="width: 100%; padding: 10px; border: 1px solid #dee2e6; border-radius: 6px;">
                         </div>
                     </div>
@@ -758,7 +809,7 @@
                         <div style="flex: 1;">
                             <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 4px;">Monto
                                 2</label>
-                            <input type="number" id="split_amount_2" placeholder="0.00" step="0.01"
+                            <input type="number" id="split_amount_2" min="0" placeholder="0.00" step="0.01"
                                 style="width: 100%; padding: 10px; border: 1px solid #dee2e6; border-radius: 6px;">
                         </div>
                     </div>
@@ -775,7 +826,7 @@
                     </select>
                 </div>
 
-                <button type="submit" class="submit-btn" style="margin-top: 10px;">Guardar</button>
+                <button type="submit" class="submit-btn" style="margin-top: 10px;">Guardar venta</button>
             </form>
         </div>
     </div>
@@ -889,7 +940,7 @@
                 </div>
                 <div class="form-group">
                     <label>Monto</label>
-                    <input type="number" step="0.01" id="e_amount" required>
+                    <input type="number" min="0" step="0.01" id="e_amount" required>
                 </div>
                 <button type="submit" class="submit-btn"
                     style="background-color: #007bff; margin-top: 15px;">Guardar</button>
@@ -1202,24 +1253,27 @@
 
     <!-- Modal for Detailed Frame Sales Report -->
     <div id="monturaDetailReportModal" class="modal">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content montura-report-dialog">
             <div class="report-modal-header">
-                <h2 id="monturaReportTitle">Reporte de Monturas</h2>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <button id="btnExportMonturaPDF" class="action-btn"
-                        style="background-color: #ffffff; color: #2f855a; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <i class='bx bxs-file-pdf' style="font-size: 18px;"></i> PDF
+                <div class="report-modal-heading">
+                    <span class="report-modal-eyebrow">INVENTARIO · RESUMEN</span>
+                    <h2 id="monturaReportTitle">Reporte de Monturas</h2>
+                    <p>Detalle de monturas incluidas en las ventas del periodo.</p>
+                </div>
+                <div class="report-modal-actions">
+                    <button id="btnExportMonturaPDF" class="report-pdf-button" title="Descargar reporte PDF" aria-label="Descargar reporte PDF">
+                        <i class='bx bxs-file-pdf' aria-hidden="true"></i> Descargar PDF
                     </button>
-                    <span class="report-modal-close">&times;</span>
+                    <button type="button" class="report-modal-close" aria-label="Cerrar reporte" title="Cerrar">&times;</button>
                 </div>
             </div>
-            <div class="white-box" style="max-height: 400px; overflow-y: auto;">
+            <div class="white-box montura-report-table-wrap">
                 <table class="custom-table" id="monturaReportTable">
                     <thead>
                         <tr>
-                            <th>ID Venta</th>
-                            <th>Nombre de Montura</th>
-                            <th>Cant.</th>
+                            <th scope="col">Venta</th>
+                            <th scope="col">Montura</th>
+                            <th scope="col">Cantidad</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1232,33 +1286,118 @@
 
     <!-- Modal Historial de Pagos -->
     <div id="paymentHistoryModal" class="modal">
-        <div class="modal-content" style="max-width: 600px;">
-            <div class="summary-header">
-                <span class="history-close">&times;</span>
-                <h2>Historial de Pagos</h2>
-                <p id="historyClientName" style="color: #64748b; font-weight: 600; margin-bottom: 10px;"></p>
-            </div>
-            <div class="white-box">
-                <table class="custom-table" id="paymentHistoryTable">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Monto</th>
-                            <th>Método</th>
-                            <th>Referencia</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Via JS -->
-                    </tbody>
-                </table>
-            </div>
-            <div id="historySummary"
-                style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; display: flex; justify-content: space-between;">
-                <div>Total Venta: <span id="histTotalSale" style="font-weight: 700;">S/. 0.00</span></div>
-                <div>Total Pagado: <span id="histTotalPaid" style="font-weight: 700; color: #27ae60;">S/. 0.00</span>
+        <div class="modal-content payment-history-dialog">
+            <header class="payment-history-header">
+                <div class="payment-history-heading">
+                    <span class="payment-history-eyebrow">VENTA · MOVIMIENTOS</span>
+                    <h2>Historial de pagos</h2>
+                    <p id="historyClientName"></p>
                 </div>
-                <div>Saldo: <span id="histBalance" style="font-weight: 700; color: #e74c3c;">S/. 0.00</span></div>
+                <button type="button" class="history-close" aria-label="Cerrar historial de pagos" title="Cerrar">&times;</button>
+            </header>
+            <div class="payment-history-body">
+                <section class="payment-history-records" aria-labelledby="paymentHistorySectionTitle">
+                    <div class="payment-history-section-heading">
+                        <div>
+                            <h3 id="paymentHistorySectionTitle">Movimientos registrados</h3>
+                            <p>Detalle de los pagos recibidos para esta venta.</p>
+                        </div>
+                        <div class="payment-history-actions">
+                            <span id="historyPaymentCount" class="payment-history-count">0 pagos</span>
+                            <button type="button" id="btnOpenPaymentEntry" class="payment-entry-open" hidden>Registrar abono</button>
+                        </div>
+                    </div>
+                    <div class="white-box">
+                        <table class="custom-table" id="paymentHistoryTable">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Monto</th>
+                                    <th>Método</th>
+                                    <th>Referencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                <form id="paymentEntryForm" class="payment-entry-form" hidden>
+                    <div class="payment-entry-heading">
+                        <div>
+                            <h3>Registrar un pago</h3>
+                            <p>El importe se sumará a lo que ya pagó el cliente.</p>
+                        </div>
+                        <span>Saldo: <strong id="paymentEntryRemaining">S/. 0.00</strong></span>
+                    </div>
+                    <div class="payment-entry-fields">
+                        <div class="form-group" id="paymentEntrySingleAmountGroup">
+                            <label for="paymentEntryAmount">Importe recibido (S/.)</label>
+                            <input type="number" id="paymentEntryAmount" min="0.01" step="0.01" required>
+                        </div>
+                        <div class="form-group" id="paymentEntrySingleMethodGroup">
+                            <label for="paymentEntryMethod">Método de pago</label>
+                            <select id="paymentEntryMethod" required>
+                                <option value="">Seleccionar método</option>
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Yape">Yape</option>
+                                <option value="Visa">Visa</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label class="payment-entry-split-toggle">
+                        <input type="checkbox" id="paymentEntrySplitToggle">
+                        Este abono se pagó con dos métodos
+                    </label>
+                    <div id="paymentEntrySplitFields" class="payment-entry-fields payment-entry-split-fields" hidden>
+                        <div class="form-group">
+                            <label for="paymentEntryMethod1">Primer método</label>
+                            <select id="paymentEntryMethod1">
+                                <option value="">Seleccionar método</option>
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Yape">Yape</option>
+                                <option value="Visa">Visa</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="paymentEntryAmount1">Primer importe (S/.)</label>
+                            <input type="number" id="paymentEntryAmount1" min="0.01" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label for="paymentEntryMethod2">Segundo método</label>
+                            <select id="paymentEntryMethod2">
+                                <option value="">Seleccionar método</option>
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Yape">Yape</option>
+                                <option value="Visa">Visa</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="paymentEntryAmount2">Segundo importe (S/.)</label>
+                            <input type="number" id="paymentEntryAmount2" min="0.01" step="0.01">
+                        </div>
+                    </div>
+                    <p id="paymentEntryError" class="payment-entry-error" role="alert" hidden></p>
+                    <div class="payment-entry-footer">
+                        <button type="button" id="btnCancelPaymentEntry" class="payment-entry-cancel">Cancelar</button>
+                        <button type="submit" class="payment-entry-submit">Guardar pago</button>
+                    </div>
+                </form>
+                <div id="historySummary" class="payment-history-summary" aria-label="Resumen de saldos">
+                    <div class="payment-total-card">
+                        <span>Total de la venta</span>
+                        <strong id="histTotalSale">S/. 0.00</strong>
+                    </div>
+                    <div class="payment-total-card is-paid">
+                        <span>Total pagado</span>
+                        <strong id="histTotalPaid">S/. 0.00</strong>
+                    </div>
+                    <div class="payment-total-card is-balance">
+                        <span>Saldo pendiente</span>
+                        <strong id="histBalance">S/. 0.00</strong>
+                    </div>
+            </div>
             </div>
         </div>
     </div>

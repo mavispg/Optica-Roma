@@ -635,10 +635,102 @@ if(tableBody) {
 }
 
 const tableFilterJobs = new WeakMap();
+const tablePaginationStates = new Map();
+
+function getTablePaginationPages(currentPage, totalPages) {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+    if (currentPage <= 4) return [1, 2, 3, 4, 5, '…', totalPages];
+    if (currentPage >= totalPages - 3) {
+        return [1, '…', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, '…', currentPage - 1, currentPage, currentPage + 1, '…', totalPages];
+}
+
+function refreshTablePagination(tableBody, resetPage = false) {
+    const state = tablePaginationStates.get(tableBody);
+    if (!state) return;
+
+    const rows = Array.from(tableBody.rows).filter(row => !row.hasAttribute('data-pagination-empty'));
+    rows.forEach(row => {
+        if (row.dataset.paginationMatch === undefined) {
+            row.dataset.paginationMatch = row.style.display === 'none' ? 'false' : 'true';
+        }
+    });
+
+    if (resetPage) state.page = 1;
+    const matchingRows = rows.filter(row => row.dataset.paginationMatch !== 'false');
+    const totalPages = Math.max(1, Math.ceil(matchingRows.length / state.pageSize));
+    state.page = Math.min(Math.max(state.page, 1), totalPages);
+
+    const pageStart = (state.page - 1) * state.pageSize;
+    rows.forEach(row => { row.style.display = 'none'; });
+    matchingRows.slice(pageStart, pageStart + state.pageSize).forEach(row => { row.style.display = ''; });
+
+    const isNeeded = rows.length > 10;
+    state.container.hidden = !isNeeded;
+    if (!isNeeded) return;
+
+    const rangeLabel = matchingRows.length
+        ? `Mostrando ${pageStart + 1}–${Math.min(pageStart + state.pageSize, matchingRows.length)} de ${matchingRows.length}`
+        : 'No hay registros que coincidan';
+    const pageButtons = getTablePaginationPages(state.page, totalPages).map(page => {
+        if (page === '…') return '<span class="table-page-ellipsis" aria-hidden="true">…</span>';
+        return `<button type="button" class="table-page-number${page === state.page ? ' is-active' : ''}" data-page="${page}" aria-label="Ir a la página ${page}"${page === state.page ? ' aria-current="page"' : ''}>${page}</button>`;
+    }).join('');
+
+    state.container.innerHTML = `
+        <div class="table-pagination-summary">
+            <label>Filas por página
+                <select class="table-page-size" aria-label="Filas por página">
+                    <option value="10"${state.pageSize === 10 ? ' selected' : ''}>10</option>
+                    <option value="15"${state.pageSize === 15 ? ' selected' : ''}>15</option>
+                </select>
+            </label>
+            <span class="table-page-range" aria-live="polite">${rangeLabel}</span>
+        </div>
+        <nav class="table-page-navigation" aria-label="Paginación de tabla">
+            <button type="button" class="table-page-arrow" data-page="${state.page - 1}" aria-label="Página anterior"${state.page <= 1 ? ' disabled' : ''}>‹</button>
+            ${pageButtons}
+            <button type="button" class="table-page-arrow" data-page="${state.page + 1}" aria-label="Página siguiente"${state.page >= totalPages ? ' disabled' : ''}>›</button>
+        </nav>`;
+}
+
+function initializeTablePagination(tableBodies) {
+    tableBodies.filter(Boolean).forEach(tableBody => {
+        const whiteBox = tableBody.closest('.white-box');
+        if (!whiteBox || tablePaginationStates.has(tableBody)) return;
+
+        const container = document.createElement('div');
+        container.className = 'table-pagination';
+        container.hidden = true;
+        whiteBox.insertAdjacentElement('afterend', container);
+
+        const state = { page: 1, pageSize: 10, container };
+        tablePaginationStates.set(tableBody, state);
+        container.addEventListener('click', event => {
+            const button = event.target.closest('button[data-page]');
+            if (!button || button.disabled) return;
+            state.page = Number(button.dataset.page) || 1;
+            refreshTablePagination(tableBody);
+        });
+        container.addEventListener('change', event => {
+            if (!event.target.matches('.table-page-size')) return;
+            state.pageSize = Number(event.target.value) === 15 ? 15 : 10;
+            state.page = 1;
+            refreshTablePagination(tableBody);
+        });
+
+        new MutationObserver(() => refreshTablePagination(tableBody))
+            .observe(tableBody, { childList: true });
+        refreshTablePagination(tableBody);
+    });
+}
 
 function filterTableRowsInBatches(tableBody, shouldShowRow) {
     const jobId = (tableFilterJobs.get(tableBody) || 0) + 1;
     tableFilterJobs.set(tableBody, jobId);
+    const paginationState = tablePaginationStates.get(tableBody);
+    if (paginationState) paginationState.page = 1;
 
     const rows = Array.from(tableBody.rows);
     let index = 0;
@@ -649,10 +741,13 @@ function filterTableRowsInBatches(tableBody, shouldShowRow) {
 
         const end = Math.min(index + batchSize, rows.length);
         for (; index < end; index++) {
-            rows[index].style.display = shouldShowRow(rows[index]) ? '' : 'none';
+            const isMatch = shouldShowRow(rows[index]);
+            rows[index].dataset.paginationMatch = String(isMatch);
+            rows[index].style.display = isMatch ? '' : 'none';
         }
 
         if (index < rows.length) requestAnimationFrame(processBatch);
+        else refreshTablePagination(tableBody);
     }
 
     requestAnimationFrame(processBatch);
@@ -871,11 +966,19 @@ if(addFormMontura) {
 // Fetch Monturas
 async function fetchMonturas() {
     try {
-        const { data, error } = await _supabase
-            .from('monturas')
-            .select('*')
-            .order('codigo', { ascending: true });
-        if (error) throw error;
+        const pageSize = 1000;
+        const data = [];
+        for (let from = 0; ; from += pageSize) {
+            const { data: page, error } = await _supabase
+                .from('monturas')
+                .select('*')
+                .order('codigo', { ascending: true })
+                .range(from, from + pageSize - 1);
+
+            if (error) throw error;
+            if (page) data.push(...page);
+            if (!page || page.length < pageSize) break;
+        }
 
         if (tableBodyMonturas) {
             const fragment = document.createDocumentFragment();
@@ -1231,7 +1334,7 @@ async function showMonturaDetailReport(period) {
             });
             // Add total row for today
             const totalRow = document.createElement('tr');
-            totalRow.style.backgroundColor = '#f0fff4';
+            totalRow.className = 'montura-report-subtotal';
             totalRow.innerHTML = `
                 <td colspan="2" style="text-align: right; font-weight: bold; padding: 12px 15px;">TOTAL HOY:</td>
                 <td style="text-align: center; font-weight: bold; color: #2f855a;">${dailyTotal}</td>
@@ -1257,6 +1360,7 @@ async function showMonturaDetailReport(period) {
             for (let i = 1; i <= 6; i++) {
                 if (grouped[i]) {
                     const headerRow = document.createElement('tr');
+                    headerRow.className = 'montura-report-day';
                     headerRow.innerHTML = `<td colspan="3" class="day-header">${daysNames[i]}</td>`;
                     tableBody.appendChild(headerRow);
                     
@@ -1279,7 +1383,7 @@ async function showMonturaDetailReport(period) {
 
                     // Add total row for the day
                     const totalRow = document.createElement('tr');
-                    totalRow.style.backgroundColor = '#f7fafc';
+                    totalRow.className = 'montura-report-subtotal';
                     totalRow.innerHTML = `
                         <td colspan="2" style="text-align: right; font-weight: bold; padding: 10px 15px; font-size: 13px;">SUBTOTAL ${daysNames[i].toUpperCase()}:</td>
                         <td style="text-align: center; font-weight: bold; color: #2d3748;">${dayTotal}</td>
@@ -1413,6 +1517,21 @@ const mainApp = document.getElementById('mainApp');
 const loginForm = document.getElementById('loginForm');
 const loginError = document.getElementById('loginError');
 const logoutBtn = document.getElementById('logoutBtn');
+let appDataLoadedForSession = false;
+
+function loadInitialAppData() {
+    if (appDataLoadedForSession) return;
+    appDataLoadedForSession = true;
+
+    Promise.all([
+        fetchLunas(),
+        fetchMonturas(),
+        fetchClients(),
+        fetchExpenses(),
+        fetchVendedoras(),
+        fetchLatestSales(5)
+    ]).then(() => updateFinancialDashboards());
+}
 
 // Check Session on Load
 async function checkSession() {
@@ -1447,10 +1566,12 @@ function showApp() {
     if(mainApp) {
         mainApp.style.display = 'block';
         updateDashboard(); // Refresh dashboard on show
+        loadInitialAppData();
     }
 }
 
 function showLogin() {
+    appDataLoadedForSession = false;
     if(mainApp) mainApp.style.display = 'none';
     if(loginContainer) loginContainer.style.display = 'flex';
 }
@@ -1813,10 +1934,72 @@ let initialAdvanceOnEdit = 0; // TRACK INITIAL ADVANCE
 let initialTotalOnEdit = 0; // TRACK INITIAL TOTAL
 let originalConsultaName = null; // TRACK ORIGINAL DOCTOR FOR CLEANUP
 let originalSaleDate = null; // TRACK ORIGINAL DATE FOR CLEANUP
+let originalSaleCreatedAt = null; // DISTINGUISH THE INITIAL PAYMENT FROM LATER PAYMENTS
 let originalEgresoId = null; // TRACK ORIGINAL EGRESO LINK
+let originalLunaId = null; // TRACK GENERATED LENS LINK FOR CLEANUP ON EDIT
 let selectedMonturas = []; // Array of {id, name} for current form
 let selectedLaboratorios = []; // Array of strings for current form
 let isSavingClientSale = false;
+const prescriptionFieldIds = [
+    'rx_od_sphere', 'rx_od_cylinder', 'rx_od_axis',
+    'rx_oi_sphere', 'rx_oi_cylinder', 'rx_oi_axis',
+    'rx_addition', 'rx_observations'
+];
+let generatedPrescriptionMeasure = '';
+
+function resetPrescriptionFields() {
+    prescriptionFieldIds.forEach(id => {
+        const input = getEl(id);
+        if (input) input.value = '';
+    });
+    generatedPrescriptionMeasure = '';
+}
+
+function restorePrescriptionFields(measure) {
+    resetPrescriptionFields();
+    const pattern = /^OD: Esfera ([^,]*), Cilindro ([^,]*), Eje ([^;]*); OI: Esfera ([^,]*), Cilindro ([^,]*), Eje ([^;]*); Adición: ([^;]*); Observaciones: (.*)$/;
+    const match = String(measure || '').match(pattern);
+    if (!match) return;
+
+    const values = {
+        rx_od_sphere: match[1], rx_od_cylinder: match[2], rx_od_axis: match[3].replace(/°$/, ''),
+        rx_oi_sphere: match[4], rx_oi_cylinder: match[5], rx_oi_axis: match[6].replace(/°$/, ''),
+        rx_addition: match[7], rx_observations: match[8]
+    };
+    Object.entries(values).forEach(([id, value]) => {
+        const input = getEl(id);
+        if (input) input.value = value === '—' ? '' : value;
+    });
+    generatedPrescriptionMeasure = measure;
+}
+
+function syncPrescriptionMeasure() {
+    const value = id => (getEl(id)?.value || '').trim().replace(/[|~]/g, '/');
+    const ids = prescriptionFieldIds;
+    const hasAnyValue = ids.some(id => value(id));
+    const measureInput = getEl('c_luna_measure');
+    if (!measureInput) return;
+
+    if (hasAnyValue) {
+        const priorMeasure = measureInput.value.trim();
+        if (priorMeasure && priorMeasure !== generatedPrescriptionMeasure && !priorMeasure.startsWith('OD: Esfera ')) {
+            const observationsInput = getEl('rx_observations');
+            if (observationsInput && !observationsInput.value.includes('Medida previa:')) {
+                const observation = observationsInput.value.trim();
+                observationsInput.value = `${observation ? `${observation} · ` : ''}Medida previa: ${priorMeasure}`.replace(/[|~]/g, '/');
+            }
+        }
+        const axis = id => value(id) ? `${value(id)}°` : '—';
+        const measure = `OD: Esfera ${value('rx_od_sphere') || '—'}, Cilindro ${value('rx_od_cylinder') || '—'}, Eje ${axis('rx_od_axis')}; OI: Esfera ${value('rx_oi_sphere') || '—'}, Cilindro ${value('rx_oi_cylinder') || '—'}, Eje ${axis('rx_oi_axis')}; Adición: ${value('rx_addition') || '—'}; Observaciones: ${value('rx_observations') || '—'}`;
+        measureInput.value = measure;
+        generatedPrescriptionMeasure = measure;
+    } else if (generatedPrescriptionMeasure && measureInput.value === generatedPrescriptionMeasure) {
+        measureInput.value = '';
+        generatedPrescriptionMeasure = '';
+    }
+
+    updatePurchaseDataString();
+}
 
 
 // Helper: Calculate Balance
@@ -1825,6 +2008,29 @@ function calculateBalance() {
     const advance = parseFloat(document.getElementById('c_advance').value) || 0;
     const balance = total - advance;
     document.getElementById('c_balance').value = formatCurrency(balance.toString());
+}
+
+function calculateSaleTotalFromProducts() {
+    const totalInput = getEl('c_total');
+    const priceInputs = [getEl('c_luna_price'), getEl('c_montura_price')].filter(Boolean);
+    if (!totalInput || priceInputs.length === 0) return;
+
+    const subtotal = priceInputs.reduce((sum, input) => {
+        const amount = Number(input.value);
+        return sum + (Number.isFinite(amount) && amount > 0 ? amount : 0);
+    }, 0);
+    totalInput.value = subtotal.toFixed(2);
+    calculateBalance();
+}
+
+function extractPriceFromPurchaseText(value) {
+    const text = String(value || '').trim();
+    const match = text.match(/\(S\/\.\s*([\d,]+(?:\.\d{1,2})?)\)\s*$/i);
+    if (!match) return { name: text, price: '' };
+    return {
+        name: text.slice(0, match.index).trim(),
+        price: Number(match[1].replace(/,/g, '')).toFixed(2)
+    };
 }
 
 // Event Listeners for Balance Calc
@@ -1840,20 +2046,23 @@ if(bAddCl) {
     bAddCl.addEventListener('click', () => {
         const afCl = getEl('addClientForm');
         if (afCl) afCl.reset();
+        resetPrescriptionFields();
         
         // RESET TRACKING VARIABLES FOR NEW SALE
         isEditingClient = false;
         currentEditRowClient = null;
         originalConsultaName = null;
         originalSaleDate = null;
+        originalSaleCreatedAt = null;
         originalEgresoId = null;
+        originalLunaId = null;
         initialAdvanceOnEdit = 0;
         selectedMonturas = [];
         selectedLaboratorios = [];
         renderLaboratorioTags();
         
         const h2 = document.querySelector('#addClientModal h2');
-        if (h2) h2.innerText = 'Agregar Nuevo Cliente';
+        if (h2) h2.innerText = 'Registrar nueva venta';
         
         const cidInput = getEl('c_id');
         const cdateInput = getEl('c_date');
@@ -2181,6 +2390,7 @@ function updateClientProductDropdowns() {
     const cLunaMeasure = getEl('c_luna_measure');
     if(cLunaName) cLunaName.value = '';
     if(cLunaMeasure) cLunaMeasure.value = '';
+    resetPrescriptionFields();
 
     // 4. Reset Tags & Pivot
     selectedMonturas = [];
@@ -2248,6 +2458,12 @@ function renderMonturaTags() {
 
 window.removeMonturaTag = function(index) {
     selectedMonturas.splice(index, 1);
+    const monturaPriceInput = getEl('c_montura_price');
+    if (monturaPriceInput) {
+        const subtotal = selectedMonturas.reduce((sum, montura) => sum + (Number(montura.price) || 0), 0);
+        monturaPriceInput.value = subtotal > 0 ? subtotal.toFixed(2) : '';
+        calculateSaleTotalFromProducts();
+    }
     renderMonturaTags();
 };
 
@@ -2304,17 +2520,17 @@ if(smPivotEl) {
         if (this.selectedIndex > 0) {
             const id = this.value;
             const name = this.options[this.selectedIndex].text;
-            const price = this.options[this.selectedIndex].dataset.price;
+            const price = Number(this.options[this.selectedIndex].dataset.price);
             const cmPrice = getEl('c_montura_price');
 
-            if (cmPrice && price !== undefined) {
-                const numericPrice = parseFloat(price);
-                cmPrice.value = isNaN(numericPrice) ? '' : numericPrice.toFixed(2);
-            }
-            
             // Avoid duplicates in tag list
             if (!selectedMonturas.some(m => m.id === id)) {
-                selectedMonturas.push({ id, name });
+                selectedMonturas.push({ id, name, price: Number.isFinite(price) ? price : 0 });
+                if (cmPrice) {
+                    const subtotal = selectedMonturas.reduce((sum, montura) => sum + (Number(montura.price) || 0), 0);
+                    cmPrice.value = subtotal > 0 ? subtotal.toFixed(2) : '';
+                    calculateSaleTotalFromProducts();
+                }
                 renderMonturaTags();
             }
             
@@ -2389,10 +2605,23 @@ const cLNameInp = getEl('c_luna_name');
 if(cLNameInp) cLNameInp.addEventListener('input', updatePurchaseDataString);
 const cLMInp = getEl('c_luna_measure');
 if(cLMInp) cLMInp.addEventListener('input', updatePurchaseDataString);
+prescriptionFieldIds.forEach(id => {
+    const input = getEl(id);
+    if (input) {
+        input.addEventListener('input', syncPrescriptionMeasure);
+        input.addEventListener('change', syncPrescriptionMeasure);
+    }
+});
 const cLPriceInp = getEl('c_luna_price');
-if(cLPriceInp) cLPriceInp.addEventListener('input', updatePurchaseDataString);
+if(cLPriceInp) cLPriceInp.addEventListener('input', () => {
+    calculateSaleTotalFromProducts();
+    updatePurchaseDataString();
+});
 const cMPriceInp = getEl('c_montura_price');
-if(cMPriceInp) cMPriceInp.addEventListener('input', updatePurchaseDataString);
+if(cMPriceInp) cMPriceInp.addEventListener('input', () => {
+    calculateSaleTotalFromProducts();
+    updatePurchaseDataString();
+});
 
 
 function updatePurchaseDataString() {
@@ -2509,31 +2738,68 @@ if(addFormClient) {
         
         const id_venta = document.getElementById('c_id').value.trim(); // User manually enters Venta ID
         const dateRaw = document.getElementById('c_date').value;
-        const name = document.getElementById('c_name').value;
-        const phone = document.getElementById('c_phone').value;
+        const name = document.getElementById('c_name').value.trim();
+        const phone = document.getElementById('c_phone').value.trim();
         const data = document.getElementById('c_data').value;
-        const total = parseFloat(document.getElementById('c_total').value) || 0;
-        const advance = parseFloat(document.getElementById('c_advance').value) || 0;
+        const totalRaw = document.getElementById('c_total').value;
+        const advanceRaw = document.getElementById('c_advance').value;
+        const total = Number(totalRaw);
+        const advance = Number(advanceRaw);
         const balance = total - advance;
+
+        const rejectSale = async (message) => {
+            await showCustomAlert(message, 'REVISAR DATOS');
+            isSavingClientSale = false;
+            restoreSubmitButton();
+        };
+
+        if (!name) {
+            await rejectSale('Ingresa el nombre completo del cliente.');
+            return;
+        }
+        if (!totalRaw || !Number.isFinite(total) || total < 0) {
+            await rejectSale('El monto total debe ser un importe válido igual o mayor que cero.');
+            return;
+        }
+        if (!advanceRaw || !Number.isFinite(advance) || advance < 0) {
+            await rejectSale('El adelanto debe ser un importe válido igual o mayor que cero.');
+            return;
+        }
+        if (advance > total) {
+            await rejectSale('El adelanto no puede ser mayor que el monto total.');
+            return;
+        }
         
         // --- SPLIT PAYMENT LOGIC ---
         let paymentMethod = document.getElementById('c_payment_method').value;
         const chkSplit = document.getElementById('chk_split_payment');
         if (chkSplit && chkSplit.checked) {
             const m1 = document.getElementById('split_method_1').value;
-            const a1 = document.getElementById('split_amount_1').value;
+            const a1Raw = document.getElementById('split_amount_1').value;
             const m2 = document.getElementById('split_method_2').value;
-            const a2 = document.getElementById('split_amount_2').value;
-            if (m1 && m2) {
-                paymentMethod = `${m1}:${a1}|${m2}:${a2}`;
+            const a2Raw = document.getElementById('split_amount_2').value;
+            const a1 = Number(a1Raw);
+            const a2 = Number(a2Raw);
+
+            if (!m1 || !m2 || !a1Raw || !a2Raw || !Number.isFinite(a1) || !Number.isFinite(a2) || a1 <= 0 || a2 <= 0) {
+                await rejectSale('Selecciona los dos métodos e ingresa dos montos mayores que cero para el pago mixto.');
+                return;
             }
+            if (Math.abs((a1 + a2) - advance) > 0.009) {
+                await rejectSale('Los montos del pago mixto deben sumar exactamente el adelanto.');
+                return;
+            }
+            paymentMethod = `${m1}:${a1.toFixed(2)}|${m2}:${a2.toFixed(2)}`;
+        } else if (advance > 0 && !paymentMethod) {
+            await rejectSale('Selecciona el método de pago del adelanto.');
+            return;
         }
         // ---------------------------
 
         const vendedora = document.getElementById('sel_vendedora').value;
-
         try {
             let saleId = null;
+            const transactionOperations = [];
             if (isEditingClient && currentEditRowClient) {
                 saleId = currentEditRowClient.getAttribute('data-id');
             } else {
@@ -2560,14 +2826,20 @@ if(addFormClient) {
 
             if (existingClients.length > 0) {
                 cliente_id = existingClients[0].id;
-                await _supabase.from('clientes').update({ celular: phone }).eq('id', cliente_id);
+                transactionOperations.push({
+                    accion: 'actualizar',
+                    tabla: 'clientes',
+                    id: cliente_id,
+                    datos: { celular: phone }
+                });
             } else {
-                const { data: newClient, error: clientInsertError } = await _supabase
-                    .from('clientes')
-                    .insert([{ nombre: name, celular: phone }])
-                    .select();
-                if (clientInsertError) throw clientInsertError;
-                cliente_id = newClient[0].id;
+                transactionOperations.push({
+                    accion: 'insertar',
+                    tabla: 'clientes',
+                    guardar_como: 'cliente',
+                    datos: { nombre: name, celular: phone }
+                });
+                cliente_id = { __ref: 'cliente.id' };
             }
 
             // 2. Consultation to Expense logic (DO THIS BEFORE SALE TO GET ID)
@@ -2606,18 +2878,22 @@ if(addFormClient) {
                         if (parsed && parsed.count > 1) {
                             const newCount = parsed.count - 1;
                             const unitPrice = (exp.monto || 0) / parsed.count;
-                            const { error: oldExpenseUpdateError } = await _supabase.from('egresos').update({
-                                categoria: `${parsed.baseName} (${newCount})`,
-                                descripcion: `Consultas agrupadas para ${originalConsultaName}`,
-                                monto: unitPrice * newCount
-                            }).eq('id', exp.id);
-                            if (oldExpenseUpdateError) throw oldExpenseUpdateError;
+                            transactionOperations.push({
+                                accion: 'actualizar',
+                                tabla: 'egresos',
+                                id: exp.id,
+                                datos: {
+                                    categoria: `${parsed.baseName} (${newCount})`,
+                                    descripcion: `Consultas agrupadas para ${originalConsultaName}`,
+                                    monto: unitPrice * newCount
+                                }
+                            });
                         } else {
-                            const { error: oldExpenseDeleteError } = await _supabase
-                                .from('egresos')
-                                .delete()
-                                .eq('id', exp.id);
-                            if (oldExpenseDeleteError) throw oldExpenseDeleteError;
+                            transactionOperations.push({
+                                accion: 'eliminar',
+                                tabla: 'egresos',
+                                id: exp.id
+                            });
                         }
                     }
                 }
@@ -2640,25 +2916,34 @@ if(addFormClient) {
                         const currentCount = parsed ? parsed.count : 1;
                         const newCount = currentCount + 1;
                         const unitPrice = (exp.monto || 0) / currentCount;
-                        const { error: existingExpenseUpdateError } = await _supabase.from('egresos').update({
-                            categoria: `${baseCat} (${newCount})`,
-                            descripcion: `Consultas agrupadas para ${consultaName}`,
-                            monto: unitPrice * newCount
-                        }).eq('id', exp.id);
-                        if (existingExpenseUpdateError) throw existingExpenseUpdateError;
+                        transactionOperations.push({
+                            accion: 'actualizar',
+                            tabla: 'egresos',
+                            id: exp.id,
+                            datos: {
+                                categoria: `${baseCat} (${newCount})`,
+                                descripcion: `Consultas agrupadas para ${consultaName}`,
+                                monto: unitPrice * newCount
+                            }
+                        });
                         egreso_id = exp.id;
                     } else {
                         // Create new
-                        const { data: newExpRecord } = await insertExpenseWithUniqueCode({
+                        const expenseCode = await generateExpenseCode();
+                        transactionOperations.push({
+                            accion: 'insertar',
+                            tabla: 'egresos',
+                            guardar_como: 'egreso_consulta',
+                            datos: {
+                                codigo: expenseCode,
                             fecha: targetConsultaDate,
                             categoria: `${baseCat} (1)`,
                             descripcion: `Consultas agrupadas para ${consultaName}`,
                             monto: 0,
                             metodo_pago: 'Efectivo'
+                            }
                         });
-                        if (newExpRecord && newExpRecord.length > 0) {
-                            egreso_id = newExpRecord[0].id;
-                        }
+                        egreso_id = { __ref: 'egreso_consulta.id' };
                     }
                 } else {
                     // Doctor was removed
@@ -2672,13 +2957,6 @@ if(addFormClient) {
             const lunaMeasure = data.split('|')[1];
             const lunaLaboratorio = data.split('|')[2];
             if (lunaName && lunaName.trim() !== '') {
-                const { data: existingLuna, error: lunaFetchError } = await _supabase
-                    .from('lunas')
-                    .select('id')
-                    .eq('codigo', id_venta)
-                    .limit(1);
-                if (lunaFetchError) throw lunaFetchError;
-
                 const lunaEntry = {
                     codigo: id_venta,
                     nombre: lunaName,
@@ -2686,23 +2964,46 @@ if(addFormClient) {
                     laboratorio: lunaLaboratorio || null,
                     fecha: dateRaw
                 };
-                if (existingLuna && existingLuna.length > 0) {
-                    const { error: lunaUpdateError } = await _supabase
-                        .from('lunas')
-                        .update(lunaEntry)
-                        .eq('id', existingLuna[0].id);
-                    if (lunaUpdateError) throw lunaUpdateError;
-                    luna_id = existingLuna[0].id;
+                if (isEditingClient && originalLunaId) {
+                    transactionOperations.push({
+                        accion: 'actualizar',
+                        tabla: 'lunas',
+                        id: originalLunaId,
+                        datos: lunaEntry
+                    });
+                    luna_id = originalLunaId;
                 } else {
-                    const { data: newLuna, error: lunaInsertError } = await _supabase
+                    const { data: existingLuna, error: lunaFetchError } = await _supabase
                         .from('lunas')
-                        .insert([lunaEntry])
                         .select('id')
-                        .single();
-                    if (lunaInsertError) throw lunaInsertError;
-                    if (!newLuna) throw new Error('No se pudo confirmar el registro de la luna.');
-                    luna_id = newLuna.id;
+                        .eq('codigo', id_venta)
+                        .limit(1);
+                    if (lunaFetchError) throw lunaFetchError;
+
+                    if (existingLuna && existingLuna.length > 0) {
+                        transactionOperations.push({
+                            accion: 'actualizar',
+                            tabla: 'lunas',
+                            id: existingLuna[0].id,
+                            datos: lunaEntry
+                        });
+                        luna_id = existingLuna[0].id;
+                    } else {
+                        transactionOperations.push({
+                            accion: 'insertar',
+                            tabla: 'lunas',
+                            guardar_como: 'luna',
+                            datos: lunaEntry
+                        });
+                        luna_id = { __ref: 'luna.id' };
+                    }
                 }
+            } else if (isEditingClient && originalLunaId) {
+                transactionOperations.push({
+                    accion: 'eliminar',
+                    tabla: 'lunas',
+                    id: originalLunaId
+                });
             }
 
             // 4. Insert/Update Sale
@@ -2727,61 +3028,109 @@ if(addFormClient) {
             };
 
             if (isEditingClient && saleId) {
-                const { error: updateError } = await _supabase.from('ventas').update(saleData).eq('id', saleId);
-                if (updateError) throw updateError;
+                transactionOperations.push({
+                    accion: 'actualizar',
+                    tabla: 'ventas',
+                    id: saleId,
+                    guardar_como: 'venta',
+                    datos: saleData
+                });
 
                 // Reconcile ventas_pagos with new advance value
                 // Sum all existing payments for this sale
                 const { data: existingPayments, error: epErr } = await _supabase
                     .from('ventas_pagos')
-                    .select('id, monto, fecha')
+                    .select('id, monto, fecha, creado_en')
                     .eq('venta_id', saleId)
                     .order('id', { ascending: true });
 
                 if (epErr) throw epErr;
 
-                const totalAlreadyPaid = existingPayments ? existingPayments.reduce((s, p) => s + p.monto, 0) : 0;
+                // Initial payments share the sale's creation timestamp. Use that link both for
+                // date corrections made now and to repair sales edited before this fix existed.
+                const saleCreatedAtMs = Date.parse(originalSaleCreatedAt || '');
+                if (dateRaw && (dateChanged || originalSaleCreatedAt)) {
+                    (existingPayments || []).forEach(payment => {
+                        const paymentCreatedAtMs = Date.parse(payment.creado_en || '');
+                        const isInitialPayment = Number.isFinite(saleCreatedAtMs)
+                            && Number.isFinite(paymentCreatedAtMs)
+                            && Math.abs(paymentCreatedAtMs - saleCreatedAtMs) <= 60 * 1000;
+                        const legacyDateMatch = dateChanged && payment.fecha === originalSaleDate;
+                        if (payment.fecha !== dateRaw && (isInitialPayment || legacyDateMatch)) {
+                            transactionOperations.push({
+                                accion: 'actualizar',
+                                tabla: 'ventas_pagos',
+                                id: payment.id,
+                                datos: { fecha: dateRaw }
+                            });
+                        }
+                    });
+                }
+
+                const totalAlreadyPaid = existingPayments ? existingPayments.reduce((s, p) => s + Number(p.monto || 0), 0) : 0;
                 const paymentDiff = Math.round((advance - totalAlreadyPaid) * 100) / 100; // Round to avoid float issues
 
                 if (paymentDiff > 0.009) {
                     // New money added — record as new payment today
-                    const { error: paymentError } = await _supabase.from('ventas_pagos').insert([{
-                        venta_id: saleId,
-                        monto: paymentDiff,
-                        fecha: getLocalDateString(),
-                        metodo_pago: paymentMethod
-                    }]);
-                    if (paymentError) console.error('Error recording payment history:', paymentError);
+                    transactionOperations.push({
+                        accion: 'insertar',
+                        tabla: 'ventas_pagos',
+                        datos: {
+                            venta_id: saleId,
+                            monto: paymentDiff,
+                            fecha: getLocalDateString(),
+                            metodo_pago: paymentMethod
+                        }
+                    });
                 } else if (paymentDiff < -0.009) {
                     // Total was reduced — trim from the most recent payment record
                     let amountToRemove = Math.abs(paymentDiff);
                     const payments = existingPayments ? [...existingPayments].reverse() : [];
                     for (const p of payments) {
                         if (amountToRemove <= 0.009) break;
-                        if (p.monto <= amountToRemove) {
-                            await _supabase.from('ventas_pagos').delete().eq('id', p.id);
-                            amountToRemove -= p.monto;
+                        const paymentAmount = Number(p.monto || 0);
+                        if (paymentAmount <= amountToRemove) {
+                            transactionOperations.push({
+                                accion: 'eliminar',
+                                tabla: 'ventas_pagos',
+                                id: p.id
+                            });
+                            amountToRemove -= paymentAmount;
                         } else {
-                            await _supabase.from('ventas_pagos').update({ monto: parseFloat((p.monto - amountToRemove).toFixed(2)) }).eq('id', p.id);
+                            transactionOperations.push({
+                                accion: 'actualizar',
+                                tabla: 'ventas_pagos',
+                                id: p.id,
+                                datos: { monto: parseFloat((Number(p.monto) - amountToRemove).toFixed(2)) }
+                            });
                             amountToRemove = 0;
                         }
+                    }
+                    if (amountToRemove > 0.009) {
+                        throw new Error('El historial de pagos no alcanza para ajustar el adelanto. No se guardó ningún cambio.');
                     }
                 }
                 // If paymentDiff ≈ 0, nothing to do
             } else {
-                const { data: newSale, error: insertError } = await _supabase.from('ventas').insert([saleData]).select();
-                if (insertError) throw insertError;
-                saleId = newSale[0].id;
+                transactionOperations.push({
+                    accion: 'insertar',
+                    tabla: 'ventas',
+                    guardar_como: 'venta',
+                    datos: saleData
+                });
 
                 // Record initial payment in history
                 if (advance > 0) {
-                    const { error: paymentError } = await _supabase.from('ventas_pagos').insert([{
-                        venta_id: saleId,
-                        monto: advance,
-                        fecha: dateRaw, // Original sale date
-                        metodo_pago: paymentMethod
-                    }]);
-                    if (paymentError) console.error('Error recording initial payment history:', paymentError);
+                    transactionOperations.push({
+                        accion: 'insertar',
+                        tabla: 'ventas_pagos',
+                        datos: {
+                            venta_id: { __ref: 'venta.id' },
+                            monto: advance,
+                            fecha: dateRaw,
+                            metodo_pago: paymentMethod
+                        }
+                    });
                 }
             }
 
@@ -2790,37 +3139,29 @@ if(addFormClient) {
             if (isEditingClient) {
                 // Restore stock for OLD monturas list
                 if (originalMonturaIds) {
-                    const oldIds = originalMonturaIds.split(',').filter(id => id);
+                    const oldIds = originalMonturaIds.split(',').map(id => id.trim()).filter(Boolean);
                     for (const oid of oldIds) {
-                        const { data: oldM } = await _supabase.from('monturas').select('stock_disponible').eq('id', oid).single();
-                        if (oldM) {
-                            await _supabase.from('monturas').update({ stock_disponible: oldM.stock_disponible + 1 }).eq('id', oid);
-                        }
+                        transactionOperations.push({ accion: 'ajustar_stock', tabla: 'monturas', id: oid, cantidad: 1 });
                     }
                 } else if (originalMonturaId) {
                     // Fallback for legacy records
-                    const { data: oldM } = await _supabase.from('monturas').select('stock_disponible').eq('id', originalMonturaId).single();
-                    if (oldM) {
-                        await _supabase.from('monturas').update({ stock_disponible: oldM.stock_disponible + 1 }).eq('id', originalMonturaId);
-                    }
+                    transactionOperations.push({ accion: 'ajustar_stock', tabla: 'monturas', id: originalMonturaId, cantidad: 1 });
                 }
 
                 // Deduct stock for NEW monturas list
                 for (const nid of monturaIdsArr) {
-                    const { data: newM } = await _supabase.from('monturas').select('stock_disponible').eq('id', nid).single();
-                    if (newM) {
-                        await _supabase.from('monturas').update({ stock_disponible: newM.stock_disponible - 1 }).eq('id', nid);
-                    }
+                    transactionOperations.push({ accion: 'ajustar_stock', tabla: 'monturas', id: nid, cantidad: -1 });
                 }
             } else {
                 // New sale: deduct from all current frames
                 for (const nid of monturaIdsArr) {
-                    const { data: newM } = await _supabase.from('monturas').select('stock_disponible').eq('id', nid).single();
-                    if (newM) {
-                        await _supabase.from('monturas').update({ stock_disponible: newM.stock_disponible - 1 }).eq('id', nid);
-                    }
+                    transactionOperations.push({ accion: 'ajustar_stock', tabla: 'monturas', id: nid, cantidad: -1 });
                 }
             }
+
+            const transactionResult = await executeSaleTransaction(transactionOperations);
+            saleId = transactionResult.venta?.id || saleId;
+            if (!saleId) throw new Error('La transacción terminó sin devolver el identificador de la venta.');
 
             isEditingClient = false;
             currentEditRowClient = null;
@@ -2829,7 +3170,9 @@ if(addFormClient) {
             originalMonturaName = null;
             originalConsultaName = null;
             originalSaleDate = null;
+            originalSaleCreatedAt = null;
             originalEgresoId = null;
+            originalLunaId = null;
             selectedMonturas = []; // CLEAR TAGS
 
             document.querySelector('#addClientModal h2').innerText = 'Agregar Nuevo Cliente';
@@ -2879,21 +3222,41 @@ async function refreshSaleRelatedData() {
     updateFinancialDashboards();
 }
 
+async function executeSaleTransaction(operations) {
+    const { data, error } = await _supabase.rpc('ejecutar_operaciones_venta', {
+        p_operaciones: operations
+    });
+    if (error) {
+        if (error.code === 'PGRST202' || error.code === '42883') {
+            throw new Error('Falta aplicar la migración de transacciones en Supabase. No se guardaron cambios.');
+        }
+        throw error;
+    }
+    return data || {};
+}
+
 // Fetch Clients & Sales
 async function fetchClients() {
     try {
-        // Request an explicit large range to avoid implicit row limits from the client/server
-        const { data, error } = await _supabase
-            .from('ventas')
-            .select(`
-                *,
-                clientes (nombre, celular),
-                ventas_pagos (id)
-            `)
-            .order('codigo_venta', { ascending: true })
-            .range(0, 9999);
+        // Supabase can cap each response at 1000 rows; fetch every page so
+        // the history and its client-side pagination include all sales.
+        const pageSize = 1000;
+        const data = [];
+        for (let from = 0; ; from += pageSize) {
+            const { data: page, error } = await _supabase
+                .from('ventas')
+                .select(`
+                    *,
+                    clientes (nombre, celular),
+                    ventas_pagos (id)
+                `)
+                .order('codigo_venta', { ascending: false })
+                .range(from, from + pageSize - 1);
 
-        if (error) throw error;
+            if (error) throw error;
+            if (page) data.push(...page);
+            if (!page || page.length < pageSize) break;
+        }
 
         if (tableBodyClients) {
             tableBodyClients.innerHTML = '';
@@ -2917,8 +3280,8 @@ async function fetchClients() {
                     <td class="actions-cell">
                         <div class="actions-wrapper">
                             ${(v.saldo > 0 || (v.ventas_pagos && v.ventas_pagos.length > 1)) ? `<button class="icon-btn history-btn" title="Historial de Pagos" onclick="showPaymentHistory('${v.id}')"><i class='bx bx-history'></i></button>` : ''}
-                            <button class="icon-btn edit-btn" title="Editar" onclick="editSale('${v.id}')"><i class='bx bxs-edit-alt'></i></button>
-                            <button class="icon-btn delete-btn" title="Eliminar" onclick="deleteSale('${v.id}', '${v.codigo_venta}', '${v.clientes?.nombre}')"><i class='bx bxs-trash'></i></button>
+                            <button class="icon-btn edit-btn" title="Editar"><i class='bx bxs-edit-alt'></i></button>
+                            <button class="icon-btn delete-btn" title="Eliminar"><i class='bx bxs-trash'></i></button>
                         </div>
                         <!-- Hidden data for summary modals -->
                         <input type="hidden" class="raw-date" value="${v.fecha}">
@@ -3045,10 +3408,62 @@ window.findSaleRemote = findSaleRemote;
 // Payment History Modal Logic
 const modalHistory = document.getElementById('paymentHistoryModal');
 const closeBtnHistory = document.querySelector('.history-close');
+const paymentEntryForm = document.getElementById('paymentEntryForm');
+const btnOpenPaymentEntry = document.getElementById('btnOpenPaymentEntry');
+const btnCancelPaymentEntry = document.getElementById('btnCancelPaymentEntry');
+const paymentEntrySplitToggle = document.getElementById('paymentEntrySplitToggle');
+const paymentEntrySplitFields = document.getElementById('paymentEntrySplitFields');
+const paymentEntrySingleAmountGroup = document.getElementById('paymentEntrySingleAmountGroup');
+const paymentEntrySingleMethodGroup = document.getElementById('paymentEntrySingleMethodGroup');
+const paymentEntryError = document.getElementById('paymentEntryError');
+let currentHistorySaleId = null;
+let isSavingPaymentEntry = false;
 
 if (closeBtnHistory) {
     closeBtnHistory.addEventListener('click', () => {
         modalHistory.style.display = 'none';
+        if (paymentEntryForm) paymentEntryForm.hidden = true;
+    });
+}
+
+if (btnOpenPaymentEntry && paymentEntryForm) {
+    btnOpenPaymentEntry.addEventListener('click', () => {
+        paymentEntryForm.reset();
+        paymentEntryForm.hidden = false;
+        paymentEntryError.hidden = true;
+        paymentEntrySplitFields.hidden = true;
+        paymentEntrySingleAmountGroup.hidden = false;
+        paymentEntrySingleMethodGroup.hidden = false;
+        document.getElementById('paymentEntryAmount').required = true;
+        document.getElementById('paymentEntryMethod').required = true;
+        document.getElementById('paymentEntryAmount1').required = false;
+        document.getElementById('paymentEntryAmount2').required = false;
+        document.getElementById('paymentEntryMethod1').required = false;
+        document.getElementById('paymentEntryMethod2').required = false;
+        paymentEntryForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+}
+
+if (btnCancelPaymentEntry && paymentEntryForm) {
+    btnCancelPaymentEntry.addEventListener('click', () => {
+        paymentEntryForm.reset();
+        paymentEntryForm.hidden = true;
+        paymentEntryError.hidden = true;
+    });
+}
+
+if (paymentEntrySplitToggle) {
+    paymentEntrySplitToggle.addEventListener('change', () => {
+        const useSplit = paymentEntrySplitToggle.checked;
+        paymentEntrySplitFields.hidden = !useSplit;
+        paymentEntrySingleAmountGroup.hidden = useSplit;
+        paymentEntrySingleMethodGroup.hidden = useSplit;
+        document.getElementById('paymentEntryAmount').required = !useSplit;
+        document.getElementById('paymentEntryMethod').required = !useSplit;
+        ['paymentEntryAmount1', 'paymentEntryAmount2', 'paymentEntryMethod1', 'paymentEntryMethod2'].forEach(id => {
+            document.getElementById(id).required = useSplit;
+        });
+        paymentEntryError.hidden = true;
     });
 }
 
@@ -3061,22 +3476,38 @@ window.showPaymentHistory = async function(ventaId) {
             .eq('id', ventaId)
             .single();
         if (sError) throw sError;
+        currentHistorySaleId = ventaId;
 
         // Fetch Payments
         const { data: payments, error: pError } = await _supabase
             .from('ventas_pagos')
             .select('*')
             .eq('venta_id', ventaId)
-            .order('fecha', { ascending: true });
+            .order('fecha', { ascending: true })
+            .order('creado_en', { ascending: true });
         if (pError) throw pError;
 
         document.getElementById('historyClientName').innerText = `${sale.clientes.nombre} (Venta #${sale.codigo_venta})`;
         const tbody = document.querySelector('#paymentHistoryTable tbody');
         tbody.innerHTML = '';
-        
+        const paymentRows = payments || [];
+        const paymentCount = document.getElementById('historyPaymentCount');
+        if (paymentCount) paymentCount.innerText = `${paymentRows.length} ${paymentRows.length === 1 ? 'pago' : 'pagos'}`;
+
+        const remainingBalance = Math.max(0, Number(sale.saldo || 0));
+        if (btnOpenPaymentEntry) {
+            btnOpenPaymentEntry.hidden = remainingBalance <= 0.009;
+            btnOpenPaymentEntry.disabled = false;
+        }
+        document.getElementById('paymentEntryRemaining').innerText = formatCurrency(remainingBalance.toFixed(2));
+        if (paymentEntryForm) paymentEntryForm.hidden = true;
+
         let totalPaid = 0;
-        payments.forEach(p => {
-            totalPaid += p.monto;
+        if (paymentRows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="payment-history-empty">No hay pagos registrados para esta venta.</td></tr>';
+        }
+        paymentRows.forEach((p, index) => {
+            totalPaid += Number(p.monto || 0);
             const dateParts = p.fecha.split('-');
             const dateDisplay = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
             
@@ -3085,7 +3516,7 @@ window.showPaymentHistory = async function(ventaId) {
                 <td>${dateDisplay}</td>
                 <td>${formatCurrency(p.monto.toString())}</td>
                 <td>${formatPaymentMethodBadge(p.metodo_pago)}</td>
-                <td>${p.es_adelanto ? 'Adelanto Inicial' : 'Abono / Saldo'}</td>
+                <td>${index === 0 ? 'Adelanto inicial' : 'Abono'}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -3101,47 +3532,202 @@ window.showPaymentHistory = async function(ventaId) {
     }
 };
 
+if (paymentEntryForm) {
+    paymentEntryForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (isSavingPaymentEntry) return;
+
+        const submitButton = paymentEntryForm.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton?.textContent || 'Guardar pago';
+        const showPaymentEntryError = message => {
+            paymentEntryError.textContent = message;
+            paymentEntryError.hidden = false;
+        };
+
+        if (!currentHistorySaleId) {
+            showPaymentEntryError('No se identificó la venta. Cierra el historial y vuelve a abrirlo.');
+            return;
+        }
+
+        isSavingPaymentEntry = true;
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Guardando…';
+        }
+        paymentEntryError.hidden = true;
+        let paymentCommitted = false;
+
+        try {
+            const { data: sale, error: saleError } = await _supabase
+                .from('ventas')
+                .select('id, monto_total, adelanto')
+                .eq('id', currentHistorySaleId)
+                .single();
+            if (saleError) throw saleError;
+
+            const total = Math.round(Number(sale.monto_total || 0) * 100) / 100;
+            const paid = Math.round(Number(sale.adelanto || 0) * 100) / 100;
+            const remaining = Math.round(Math.max(0, total - paid) * 100) / 100;
+            if (remaining <= 0.009) {
+                showPaymentEntryError('Esta venta ya está pagada.');
+                return;
+            }
+
+            const paymentDate = getLocalDateString();
+            const newPaymentRows = [];
+            if (paymentEntrySplitToggle.checked) {
+                const method1 = document.getElementById('paymentEntryMethod1').value;
+                const method2 = document.getElementById('paymentEntryMethod2').value;
+                const amount1Raw = document.getElementById('paymentEntryAmount1').value;
+                const amount2Raw = document.getElementById('paymentEntryAmount2').value;
+                const amount1 = Number(amount1Raw);
+                const amount2 = Number(amount2Raw);
+
+                if (!method1 || !method2 || method1 === method2 || !amount1Raw || !amount2Raw
+                    || !Number.isFinite(amount1) || !Number.isFinite(amount2) || amount1 <= 0 || amount2 <= 0) {
+                    showPaymentEntryError('Elige dos métodos distintos e ingresa dos importes mayores que cero.');
+                    return;
+                }
+                const splitTotal = Math.round((amount1 + amount2) * 100) / 100;
+                if (splitTotal > remaining + 0.009) {
+                    showPaymentEntryError(`El abono no puede superar el saldo de ${formatCurrency(remaining.toFixed(2))}.`);
+                    return;
+                }
+                newPaymentRows.push(
+                    { venta_id: sale.id, monto: amount1, fecha: paymentDate, metodo_pago: method1 },
+                    { venta_id: sale.id, monto: amount2, fecha: paymentDate, metodo_pago: method2 }
+                );
+            } else {
+                const amountRaw = document.getElementById('paymentEntryAmount').value;
+                const amount = Number(amountRaw);
+                const method = document.getElementById('paymentEntryMethod').value;
+                if (!amountRaw || !Number.isFinite(amount) || amount <= 0 || !method) {
+                    showPaymentEntryError('Ingresa un importe válido y selecciona el método de pago.');
+                    return;
+                }
+                const roundedAmount = Math.round(amount * 100) / 100;
+                if (roundedAmount > remaining + 0.009) {
+                    showPaymentEntryError(`El abono no puede superar el saldo de ${formatCurrency(remaining.toFixed(2))}.`);
+                    return;
+                }
+                newPaymentRows.push({
+                    venta_id: sale.id,
+                    monto: roundedAmount,
+                    fecha: paymentDate,
+                    metodo_pago: method
+                });
+            }
+
+            const paymentAmount = newPaymentRows.reduce((sum, payment) => sum + Number(payment.monto), 0);
+            const newPaid = Math.round((paid + paymentAmount) * 100) / 100;
+            const newBalance = Math.round(Math.max(0, total - newPaid) * 100) / 100;
+            const operations = [{
+                accion: 'actualizar',
+                tabla: 'ventas',
+                id: sale.id,
+                datos: { adelanto: newPaid, saldo: newBalance }
+            }, ...newPaymentRows.map(payment => ({
+                accion: 'insertar',
+                tabla: 'ventas_pagos',
+                datos: payment
+            }))];
+
+            await executeSaleTransaction(operations);
+            paymentCommitted = true;
+            paymentEntryForm.reset();
+            paymentEntryForm.hidden = true;
+            await refreshSaleRelatedData();
+            await window.showPaymentHistory(sale.id);
+            await showCustomAlert(`Se registró el pago de ${formatCurrency(paymentAmount.toFixed(2))}.`, 'PAGO REGISTRADO');
+        } catch (error) {
+            console.error('Error recording payment:', error);
+            if (paymentCommitted) {
+                paymentEntryForm.hidden = true;
+                await showCustomAlert('El pago se guardó, pero no se pudo actualizar la vista. Cierra y vuelve a abrir el historial.', 'PAGO REGISTRADO');
+            } else {
+                showPaymentEntryError(`No se registró el pago; no se modificó el saldo. ${error.message}`);
+            }
+        } finally {
+            isSavingPaymentEntry = false;
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+            }
+        }
+    });
+}
+
 // Global delete for sales
 window.deleteSale = async function(id) {
     if (await showCustomConfirm('¿Eliminar esta venta?', { title: 'ELIMINAR VENTA', confirmText: 'Eliminar', isDanger: true })) {
         try {
-            const { data: sale } = await _supabase
+            const { data: sale, error: saleFetchError } = await _supabase
                 .from('ventas')
-                .select('luna_id, egreso_id, montura_id, montura_ids, codigo_venta')
+                .select('luna_id, egreso_id, montura_id, montura_ids, codigo_venta, datos_compra')
                 .eq('id', id)
                 .single();
+            if (saleFetchError) throw saleFetchError;
+            if (!sale) throw new Error('No se encontró la venta.');
 
-            if (sale) {
-                const idsToRestore = sale.montura_ids ? sale.montura_ids.split(',') : (sale.montura_id ? [sale.montura_id] : []);
-                for (const mid of idsToRestore) {
-                    if (mid) {
-                        const { data: montura } = await _supabase.from('monturas').select('stock_disponible').eq('id', mid).single();
-                        if (montura) {
-                            await _supabase.from('monturas').update({
-                                stock_disponible: montura.stock_disponible + 1
-                            }).eq('id', mid);
-                        }
+            const operations = [];
+            const idsToRestore = sale.montura_ids
+                ? sale.montura_ids.split(',').map(value => value.trim()).filter(Boolean)
+                : (sale.montura_id ? [sale.montura_id] : []);
+            for (const monturaId of idsToRestore) {
+                operations.push({ accion: 'ajustar_stock', tabla: 'monturas', id: monturaId, cantidad: 1 });
+            }
+
+            if (sale.luna_id) {
+                operations.push({ accion: 'eliminar', tabla: 'lunas', id: sale.luna_id });
+            } else if (sale.codigo_venta) {
+                const { data: linkedLuna, error: lunaFetchError } = await _supabase
+                    .from('lunas')
+                    .select('id')
+                    .eq('codigo', sale.codigo_venta)
+                    .maybeSingle();
+                if (lunaFetchError) throw lunaFetchError;
+                if (linkedLuna) operations.push({ accion: 'eliminar', tabla: 'lunas', id: linkedLuna.id });
+            }
+
+            if (sale.egreso_id) {
+                const { data: expense, error: expenseFetchError } = await _supabase
+                    .from('egresos')
+                    .select('id, categoria, monto')
+                    .eq('id', sale.egreso_id)
+                    .maybeSingle();
+                if (expenseFetchError) throw expenseFetchError;
+
+                if (expense) {
+                    const purchaseParts = (sale.datos_compra || '').split('|');
+                    const consultationName = (purchaseParts.length >= 7 ? purchaseParts[4] : purchaseParts[3] || '').trim();
+                    const groupedConsultation = parseDoctorCategory(expense.categoria);
+                    if (groupedConsultation && groupedConsultation.count > 1) {
+                        const newCount = groupedConsultation.count - 1;
+                        const unitPrice = Number(expense.monto || 0) / groupedConsultation.count;
+                        operations.push({
+                            accion: 'actualizar',
+                            tabla: 'egresos',
+                            id: expense.id,
+                            datos: {
+                                categoria: `${groupedConsultation.baseName} (${newCount})`,
+                                descripcion: `Consultas agrupadas para ${consultationName || groupedConsultation.baseName.replace(/^Consulta\s+/, '')}`,
+                                monto: unitPrice * newCount
+                            }
+                        });
+                    } else {
+                        operations.push({ accion: 'eliminar', tabla: 'egresos', id: expense.id });
                     }
-                }
-
-                if (sale.luna_id) {
-                    await _supabase.from('lunas').delete().eq('id', sale.luna_id);
-                } else if (sale.codigo_venta) {
-                    await _supabase.from('lunas').delete().eq('codigo', sale.codigo_venta);
-                }
-
-                if (sale.egreso_id) {
-                    await _supabase.from('egresos').delete().eq('id', sale.egreso_id);
                 }
             }
 
-            const { error } = await _supabase.from('ventas').delete().eq('id', id);
-            if (error) throw error;
+            operations.push({ accion: 'eliminar', tabla: 'ventas', id });
+            await executeSaleTransaction(operations);
             
             await refreshSaleRelatedData();
+            await showCustomAlert('Venta eliminada correctamente.', 'ELIMINACIÓN COMPLETADA');
         } catch (error) {
-            console.error('Error deleting sale:', error);
-            await showCustomAlert('Error al eliminar venta');
+            console.error('Error deleting sale transaction:', error);
+            await showCustomAlert('No se eliminó la venta ni se modificó el stock. ' + error.message, 'NO SE PUDO ELIMINAR');
         }
     }
 }
@@ -3166,11 +3752,14 @@ window.editSale = async function(id) {
 
         // Reset state and set edit mode
         isEditingClient = true;
+        resetPrescriptionFields();
         currentEditRowClient = document.querySelector(`tr[data-id="${id}"]`);
         
         // Store original values for comparison during save
         originalSaleDate = v.fecha || '';
+        originalSaleCreatedAt = v.created_at || '';
         originalEgresoId = v.egreso_id || null;
+        originalLunaId = v.luna_id || null;
         originalMonturaId = v.montura_id || null;
         originalMonturaIds = v.montura_ids || '';
 
@@ -3226,6 +3815,18 @@ window.editSale = async function(id) {
             originalConsultaName = parts[3]?.trim() || '';
         }
 
+        const savedLensPrice = extractPriceFromPurchaseText(parts[0]);
+        document.getElementById('c_luna_name').value = savedLensPrice.name;
+        document.getElementById('c_luna_price').value = savedLensPrice.price;
+        if (parts.length >= 7) {
+            const savedFramePrice = extractPriceFromPurchaseText(parts[3]);
+            document.getElementById('c_montura_price').value = savedFramePrice.price;
+        } else {
+            document.getElementById('c_montura_price').value = '';
+        }
+
+        restorePrescriptionFields(document.getElementById('c_luna_measure').value);
+
         // Load and reconstruct monturas tags
         selectedMonturas = [];
         if (v.montura_ids && v.montura_ids.trim() !== '') {
@@ -3274,7 +3875,7 @@ window.editSale = async function(id) {
         calculateBalance();
 
         // Open modal
-        document.querySelector('#addClientModal h2').innerText = 'Editar Venta / Cliente';
+        document.querySelector('#addClientModal h2').innerText = 'Editar venta';
         modalClient.style.display = 'block';
 
     } catch (error) {
@@ -3284,62 +3885,16 @@ window.editSale = async function(id) {
 }
 // End of Sales Logic
 
-// Delete & Edit Logic for Clients
+// Delete & Edit Logic for Sales
 if(tableBodyClients) {
     tableBodyClients.addEventListener('click', async (e) => {
-        // Delete
-        if(e.target.closest('.delete-btn')) {
-            if(await showCustomConfirm('¿Estás seguro de eliminar este cliente?', { title: 'ELIMINAR CLIENTE', confirmText: 'Eliminar', isDanger: true })) {
-                const row = e.target.closest('tr');
-                const saleId = row.getAttribute('data-id');
-                
-                // Delete from Supabase
-                try {
-                    const { data: saleToDelete } = await _supabase
-                        .from('ventas')
-                        .select('luna_id, egreso_id, montura_id, montura_ids, codigo_venta')
-                        .eq('id', saleId)
-                        .single();
-
-                    if (saleToDelete) {
-                        const idsToRestore = saleToDelete.montura_ids
-                            ? saleToDelete.montura_ids.split(',').filter(Boolean)
-                            : (saleToDelete.montura_id ? [saleToDelete.montura_id] : []);
-                        for (const monturaId of idsToRestore) {
-                            const { data: montura } = await _supabase
-                                .from('monturas')
-                                .select('stock_disponible')
-                                .eq('id', monturaId)
-                                .single();
-                            if (montura) {
-                                await _supabase
-                                    .from('monturas')
-                                    .update({ stock_disponible: montura.stock_disponible + 1 })
-                                    .eq('id', monturaId);
-                            }
-                        }
-
-                        if (saleToDelete.luna_id) {
-                            await _supabase.from('lunas').delete().eq('id', saleToDelete.luna_id);
-                        } else if (saleToDelete.codigo_venta) {
-                            await _supabase.from('lunas').delete().eq('codigo', saleToDelete.codigo_venta);
-                        }
-
-                        if (saleToDelete.egreso_id) {
-                            await _supabase.from('egresos').delete().eq('id', saleToDelete.egreso_id);
-                        }
-                    }
-
-                    const { error } = await _supabase.from('ventas').delete().eq('id', saleId);
-                    if (error) throw error;
-                    
-                    await showCustomAlert('Venta eliminada correctamente', 'ÉXITO');
-                    await refreshSaleRelatedData();
-                } catch (err) {
-                    console.error('Error deleting sale:', err);
-                    await showCustomAlert('Error al eliminar la venta: ' + err.message, 'ERROR');
-                }
-            }
+        // Keep one deletion path so a click cannot restore stock twice.
+        const deleteButton = e.target.closest('.delete-btn');
+        if(deleteButton) {
+            const row = deleteButton.closest('tr');
+            const saleId = row?.getAttribute('data-id');
+            if (saleId) await window.deleteSale(saleId);
+            else await showCustomAlert('Error: No se encontró el ID de la venta', 'ERROR');
         }
         
         // Edit - Delegate to window.editSale
@@ -3788,6 +4343,7 @@ const btnAddExpense = document.getElementById('btnAddExpense');
 const closeBtnExpense = document.querySelector('.expense-close');
 const addFormExpense = document.getElementById('addExpenseForm');
 const tableBodyExpenses = document.querySelector('#expensesTable tbody');
+initializeTablePagination([tableBody, tableBodyMonturas, tableBodyClients, tableBodyExpenses]);
 const searchExpenseInput = document.getElementById('searchExpenseInput');
 const searchExpenseDateInput = document.getElementById('searchExpenseDateInput');
 const btnClearExpenseDateFilter = document.getElementById('btnClearExpenseDateFilter');
@@ -3885,6 +4441,7 @@ window.addEventListener('click', (e) => {
 
 // Helper to extract base name and count from "Consulta Doctor(X)"
 function parseDoctorCategory(categoryText) {
+    if (typeof categoryText !== 'string') return null;
     const match = categoryText.match(/^(Consulta [^(]+)(?:\((\d+)\))?$/);
     if (match) {
         return {
@@ -3905,7 +4462,12 @@ if(addFormExpense) {
         const category = document.getElementById('e_category').value;
         const method = document.getElementById('e_payment_method').value;
         const description = document.getElementById('e_description').value;
-        let amount = parseFloat(document.getElementById('e_amount').value) || 0;
+        const amountRaw = document.getElementById('e_amount').value;
+        let amount = Number(amountRaw);
+        if (!amountRaw || !Number.isFinite(amount) || amount < 0) {
+            await showCustomAlert('El monto del egreso debe ser válido e igual o mayor que cero.', 'REVISAR DATOS');
+            return;
+        }
 
         let finalCategory = category;
 
@@ -3971,7 +4533,8 @@ async function fetchExpenses() {
             const { data: page, error } = await _supabase
                 .from('egresos')
                 .select('*')
-                .order('codigo', { ascending: true })
+                .order('created_at', { ascending: false })
+                .order('codigo', { ascending: false })
                 .range(from, from + pageSize - 1);
 
             if (error) throw error;
@@ -4136,59 +4699,6 @@ function createNewExpenseRow(id, dateRaw, category, description, amount, isEdit 
         `;
         if(tableBodyExpenses) tableBodyExpenses.appendChild(newRow);
     }
-}
-
-// Table actions (Edit / Delete)
-if(tableBodyExpenses) {
-    tableBodyExpenses.addEventListener('click', async (e) => {
-        // Delete
-        if(e.target.closest('.delete-btn')) {
-            if(await showCustomConfirm('¿Estás seguro de eliminar este egreso?', { title: 'ELIMINAR EGRESO', confirmText: 'Eliminar', isDanger: true })) {
-                const row = e.target.closest('tr');
-                row.remove();
-            }
-        }
-
-        // Edit
-        if(e.target.closest('.edit-btn')) {
-            const row = e.target.closest('tr');
-            const cells = row.getElementsByTagName('td');
-
-            // Populate Form
-            document.getElementById('e_id').value = cells[0].innerText;
-            
-            const rawDateField = row.querySelector('.raw-date');
-            if(rawDateField) document.getElementById('e_date').value = rawDateField.value;
-            
-            // Extract base category (remove the count (X) if present) for the dropdown
-            const categoryText = cells[2].innerText;
-            const parsed = parseDoctorCategory(categoryText);
-            if (parsed) {
-                document.getElementById('e_category').value = parsed.baseName;
-            } else {
-                document.getElementById('e_category').value = categoryText;
-            }
-            
-            document.getElementById('e_category').dispatchEvent(new Event('change'));
-            document.getElementById('e_description').value = cells[3].innerText;
-            
-            // If it's a counted consultation, populate with unit price, else total amount
-            if (parsed) {
-                const unitPrice = parseFloat(row.getAttribute('data-unit-price')) || 0;
-                document.getElementById('e_amount').value = unitPrice;
-            } else {
-                const rawAmountField = row.querySelector('.raw-amount');
-                if(rawAmountField) document.getElementById('e_amount').value = rawAmountField.value;
-            }
-
-            // Set state
-            isEditingExpense = true;
-            currentEditRowExpense = row;
-            document.getElementById('expenseModalTitle').innerText = 'Editar Egreso';
-            modalExpense.style.display = 'block';
-        }
-
-    });
 }
 
 // Search Logic
@@ -5190,18 +5700,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setupExportLunas();
     setupExportMonturas();
     // setupDoctorSettlement(); // REMOVED
-    updateFinancialDashboards();
     setupSummaryModal();
     setupWeeklySummaryModal();
     setupDashboardHistory();
-
-    // Initial data fetch from Supabase
-    fetchLunas();
-    fetchMonturas();
-    fetchClients();
-    fetchExpenses();
-    fetchVendedoras();
-    fetchLatestSales(5);
 
     // Prevent mouse wheel from changing values in numeric inputs
     document.addEventListener('wheel', function (event) {
