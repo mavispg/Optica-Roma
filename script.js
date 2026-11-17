@@ -2740,17 +2740,6 @@ if(addFormClient) {
 
                 if (epErr) throw epErr;
 
-                if (initialAdvanceOnEdit > 0) {
-                    const initialPayment = existingPayments?.[0];
-                    if (initialPayment && initialPayment.fecha !== dateRaw) {
-                        const { error: paymentDateError } = await _supabase
-                            .from('ventas_pagos')
-                            .update({ fecha: dateRaw })
-                            .eq('id', initialPayment.id);
-                        if (paymentDateError) throw paymentDateError;
-                    }
-                }
-
                 const totalAlreadyPaid = existingPayments ? existingPayments.reduce((s, p) => s + p.monto, 0) : 0;
                 const paymentDiff = Math.round((advance - totalAlreadyPaid) * 100) / 100; // Round to avoid float issues
 
